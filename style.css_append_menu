@@ -1,0 +1,45 @@
+
+/* --- Mega Menu & Navigation Styles --- */
+.mega-menu {
+  width: 100%;
+  left: 0;
+  right: 0;
+  position: absolute;
+  border-radius: 0 0 16px 16px;
+  background: rgba(15, 23, 42, 0.95); /* Dark Deep Blue */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  margin-top: 0px;
+  padding: 2rem 0;
+  display: none; /* Default hidden */
+}
+
+/* Ensure it shows on hover or click via Bootstrap class, but we need to override positioning */
+.nav-item.dropdown:hover .mega-menu {
+  /* Optional: Hover trigger if desired, standard BS5 uses click */
+  /* display: block; */ 
+}
+
+/* Force full width on large screens */
+@media (min-width: 992px) {
+  .mega-menu {
+    position: fixed; /* Fixed relative to viewport to span full width */
+    top: 70px; /* Navbar height */
+    left: 0;
+    width: 100vw;
+  }
+}
+
+.hover-white:hover {
+  color: white !important;
+  transform: translateX(5px);
+  transition: all 0.2s ease;
+}
+
+.ls-1 { letter-spacing: 1px; }
+
+/* Remove arrow from dropdown toggle if desired */
+.dropdown-toggle::after {
+  display: none; 
+}

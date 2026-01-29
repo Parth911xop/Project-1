@@ -1,0 +1,26 @@
+/* Prices Page Specific Styles */
+.pricing-list li {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-box {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.card-enterprise {
+    background: #1e293b;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-enterprise:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-xl);
+    border-color: var(--primary);
+}

@@ -1,0 +1,206 @@
+/* :root {
+    --primary-blue: #2563eb;
+    --hover-blue: #93c5fd;
+    --muted-gray: #94a3b8;
+    --border-light: #e2e8f0;
+}
+
+.process-stepper {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    max-width: 1100px;
+    margin: 60px auto;
+    padding: 0 40px;
+}
+
+
+.process-stepper::before {
+    content: '';
+    position: absolute;
+    top: 25px; 
+    left: 80px;
+    right: 80px;
+    height: 3px;
+    background: var(--border-light);
+    z-index: 1;
+    pointer-events: none; 
+}
+
+
+.step-item {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    width: 120px;
+   
+    transition: all 0.4s ease-in-out; 
+}
+
+
+.step-number {
+    width: 50px;
+    height: 50px;
+    background: white;
+    border: 3px solid var(--border-light);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--muted-gray);
+    transition: inherit; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+
+.step-label {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #64748b;
+    text-align: center;
+    transition: inherit;
+}
+
+
+.step-item:hover .step-number {
+    border-color: var(--hover-blue);
+    color: var(--primary-blue);
+    transform: translateY(-5px); 
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.step-item:hover .step-label {
+    color: var(--primary-blue);
+}
+
+
+.step-item.active .step-number {
+    border-color: var(--primary-blue);
+    background: var(--primary-blue);
+    color: white !important;
+    transform: scale(1.1); 
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
+}
+
+.step-item.active .step-label {
+    color: var(--primary-blue);
+    font-weight: 800;
+}
+
+
+.step-item.locked {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.step-item.done .step-number {
+    background: #198754 !important;
+    border-color: #198754 !important;
+    color: white !important;
+}
+
+.step-item.active .step-number {
+    border-color: #0d6efd;
+    color: #0d6efd;
+    background: white;
+    transform: scale(1.2);
+}
+
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+.card {
+    transition: all 0.5s ease-in-out;
+} */
+ :root {
+    --primary: #2563eb;
+    --success: #10b981;
+    --bg-light: #f8fafc;
+}
+
+body {
+    background-color: var(--bg-light);
+    font-family: 'Inter', sans-serif;
+}
+
+.glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+/* Updated Stepper */
+.process-stepper {
+    display: flex;
+    justify-content: space-between;
+    position: relative;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.process-stepper::before {
+    content: '';
+    position: absolute;
+    top: 25px;
+    left: 40px;
+    right: 40px;
+    height: 3px;
+    background: #e2e8f0;
+    z-index: 1;
+}
+
+.step-item {
+    z-index: 2;
+    background: var(--bg-light);
+    cursor: pointer;
+    text-align: center;
+    width: 60px;
+}
+
+.step-number {
+    width: 50px;
+    height: 50px;
+    background: white;
+    border: 3px solid #e2e8f0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #94a3b8;
+    margin: 0 auto 8px;
+    transition: 0.3s;
+}
+
+.step-item.active .step-number {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+    transform: scale(1.1);
+}
+
+.step-item.done .step-number {
+    background: var(--success);
+    border-color: var(--success);
+    color: white;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+/* Animations */
+#step-content {
+    transition: opacity 0.4s ease-in-out;
+}
+

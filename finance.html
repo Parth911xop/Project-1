@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>MyFinance | Smart Shipping</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+
+<body>
+
+    <!-- Enterprise Sidebar (Replacing Navbar for Consistency) -->
+    <aside class="sidebar" style="position: fixed; left: 0; top: 0; bottom: 0; width: 250px; z-index: 1000;">
+        <div class="brand-section">
+            <a href="index.html" class="text-decoration-none">
+                <h4 class="fw-bold text-white mb-0"><i class="fas fa-ship me-2 text-primary"></i>SmartShip</h4>
+            </a>
+            <span class="text-xs text-muted">ENTERPRISE</span>
+        </div>
+
+        <nav class="d-flex flex-column gap-1">
+            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
+            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments</a>
+            <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
+            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <hr class="border-secondary opacity-25 my-3">
+            <a href="finance.html" class="nav-item-dash active"><i class="fas fa-file-invoice w-5"></i> Billing</a>
+            <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+            <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+        </nav>
+
+        <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
+            <div class="d-flex align-items-center gap-2">
+                <div id="user-avatar"
+                    class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                    style="width: 32px; height: 32px;">U</div>
+                <div class="d-grid">
+                    <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
+                    <span class="text-muted x-small">Enterprise Plan</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <div class="container-fluid px-4 py-5" style="margin-left: 250px; width: auto;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2 class="text-white fw-bold mb-1">MyFinance</h2>
+                <p class="text-white-50 small">Manage invoices, payments, and disputes.</p>
+            </div>
+            <button class="btn btn-primary rounded-pill"><i class="fas fa-download me-2"></i>Statement of
+                Account</button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="card-enterprise p-4">
+                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Total Due</h6>
+                    <h2 class="text-white fw-bold mb-0">₹1,24,500</h2>
+                    <p class="text-danger small mt-2 mb-0"><i class="fas fa-exclamation-circle me-1"></i> ₹45,000
+                        Overdue</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-enterprise p-4">
+                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Open Invoices</h6>
+                    <h2 class="text-white fw-bold mb-0">3</h2>
+                    <p class="text-white-50 small mt-2 mb-0">2 Due this week</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card-enterprise p-4">
+                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Disputes</h6>
+                    <h2 class="text-white fw-bold mb-0">0</h2>
+                    <p class="text-success small mt-2 mb-0"><i class="fas fa-check-circle me-1"></i> All clear</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoices Table -->
+        <div class="card-enterprise p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-dark table-hover mb-0 align-middle">
+                    <thead class="bg-dark text-white-50 small text-uppercase fw-bold">
+                        <tr>
+                            <th class="ps-4 py-3">Invoice #</th>
+                            <th class="py-3">Date</th>
+                            <th class="py-3">Shipment Ref</th>
+                            <th class="py-3">Amount</th>
+                            <th class="py-3">Status</th>
+                            <th class="py-3">Due Date</th>
+                            <th class="text-end pe-4 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="border-top-0">
+                        <tr>
+                            <td class="ps-4 fw-bold">INV-2024-001</td>
+                            <td class="text-white-50">Oct 20, 2024</td>
+                            <td>SS-BKG-9928</td>
+                            <td class="fw-bold">₹45,000</td>
+                            <td><span
+                                    class="badge bg-danger bg-opacity-10 text-danger border border-danger">Overdue</span>
+                            </td>
+                            <td class="text-danger">Oct 27, 2024</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-outline-light btn-sm rounded-pill">Pay Now</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4 fw-bold">INV-2024-002</td>
+                            <td class="text-white-50">Oct 25, 2024</td>
+                            <td>SS-BKG-9930</td>
+                            <td class="fw-bold">₹79,500</td>
+                            <td><span
+                                    class="badge bg-warning bg-opacity-10 text-warning border border-warning">Pending</span>
+                            </td>
+                            <td class="text-white-50">Nov 01, 2024</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-outline-light btn-sm rounded-pill">Pay Now</button>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4 fw-bold text-muted">INV-2024-000</td>
+                            <td class="text-white-50">Oct 10, 2024</td>
+                            <td class="text-muted">SS-BKG-8812</td>
+                            <td class="fw-bold text-muted">₹32,000</td>
+                            <td><span
+                                    class="badge bg-success bg-opacity-10 text-success border border-success">Paid</span>
+                            </td>
+                            <td class="text-white-50">-</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-link text-white-50 text-decoration-none"><i
+                                        class="fas fa-download"></i> PDF</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

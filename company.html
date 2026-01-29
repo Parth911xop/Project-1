@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Company | Smart Shipping</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="home-page">
+
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top glass-nav">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="index.html">
+                <i class="fas fa-ship me-2 text-primary"></i>Smart Shipping
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#menu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="menu">
+                <ul class="navbar-nav mx-auto mb-2 mb-lg-0 fw-medium gap-3">
+                    <li class="nav-item"><a class="nav-link" href="prices.html">Prices</a></li>
+
+                    <!-- Booking Mega Menu -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Booking</a>
+                        <div class="dropdown-menu mega-menu glass border-0 shadow-lg p-4">
+                            <div class="container">
+                                <div class="row g-4">
+                                    <div class="col-md-4">
+                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Book</h6>
+                                        <ul class="list-unstyled d-flex flex-column gap-2">
+                                            <li><a href="wizard.html?type=ocean" class="dropdown-item rounded"><i
+                                                        class="fas fa-ship me-2 text-primary"></i>Ocean Transport
+                                                    (Containers) <span class="d-block small text-muted ms-4">Full
+                                                        container ocean shipments + inland options</span></a></li>
+                                            <li><a href="wizard.html?type=lcl" class="dropdown-item rounded"><i
+                                                        class="fas fa-boxes me-2 text-info"></i>Less-than-Container-Load
+                                                    (LCL) <span class="d-block small text-muted ms-4">Ship small-volume
+                                                        cargo via ocean</span></a></li>
+                                            <li><a href="wizard.html?type=air" class="dropdown-item rounded"><i
+                                                        class="fas fa-plane me-2 text-warning"></i>Air Freight <span
+                                                        class="d-block small text-muted ms-4">Small-volume air freight +
+                                                        inland options</span></a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Features</h6>
+                                        <ul class="list-unstyled d-flex flex-column gap-2">
+                                            <li><a href="#" class="dropdown-item rounded"><i
+                                                        class="fas fa-laptop me-2"></i>Easy Online Booking</a></li>
+                                            <li><a href="#" class="dropdown-item rounded"><i
+                                                        class="fas fa-building me-2"></i>Inland & Customs Services</a>
+                                            </li>
+                                            <li><a href="#" class="dropdown-item rounded"><i
+                                                        class="fas fa-shield-alt me-2"></i>Value Protect</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-4 bg-primary bg-opacity-10 rounded-3 p-3"> <!-- CTA Area -->
+                                        <h5 class="fw-bold text-white">Ready to ship?</h5>
+                                        <p class="small text-white-50">Get instant quotes and book in minutes.</p>
+                                        <a href="wizard.html" class="btn btn-primary w-100 rounded-pill">Book Now</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li class="nav-item"><a class="nav-link" href="track.html">Tracking</a></li>
+                    <li class="nav-item"><a class="nav-link" href="schedules.html">Schedules</a></li>
+
+                    <!-- Manage Mega Menu -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Manage</a>
+                        <div class="dropdown-menu mega-menu glass border-0 shadow-lg p-4">
+                            <div class="container">
+                                <div class="row g-4">
+                                    <div class="col-6">
+                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Management Tools
+                                        </h6>
+                                        <ul class="list-unstyled d-flex flex-column gap-2">
+                                            <li><a href="shipments.html"
+                                                    class="dropdown-item rounded"><strong>Hub</strong> - Overview of
+                                                    your products</a></li>
+                                            <li><a href="shipments.html" class="dropdown-item rounded"><strong>Manage
+                                                        Bookings</strong> - View & track all bookings</a></li>
+                                            <li><a href="#" class="dropdown-item rounded"><strong>Tasks</strong> - View
+                                                    outstanding tasks</a></li>
+                                            <li><a href="#" class="dropdown-item rounded"><strong>MyFinance</strong> -
+                                                    View, pay & dispute invoices</a></li>
+                                            <li><a href="#" class="dropdown-item rounded"><strong>MyCustoms</strong> -
+                                                    Manage customs products</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-6">
+                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Supply Chain</h6>
+                                        <ul class="list-unstyled d-flex flex-column gap-2">
+                                            <li><a href="#" class="dropdown-item rounded"><strong>Smart
+                                                        Captain™</strong> - Visibility of reefer goods</a></li>
+                                            <li><a href="#" class="dropdown-item rounded"><strong>Case
+                                                        Management</strong> - Manage open cases</a></li>
+                                            <li><a href="#" class="dropdown-item rounded"><strong>Allocations</strong> -
+                                                    Manage allocations</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+
+                    <!-- Services Mega Menu -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="services.html" role="button"
+                            data-bs-toggle="dropdown">Services</a>
+                        <div class="dropdown-menu mega-menu glass border-0 shadow-lg p-4">
+                            <div class="container">
+                                <div class="row g-4">
+                                    <div class="col-lg-3">
+                                        <h6
+                                            class="text-uppercase text-primary fw-bold mb-3 small ls-1 border-bottom border-primary pb-2 d-inline-block">
+                                            Transport</h6>
+                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
+                                            <li><a href="services.html#ocean"
+                                                    class="text-white-50 text-decoration-none hover-white">Ocean
+                                                    Transport</a></li>
+                                            <li><a href="services.html#inland"
+                                                    class="text-white-50 text-decoration-none hover-white">Inland
+                                                    Transport</a></li>
+                                            <li><a href="services.html#lcl"
+                                                    class="text-white-50 text-decoration-none hover-white">LCL
+                                                    Shipping</a></li>
+                                            <li><a href="services.html#air"
+                                                    class="text-white-50 text-decoration-none hover-white">Air
+                                                    Freight</a></li>
+                                            <li><a href="services.html#ground"
+                                                    class="text-white-50 text-decoration-none hover-white">Ground
+                                                    Freight</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-lg-3">
+                                        <h6
+                                            class="text-uppercase text-primary fw-bold mb-3 small ls-1 border-bottom border-primary pb-2 d-inline-block">
+                                            Store</h6>
+                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
+                                            <li><a href="services.html#warehousing"
+                                                    class="text-white-50 text-decoration-none hover-white">Warehousing</a>
+                                            </li>
+                                            <li><a href="services.html#depot"
+                                                    class="text-white-50 text-decoration-none hover-white">Depot</a>
+                                            </li>
+                                            <li><a href="services.html#cold"
+                                                    class="text-white-50 text-decoration-none hover-white">Cold
+                                                    Storage</a></li>
+                                        </ul>
+                                        <h6
+                                            class="text-uppercase text-primary fw-bold mb-3 mt-4 small ls-1 border-bottom border-primary pb-2 d-inline-block">
+                                            Clear & Protect</h6>
+                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
+                                            <li><a href="#"
+                                                    class="text-white-50 text-decoration-none hover-white">Customs
+                                                    Services</a></li>
+                                            <li><a href="#" class="text-white-50 text-decoration-none hover-white">Value
+                                                    Protect</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-lg-3">
+                                        <h6
+                                            class="text-uppercase text-primary fw-bold mb-3 small ls-1 border-bottom border-primary pb-2 d-inline-block">
+                                            Logistics Management</h6>
+                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
+                                            <li><a href="#"
+                                                    class="text-white-50 text-decoration-none hover-white">Digital
+                                                    Services</a></li>
+                                            <li><a href="#"
+                                                    class="text-white-50 text-decoration-none hover-white">E-Commerce</a>
+                                            </li>
+                                            <li><a href="#" class="text-white-50 text-decoration-none hover-white">Cold
+                                                    Chain Logistics</a></li>
+                                            <li><a href="#" class="text-white-50 text-decoration-none hover-white">Lead
+                                                    Logistics</a></li>
+                                            <li><a href="#"
+                                                    class="text-white-50 text-decoration-none hover-white">Project
+                                                    Logistics</a></li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-lg-3 bg-secondary rounded-3 p-3">
+                                        <h6 class="text-uppercase text-white fw-bold mb-3 small">By Industry</h6>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <span class="badge bg-dark border border-secondary">FMCG</span>
+                                            <span class="badge bg-dark border border-secondary">Fashion</span>
+                                            <span class="badge bg-dark border border-secondary">Retail</span>
+                                            <span class="badge bg-dark border border-secondary">Chemicals</span>
+                                            <span class="badge bg-dark border border-secondary">Automotive</span>
+                                            <span class="badge bg-dark border border-secondary">Pharma</span>
+                                        </div>
+                                        <a href="services.html" class="btn btn-outline-light btn-sm mt-3 w-100">View All
+                                            Solutions</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li class="nav-item"><a class="nav-link text-accent" href="company.html">Company</a></li>
+                </ul>
+                <div class="d-flex align-items-center gap-3">
+                    <a href="#" class="text-white-50 hover-white"><i class="fas fa-search"></i></a>
+                    <a href="#" class="text-white-50 hover-white"><i class="fas fa-bell"></i></a>
+                    <a href="#" class="text-white-50 hover-white"><i class="fas fa-headset"></i></a>
+                    <div class="ms-lg-3">
+                        <a class="btn btn-primary px-4 shadow-lg rounded-pill" href="auth.html">Login</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="hero-section d-flex align-items-center position-relative" style="min-height: 60vh;">
+        <div class="container position-relative z-2">
+            <h1 class="display-3 fw-bold mb-4">About Us</h1>
+            <p class="lead text-white-50 mb-5" style="max-width: 600px;">Connecting the world through integrated
+                logistics.</p>
+        </div>
+    </header>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>

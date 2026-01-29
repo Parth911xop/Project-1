@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | Smart Shipping Enterprise</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+    <link rel="stylesheet" href="notifications.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="auth-guard.js"></script>
+</head>
+
+<body class="dashboard-page">
+
+    <!-- 1. LEFT SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <a href="index.html" class="text-decoration-none">
+                <h4 class="fw-bold text-white mb-0"><i class="fas fa-ship me-2 text-primary"></i>SmartShip</h4>
+            </a>
+            <span class="text-xs text-muted">ENTERPRISE</span>
+        </div>
+
+        <nav class="d-flex flex-column gap-1">
+            <a href="#" class="nav-item-dash active"><i class="fas fa-th-large w-5"></i> Dashboard</a>
+            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments <span
+                    class="badge bg-primary rounded-pill ms-auto">12</span></a>
+            <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
+            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <hr class="border-secondary opacity-25 my-3">
+            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice w-5"></i> Billing</a>
+            <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+            <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+        </nav>
+
+        <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
+            <div class="d-flex align-items-center gap-2">
+                <div id="user-avatar"
+                    class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                    style="width: 32px; height: 32px;">U</div>
+                <div class="d-grid">
+                    <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
+                    <span id="user-plan-display" class="text-muted x-small">Standard Plan</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- 2. MAIN CONTENT -->
+    <main class="dashboard-main">
+
+        <!-- TOP STICKY HEADER -->
+        <header class="dashboard-header">
+            <div class="search-bar">
+                <i class="fas fa-search text-muted"></i>
+                <input type="text" placeholder="Search shipments, containers, or BL numbers... (⌘K)">
+            </div>
+
+            <div class="d-flex align-items-center gap-4">
+                <span class="text-success small fw-bold"><span class="spinner-grow spinner-grow-sm me-2"></span>Network
+                    Live</span>
+                <i class="fas fa-bell text-muted hover-white cursor-pointer position-relative">
+                    <span
+                        class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-dark rounded-circle w-2 h-2"></span>
+                </i>
+                <a href="index.html" class="btn btn-outline-light btn-sm rounded-pill">Logout</a>
+            </div>
+        </header>
+
+        <!-- DASHBOARD CONTENT -->
+        <div class="p-4">
+
+            <!-- SUMMARY CARDS -->
+            <div class="summary-grid slide-in">
+                <div class="summary-card active-glow">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small fw-bold mb-1">ACTIVE SHIPMENTS</p>
+                            <h3 class="text-white fw-bold mb-0" id="count-active">--</h3>
+                        </div>
+                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 small">+12%</span>
+                    </div>
+                    <div class="progress-mini mt-3 w-100 bg-dark">
+                        <div class="progress-fill" style="width: 45%"></div>
+                    </div>
+                </div>
+                <div class="summary-card">
+                    <p class="text-muted small fw-bold mb-1">IN TRANSIT</p>
+                    <h3 class="text-info fw-bold mb-0" id="count-transit">--</h3>
+                    <div class="d-flex align-items-center gap-2 mt-2">
+                        <span class="text-success x-small"><i class="fas fa-arrow-up"></i> 94%</span>
+                        <span class="text-muted x-small">On-Time</span>
+                    </div>
+                </div>
+                <div class="summary-card warning-glow">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small fw-bold mb-1">CUSTOMS PENDING</p>
+                            <h3 class="text-warning fw-bold mb-0">2</h3>
+                        </div>
+                        <i class="fas fa-file-contract text-white-50"></i>
+                    </div>
+                    <small class="text-muted d-block mt-2">Avg clearance: 4h</small>
+                </div>
+                <div class="summary-card critical-glow">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted small fw-bold mb-1">EXCEPTIONS</p>
+                            <h3 class="text-danger fw-bold mb-0" id="count-exception">--</h3>
+                        </div>
+                        <i class="fas fa-exclamation-triangle text-danger"></i>
+                    </div>
+                    <small class="text-danger d-block mt-2">Action Required</small>
+                </div>
+            </div>
+
+            <!-- MAIN GRID (70/30) -->
+            <div class="content-grid">
+
+                <!-- LEFT: SHIPMENTS TABLE -->
+                <div class="table-panel">
+                    <div
+                        class="p-3 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
+                        <h5 class="text-white fw-bold mb-0">Recent Shipments</h5>
+                        <div class="d-flex gap-2">
+                            <button
+                                class="btn btn-sm btn-outline-light rounded-pill px-3 active filter-chip">All</button>
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip">Ocean</button>
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip">Air</button>
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip">Delayed</button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="dash-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Route</th>
+                                    <th>Mode</th>
+                                    <th>Status</th>
+                                    <th>Progress / ETA</th>
+                                    <th class="text-end">Cost</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="shipments-body">
+                                <!-- JS Injected Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- RIGHT: INTELLIGENCE STACK -->
+                <div class="intel-stack">
+
+                    <!-- AI Insight Card -->
+                    <div class="intel-card"
+                        style="background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1), rgba(10, 22, 38, 0.8));">
+                        <div class="ai-header">
+                            <span class="text-primary fw-bold small"><i class="fas fa-robot me-2"></i>AI INSIGHTS</span>
+                            <span class="badge bg-primary bg-opacity-20 text-primary">LIVE</span>
+                        </div>
+                        <p class="text-white small mb-3">Priority action recommended for <strong>SS-48292</strong>.</p>
+
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="ai-score-ring text-warning">87%</div>
+                            <div>
+                                <span class="d-block text-white fw-bold text-sm">Delay Risk High</span>
+                                <span class="text-muted x-small">Port congestion at LAX +2 days</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm w-100 rounded-pill">View Prediction Details</button>
+                    </div>
+
+                    <!-- Doc Status -->
+                    <div class="intel-card">
+                        <h6 class="text-white fw-bold small mb-3">DOCUMENT READINESS</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted small">Pending</span>
+                            <span class="text-white fw-bold">1 Doc</span>
+                        </div>
+                        <div class="alert alert-warning py-2 mb-0 small border-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Commercial Inv. Missing
+                        </div>
+                    </div>
+
+                    <!-- Activity Feed -->
+                    <div class="intel-card">
+                        <h6 class="text-white fw-bold small mb-3">ACTIVITY FEED</h6>
+                        <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
+                            <li class="d-flex gap-2">
+                                <i class="fas fa-check-circle text-success mt-1"></i>
+                                <div>
+                                    <span class="d-block text-white x-small">Container Loaded</span>
+                                    <span class="text-muted x-small">2 hours ago • SS-48291</span>
+                                </div>
+                            </li>
+                            <li class="d-flex gap-2">
+                                <i class="fas fa-plane text-primary mt-1"></i>
+                                <div>
+                                    <span class="d-block text-white x-small">Flight Departed</span>
+                                    <span class="text-muted x-small">5 hours ago • SS-48295</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- SLIDE-IN PANEL (Hidden) -->
+    <div id="slide-panel" class="slide-in-panel">
+        <div class="panel-header d-flex justify-content-between align-items-center">
+            <div>
+                <span class="text-primary font-monospace fw-bold" id="panel-id">--</span>
+                <span class="badge bg-dark border border-secondary ms-2" id="panel-status">--</span>
+            </div>
+            <button class="btn btn-icon text-white hover-bg rounded-circle" onclick="closePanel()"><i
+                    class="fas fa-times"></i></button>
+        </div>
+        <div class="panel-content">
+            <h5 class="text-white fw-bold mb-1" id="panel-route">--</h5>
+            <p class="text-muted small mb-4">Maersk Line • 4 x 40ft HC</p>
+
+            <div class="bg-dark bg-opacity-50 p-3 rounded-3 mb-4 border border-secondary border-opacity-10">
+                <span class="text-muted x-small fw-bold text-uppercase">AI Analysis</span>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <span class="text-white">On-Time Probability</span>
+                    <span class="text-success fw-bold" id="ai-risk-score">--</span>
+                </div>
+                <div class="progress-mini w-100 bg-dark mt-2" style="height: 6px;">
+                    <div class="progress-fill bg-success" style="width: 85%"></div>
+                </div>
+            </div>
+
+            <h6 class="text-white small fw-bold mb-3">Quick Actions</h6>
+            <div class="d-grid gap-2">
+                <a href="track.html" class="btn btn-outline-primary btn-sm text-start"><i
+                        class="fas fa-map-marker-alt me-2"></i>Live Satellite Tracking</a>
+                <button class="btn btn-outline-light btn-sm text-start"><i class="fas fa-file-alt me-2"></i>View
+                    Documents (4)</button>
+                <button class="btn btn-outline-light btn-sm text-start"><i class="fas fa-robot me-2"></i>Ask AI
+                    Copilot</button>
+            </div>
+
+            <hr class="border-secondary opacity-25 my-4">
+
+            <h6 class="text-white small fw-bold mb-3">Cost Breakdown</h6>
+            <div class="d-flex justify-content-between text-muted x-small mb-1">
+                <span>Ocean Freight</span>
+                <span>₹82,320.00</span>
+            </div>
+            <div class="d-flex justify-content-between text-muted x-small mb-1">
+                <span>Fuel Surcharge</span>
+                <span>₹7,140.00</span>
+            </div>
+            <div
+                class="d-flex justify-content-between text-white small fw-bold mt-2 pt-2 border-top border-secondary border-opacity-25">
+                <span>Total</span>
+                <span>₹1,04,160.00</span>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="notifications.js"></script>
+    <script src="shipments.js"></script>
+</body>
+
+</html>

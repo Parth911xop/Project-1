@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Booking | Smart Shipping</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="notifications.css">
+  <link rel="stylesheet" href="booking.css">
+</head>
+
+<body class="booking-page">
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark fixed-top glass-nav">
+    <div class="container-fluid px-4">
+      <a class="navbar-brand fw-bold" href="index.html">
+        <i class="fas fa-ship me-2 text-primary"></i>Smart Shipping
+      </a>
+      <div class="ms-auto">
+        <a href="index.html" class="btn btn-outline-light btn-sm rounded-pill">Back to Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-4 pb-5">
+    <div class="row g-4">
+
+      <!-- LEFT COLUMN: SMART FORM -->
+      <div class="col-lg-7">
+        <div class="booking-form-card">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h2 class="text-white fw-bold mb-1">Plan Your Shipment</h2>
+              <p class="text-white-50 small mb-0">AI finds your optimal route in seconds</p>
+            </div>
+            <div class="text-end">
+              <span
+                class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-3 py-2">
+                <i class="fas fa-robot me-2"></i>AI Enabled
+              </span>
+            </div>
+          </div>
+
+          <!-- 1. Route Input -->
+          <div class="bg-dark bg-opacity-25 p-3 rounded-4 mb-4 border border-secondary border-opacity-10">
+            <div class="d-flex align-items-center gap-3">
+              <div class="flex-grow-1">
+                <label class="small text-muted fw-bold mb-1">ORIGIN</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-transparent border-0 text-primary ps-0"><i
+                      class="fas fa-map-marker-alt"></i></span>
+                  <input type="text" id="originInput" list="ports"
+                    class="form-control bg-transparent border-0 text-white shadow-none" placeholder="City or Port"
+                    value="Singapore (SG SIN)" onfocus="this.value=''">
+                </div>
+              </div>
+              <div class="route-swap-btn shadow-sm" style="cursor: pointer;">
+                <i class="fas fa-exchange-alt"></i>
+              </div>
+              <div class="flex-grow-1 text-end">
+                <label class="small text-muted fw-bold mb-1">DESTINATION</label>
+                <div class="input-group justify-content-end">
+                  <input type="text" id="destInput" list="ports"
+                    class="form-control bg-transparent border-0 text-white text-end shadow-none"
+                    placeholder="City or Port" value="Los Angeles (US LAX)" onfocus="this.value=''">
+                  <span class="input-group-text bg-transparent border-0 text-danger pe-0"><i
+                      class="fas fa-map-marker-alt"></i></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Ports List -->
+            <datalist id="ports">
+              <option value="Singapore (SG SIN)">
+              <option value="Los Angeles (US LAX)">
+              <option value="Mumbai (IN BOM)">
+              <option value="Le Havre (FR LEH)">
+              <option value="Shanghai (CN PVG)">
+              <option value="Rotterdam (NL RTM)">
+              <option value="Dubai (AE DXB)">
+              <option value="New York (US NYC)">
+              <option value="Hamburg (DE HAM)">
+              <option value="Tokyo (JP TYO)">
+            </datalist>
+          </div>
+
+          <!-- 2. Date & Mode -->
+          <div class="mb-4">
+            <label class="text-white small fw-bold mb-2">SHIPPING MODE</label>
+            <div class="mode-toggle-group mb-3">
+              <div class="mode-toggle active">
+                <i class="fas fa-ship text-primary"></i>
+                <span class="d-block small fw-bold text-white">Ocean Freight</span>
+              </div>
+
+              <div class="mode-toggle">
+                <i class="fas fa-truck text-success"></i>
+                <span class="d-block small fw-bold text-white">Inland Only</span>
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="text-white-50 small fw-bold">DEPARTURE DATE</label>
+                <input type="date" class="form-control bg-dark border-secondary text-white">
+              </div>
+              <div class="col-md-6">
+                <label class="text-white-50 small fw-bold">CARGO READY DATE</label>
+                <input type="date" class="form-control bg-dark border-secondary text-white">
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Cargo Details -->
+          <div class="mb-4 p-3 border border-secondary border-opacity-10 rounded-3">
+            <h5 class="text-white fw-bold mb-3 small text-uppercase text-muted">Cargo Details</h5>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="text-white-50 small mb-1">Commodity</label>
+                <select class="form-select bg-dark border-secondary text-white">
+                  <option>Electronics 📱</option>
+                  <option>Textiles 👕</option>
+                  <option>Machinery ⚙️</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="text-white-50 small mb-1">Total Weight (kg)</label>
+                <input type="number" class="form-control bg-dark border-secondary text-white" value="5000">
+              </div>
+              <div class="col-md-3">
+                <label class="text-white-50 small mb-1">Containers</label>
+                <select class="form-select bg-dark border-secondary text-white">
+                  <option>2 x 20ft</option>
+                  <option>1 x 40ft</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-check form-switch mt-3">
+              <input class="form-check-input" type="checkbox" id="hazardToggle">
+              <label class="form-check-label text-white small" for="hazardToggle">Hazardous / Special Handling</label>
+            </div>
+          </div>
+
+          <!-- 4. AI Prefs -->
+          <div class="mb-4">
+            <h5 class="text-white fw-bold mb-3 small text-uppercase text-muted">AI Optimization Goal</h5>
+            <div class="d-flex flex-column gap-2">
+              <div class="ai-pref-item active">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="bg-primary bg-opacity-25 p-2 rounded text-primary"><i class="fas fa-balance-scale"></i>
+                  </div>
+                  <div>
+                    <span class="d-block text-white fw-bold small">Balanced (Recommended)</span>
+                    <span class="d-block text-white-50 x-small">Optimizes for cost and speed equally</span>
+                  </div>
+                </div>
+                <i class="fas fa-check-circle check"></i>
+              </div>
+              <div class="ai-pref-item">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="bg-success bg-opacity-25 p-2 rounded text-success"><i class="fas fa-dollar-sign"></i>
+                  </div>
+                  <div>
+                    <span class="d-block text-white fw-bold small">Lowest Cost</span>
+                    <span class="d-block text-white-50 x-small">Maximize savings, flexible transit time</span>
+                  </div>
+                </div>
+                <i class="fas fa-check-circle check"></i>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action -->
+          <button class="btn-ai-quote py-3" onclick="validateAndQuote()">
+            Get AI-Powered Quote <i class="fas fa-arrow-right ms-2"></i>
+          </button>
+          <p class="text-center text-muted x-small mt-2">Real-time rates from 500+ verified carriers</p>
+
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: LIVE RESULTS (Hidden initially) -->
+      <div class="col-lg-5 d-none animate-fade-in" id="live-results-panel">
+
+        <!-- 1. Route Visual -->
+        <div class="result-card p-0 overflow-hidden mb-3">
+          <div class="map-mini">
+            <div class="map-route-line"></div>
+            <!-- Overlay Data -->
+            <div class="position-absolute bottom-0 start-0 m-3 text-white">
+              <span class="badge bg-dark border border-secondary shadow-sm">
+                <i class="fas fa-stopwatch me-1 text-warning"></i> 26 Days
+              </span>
+              <span class="badge bg-dark border border-secondary shadow-sm ms-2">
+                <i class="fas fa-ruler me-1 text-info"></i> 12,450 km
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Pricing Options -->
+        <div class="d-flex flex-column gap-3">
+
+          <!-- Option 1: Best Value -->
+          <div class="result-card p-3 border-primary" style="box-shadow: 0 0 15px rgba(59,130,246,0.2);">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-primary text-white">BEST VALUE</span>
+              <span class="text-muted x-small"><i class="fas fa-robot me-1 text-primary"></i>AI Recommended</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-end mb-3">
+              <div>
+                <h4 class="text-white fw-bold m-0">₹<span id="price-best">0</span></h4>
+                <small class="text-white-50">Maersk Line • 26 days</small>
+              </div>
+              <button class="btn btn-primary btn-sm rounded-pill px-4" onclick="bookShipment('best')">Book <i
+                  class="fas fa-arrow-right ms-1"></i></button>
+            </div>
+          </div>
+
+          <!-- Option 2: Fastest -->
+          <div class="result-card p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span class="badge bg-warning text-dark"><i class="fas fa-bolt me-1"></i>FASTEST</span>
+              <span class="text-success x-small">22% Faster</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-end mb-3">
+              <div>
+                <h4 class="text-white fw-bold m-0">₹<span id="price-fastest">0</span></h4>
+                <small class="text-white-50">CMA CGM • 21 days</small>
+              </div>
+              <button class="btn btn-outline-light btn-sm rounded-pill px-4"
+                onclick="bookShipment('fastest')">Book</button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 3. Capacity & Insight -->
+        <div class="ai-insight mt-2">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="fw-bold small text-white">Space Availability</span>
+            <span class="badge bg-danger">Filling Fast</span>
+          </div>
+          <div class="capacity-bar">
+            <div class="capacity-fill" style="width: 72%;"></div>
+          </div>
+          <p class="x-small mb-3 text-white-50">72% of capacity booked for this week.</p>
+
+          <hr class="border-secondary opacity-25">
+
+          <div class="d-flex gap-2">
+            <i class="fas fa-lightbulb text-warning mt-1"></i>
+            <p class="mb-0 x-small text-white-50">
+              <strong class="text-white">AI Insight:</strong> Routing via Singapore saves 8% ($110) vs direct route with
+              only +1 transit day.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="notifications.js"></script>
+  <script src="wizard.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Shipment Verification | Smart Shipping</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="notifications.css">
+    <style>
+        .verification-card {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .step-indicator {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+            border: 2px solid transparent;
+        }
+
+        .step-indicator.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        .step-indicator.completed {
+            background: var(--success);
+            color: white;
+        }
+
+        .progress-track {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            z-index: 1;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--success);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .upload-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(6, 182, 212, 0.05);
+        }
+
+        .step-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+            flex-grow: 1;
+        }
+
+        .step-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .doc-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+
+<body class="home-page" style="padding-top: 100px;">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top glass-nav">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="index.html">
+                <i class="fas fa-ship me-2 text-primary"></i>Smart Shipping
+            </a>
+            <div class="ms-auto">
+                <span class="text-white-50 small me-3">Shipment Ref: <span id="ref-id"
+                        class="text-white font-monospace">SS-PENDING</span></span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-white mb-2">Shipment Verification</h2>
+                    <p class="text-white-50">Complete these 5 steps to finalize your booking.</p>
+                </div>
+
+                <!-- Stepper -->
+                <div class="position-relative d-flex justify-content-between mb-5 px-4">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="main-progress"></div>
+                    </div>
+                    <div class="step-indicator active" id="step-1-ind">1</div>
+                    <div class="step-indicator" id="step-2-ind">2</div>
+                    <div class="step-indicator" id="step-3-ind">3</div>
+                    <div class="step-indicator" id="step-4-ind">4</div>
+                    <div class="step-indicator" id="step-5-ind">5</div>
+                </div>
+
+                <div class="verification-card p-4 p-md-5">
+
+                    <!-- STEP 1: Commercial Invoice -->
+                    <div class="step-content active" id="step-1">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-file-invoice-dollar doc-icon"></i>
+                            <h3 class="fw-bold text-white">Commercial Invoice</h3>
+                            <p class="text-white-50">Upload the final commercial invoice for customs valuation.</p>
+                        </div>
+                        <div class="upload-zone mb-4" id="drop-zone-1">
+                            <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-3"></i>
+                            <h5 class="text-white fw-bold">Drag & Drop or Click to Upload</h5>
+                            <p class="small text-muted mb-0">PDF, JPG, PNG (Max 5MB)</p>
+                            <input type="file" hidden id="file-1" onchange="handleFileSelect(1)">
+                        </div>
+                        <div class="mt-auto d-flex justify-content-end">
+                            <button class="btn btn-primary rounded-pill px-4" onclick="nextStep(1)">
+                                Upload & Continue <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: Packing List -->
+                    <div class="step-content" id="step-2">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-boxes doc-icon"></i>
+                            <h3 class="fw-bold text-white">Packing List</h3>
+                            <p class="text-white-50">Detailed list of contents, weight, and dimensions.</p>
+                        </div>
+                        <div class="upload-zone mb-4" id="drop-zone-2">
+                            <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-3"></i>
+                            <h5 class="text-white fw-bold">Drag & Drop or Click to Upload</h5>
+                            <p class="small text-muted mb-0">PDF, Excel (Max 5MB)</p>
+                            <input type="file" hidden id="file-2" onchange="handleFileSelect(2)">
+                        </div>
+                        <div class="mt-auto d-flex justify-content-between">
+                            <button class="btn btn-outline-light rounded-pill px-4" onclick="prevStep(2)">Back</button>
+                            <button class="btn btn-primary rounded-pill px-4" onclick="nextStep(2)">
+                                Upload & Continue <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: Certificate of Origin -->
+                    <div class="step-content" id="step-3">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-globe-americas doc-icon"></i>
+                            <h3 class="fw-bold text-white">Certificate of Origin</h3>
+                            <p class="text-white-50">Proof of where the goods were manufactured.</p>
+                        </div>
+                        <div class="upload-zone mb-4" id="drop-zone-3">
+                            <i class="fas fa-cloud-upload-alt fa-2x text-muted mb-3"></i>
+                            <h5 class="text-white fw-bold">Drag & Drop or Click to Upload</h5>
+                            <p class="small text-muted mb-0">PDF (Max 5MB)</p>
+                            <input type="file" hidden id="file-3" onchange="handleFileSelect(3)">
+                        </div>
+                        <div class="mt-auto d-flex justify-content-between">
+                            <button class="btn btn-outline-light rounded-pill px-4" onclick="prevStep(3)">Back</button>
+                            <button class="btn btn-primary rounded-pill px-4" onclick="nextStep(3)">
+                                Upload & Continue <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: Compliance Check -->
+                    <div class="step-content" id="step-4">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-shield-alt doc-icon"></i>
+                            <h3 class="fw-bold text-white">Compliance & Hazardous Goods</h3>
+                            <p class="text-white-50">Verify if your cargo requires special handling or permits.</p>
+                        </div>
+
+                        <div class="bg-dark bg-opacity-50 p-4 rounded-3 mb-4 text-start">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="check1">
+                                <label class="form-check-label text-white" for="check1">I confirm the goods are Not
+                                    Restricted under current regulations.</label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="check2">
+                                <label class="form-check-label text-white" for="check2">I confirm the goods do NOT
+                                    contain batteries/lithium.</label>
+                            </div>
+                        </div>
+
+                        <div class="mt-auto d-flex justify-content-between">
+                            <button class="btn btn-outline-light rounded-pill px-4" onclick="prevStep(4)">Back</button>
+                            <button class="btn btn-primary rounded-pill px-4" onclick="nextStep(4)">
+                                Verify & Continue <i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: Final Approval -->
+                    <div class="step-content" id="step-5">
+                        <div class="text-center mb-4">
+                            <i class="fas fa-clipboard-check doc-icon text-success"
+                                style="-webkit-text-fill-color: var(--success);"></i>
+                            <h3 class="fw-bold text-white">Final Review</h3>
+                            <p class="text-white-50">Review your submission and authorize the booking.</p>
+                        </div>
+
+                        <div class="bg-dark bg-opacity-50 p-4 rounded-3 mb-4 text-start">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Booking Reference</span>
+                                <span class="text-white fw-bold">Pending</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-muted">Documents</span>
+                                <span class="text-success"><i class="fas fa-check me-1"></i> 3 Uploaded</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span class="text-muted">Compliance</span>
+                                <span class="text-success"><i class="fas fa-check me-1"></i> Verified</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-auto d-flex justify-content-between">
+                            <button class="btn btn-outline-light rounded-pill px-4" onclick="prevStep(5)">Back</button>
+                            <button class="btn btn-success rounded-pill px-5 shadow-lg fw-bold"
+                                onclick="finishVerification()">
+                                Submit & Go to Dashboard
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="notifications.js"></script>
+    <script src="verification.js"></script>
+</body>
+
+</html>

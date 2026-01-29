@@ -1,0 +1,47 @@
+/* --- Tracking Page & Advanced UI --- */
+
+/* Tabs */
+.nav-pills .nav-link {
+    background: transparent;
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.nav-pills .nav-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-pills .nav-link.active {
+    background: var(--primary);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 600;
+}
+
+/* Tracking Input Fields */
+.form-control:focus {
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.25);
+    border-color: var(--accent);
+}
+
+.input-group-text {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Animations */
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

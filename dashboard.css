@@ -1,0 +1,349 @@
+/* Smart Shipment Dashboard - Enterprise Control Tower */
+
+:root {
+    /* Global Design System Colors */
+    --dash-bg-gradient: linear-gradient(135deg, #0A1626 0%, #1E3A8A 100%);
+    --dash-glass-bg: rgba(30, 41, 59, 0.65);
+    --dash-glass-border: rgba(59, 130, 246, 0.2);
+    --dash-primary: #3B82F6;
+    --dash-success: #10B981;
+    --dash-warning: #F59E0B;
+    --dash-critical: #EF4444;
+    --dash-text-main: #F1F5F9;
+    --dash-text-muted: #94A3B8;
+
+    --sidebar-width: 250px;
+}
+
+body.dashboard-page {
+    background: var(--dash-bg-gradient);
+    color: var(--dash-text-main);
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+    /* Prevent body scroll */
+    height: 100vh;
+    display: flex;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: var(--sidebar-width);
+    background: rgba(10, 22, 38, 0.9);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1040;
+    transition: transform 0.3s ease;
+}
+
+.brand-section {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.nav-item-dash {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    color: var(--dash-text-muted);
+    text-decoration: none;
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    transition: all 0.2s;
+    font-weight: 500;
+    position: relative;
+}
+
+.nav-item-dash:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.nav-item-dash.active {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--dash-primary);
+}
+
+.nav-item-dash.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 10%;
+    bottom: 10%;
+    width: 3px;
+    background: var(--dash-primary);
+    border-radius: 0 4px 4px 0;
+    box-shadow: 0 0 8px var(--dash-primary);
+}
+
+/* MAIN CONTENT WRAPPER */
+.dashboard-main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
+    /* Allow ONLY this to scroll */
+    position: relative;
+    /* Hide Scrollbar for Chrome/Safari/Opera */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.dashboard-main::-webkit-scrollbar {
+    display: none;
+    /* Chrome/Safari/Opera */
+}
+
+/* HEADER */
+.dashboard-header {
+    background: rgba(10, 22, 38, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.search-bar {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    width: 400px;
+    color: white;
+}
+
+.search-bar input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    width: 100%;
+    margin-left: 0.5rem;
+}
+
+/* SUMMARY CARDS */
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.5rem;
+    padding: 2rem;
+    padding-bottom: 1rem;
+}
+
+.summary-card {
+    background: var(--dash-glass-bg);
+    border: 1px solid var(--dash-glass-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+}
+
+.summary-card.active-glow {
+    border-bottom: 2px solid var(--dash-primary);
+}
+
+.summary-card.warning-glow {
+    border-bottom: 2px solid var(--dash-warning);
+}
+
+.summary-card.critical-glow {
+    border-bottom: 2px solid var(--dash-critical);
+}
+
+/* MAIN LAYOUT (70/30) */
+.content-grid {
+    display: grid;
+    grid-template-columns: 70% 30%;
+    gap: 1.5rem;
+    padding: 1rem 2rem 2rem 2rem;
+    flex: 1;
+}
+
+/* SHIPMENTS TABLE */
+.table-panel {
+    background: var(--dash-glass-bg);
+    border: 1px solid var(--dash-glass-border);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.dash-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.dash-table th {
+    background: rgba(10, 22, 38, 0.5);
+    color: var(--dash-text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dash-table td {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    vertical-align: middle;
+    transition: background 0.2s;
+    font-size: 0.9rem;
+}
+
+.dash-table tr:hover td {
+    background: rgba(59, 130, 246, 0.05);
+    cursor: pointer;
+}
+
+.status-chip {
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid transparent;
+}
+
+.status-chip.success {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--dash-success);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.status-chip.warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--dash-warning);
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.status-chip.critical {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--dash-critical);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.progress-mini {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    width: 100px;
+    margin-top: 0.5rem;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--dash-primary);
+    border-radius: 2px;
+}
+
+
+/* RIGHT INTELLIGENCE PANEL */
+.intel-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.intel-card {
+    background: var(--dash-glass-bg);
+    border: 1px solid var(--dash-glass-border);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.ai-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.ai-score-ring {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 3px solid var(--dash-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.9rem;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+
+/* SLIDE-IN PANEL */
+.slide-in-panel {
+    position: fixed;
+    top: 0;
+    right: -450px;
+    width: 450px;
+    bottom: 0;
+    background: #0f172a;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    z-index: 1050;
+    transition: right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+}
+
+.slide-in-panel.open {
+    right: 0;
+}
+
+.panel-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .sidebar {
+        transform: translateX(-100%);
+    }
+
+    .dashboard-main {
+        margin-left: 0;
+    }
+}

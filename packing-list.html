@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Packing List</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0d6efd;
+            --dark: #212529;
+            --light: #f8f9fa;
+        }
+
+        body {
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+            color: #333;
+            background: #e0e0e0;
+            margin: 0;
+            padding: 40px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .invoice-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .actions {
+            max-width: 800px;
+            margin: 0 auto 20px;
+            text-align: right;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #0b5ed7;
+        }
+
+        .btn-success {
+            background: #198754;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #157347;
+        }
+
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            margin-right: 10px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .company-brand h1 {
+            margin: 0;
+            color: var(--primary);
+            font-size: 24px;
+            text-transform: uppercase;
+        }
+
+        .invoice-title {
+            text-align: right;
+        }
+
+        .invoice-title h2 {
+            margin: 0;
+            font-size: 28px;
+            color: var(--dark);
+            text-transform: uppercase;
+        }
+
+        .meta-data {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Address Grid */
+        .address-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .addr-box h3 {
+            font-size: 14px;
+            text-transform: uppercase;
+            color: #888;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+        .addr-box p {
+            margin: 0;
+            line-height: 1.5;
+            font-size: 15px;
+        }
+
+        /* Details */
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+        }
+
+        .detail-item span {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+        }
+
+        .detail-item strong {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-top: 4px;
+        }
+
+        /* Items Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+
+        th {
+            background: #333;
+            color: white;
+            text-align: left;
+            padding: 12px;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        tfoot td {
+            border-top: 2px solid #333;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .invoice-container {
+                box-shadow: none;
+                padding: 0;
+            }
+
+            .actions {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="actions">
+        <a href="javascript:window.close()" class="btn btn-back"><i class="fas fa-times"></i> Close</a>
+        <button onclick="window.print()" class="btn btn-success"><i class="fas fa-print"></i> Print List</button>
+    </div>
+
+    <div class="invoice-container" id="invoice">
+        <div class="header">
+            <div class="company-brand">
+                <h1>Smart Shipping</h1>
+                <p style="font-size: 12px; color: #666;">Global Logistics Partner</p>
+            </div>
+            <div class="invoice-title">
+                <h2>Packing List</h2>
+                <div class="meta-data">
+                    <div>List #: <strong id="inv-num">...</strong></div>
+                    <div>Date: <strong id="inv-date">...</strong></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="address-grid">
+            <div class="addr-box">
+                <h3>Exporter (Shipper)</h3>
+                <div id="shipper-info">Loading...</div>
+            </div>
+            <div class="addr-box">
+                <h3>Consignee (Buyer)</h3>
+                <div id="consignee-info">Loading...</div>
+            </div>
+        </div>
+
+        <div class="details-grid">
+            <div class="detail-item">
+                <span>Country of Origin</span>
+                <strong id="origin">...</strong>
+            </div>
+            <div class="detail-item">
+                <span>Country of Destination</span>
+                <strong id="destination">...</strong>
+            </div>
+            <div class="detail-item">
+                <span>Mode of Transport</span>
+                <strong id="mode">...</strong>
+            </div>
+            <div class="detail-item">
+                <span>Total Packages</span>
+                <strong id="total-pkgs">...</strong>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Description of Goods</th>
+                    <th class="text-right">Quantity</th>
+                    <th class="text-right">Net Weight</th>
+                    <th class="text-right">Gross Weight</th>
+                    <th class="text-right">Volume</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        <strong id="prod-name">Product Name</strong><br>
+                        <span style="font-size: 12px; color: #666;">Standard Cargo</span>
+                    </td>
+                    <td class="text-right">1 Lot</td>
+                    <td class="text-right" id="net-weight">-</td>
+                    <td class="text-right" id="gross-weight">-</td>
+                    <td class="text-right" id="volume">-</td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="text-right">TOTAL GROSS WEIGHT</td>
+                    <td class="text-right" id="total-gross">-</td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div style="margin-top: 40px; font-size: 13px;">
+            <p><strong>Remarks:</strong><br>
+                Goods are packed in standard export quality packaging.</p>
+        </div>
+
+        <div class="footer">
+            Generated electronically by Smart Shipping Platform on <span id="gen-date"></span>.
+        </div>
+    </div>
+
+    <script>
+        // Init
+        const urlParams = new URLSearchParams(window.location.search);
+        const shipmentId = urlParams.get('shipmentId');
+
+        document.getElementById('gen-date').innerText = new Date().toLocaleDateString();
+
+        async function loadData() {
+            if (!shipmentId) {
+                alert("No Shipment ID provided.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/shipment/${shipmentId}`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const s = data.shipment;
+
+                    // Meta
+                    document.getElementById('inv-num').innerText = `PL-${new Date().getFullYear()}-${1000 + s.id}`;
+                    document.getElementById('inv-date').innerText = new Date(s.created_at).toLocaleDateString();
+
+                    // Shipper
+                    const sh = s.shipper_details || {};
+                    document.getElementById('shipper-info').innerHTML = `
+                        <p><strong>${sh.name || 'N/A'}</strong><br>
+                        ${sh.address || 'Address Not Provided'}</p>
+                    `;
+
+                    // Consignee
+                    const cn = s.consignee_details || {};
+                    document.getElementById('consignee-info').innerHTML = `
+                        <p><strong>${cn.name || 'N/A'}</strong><br>
+                        ${cn.address || 'Address Not Provided'}</p>
+                    `;
+
+                    // Details
+                    document.getElementById('origin').innerText = s.from_country;
+                    document.getElementById('destination').innerText = s.to_country;
+                    document.getElementById('mode').innerText = s.mode || 'Sea';
+
+                    // Mock Logic for Packaging
+                    const grossW = parseFloat(s.weight) || 0;
+                    const netW = grossW * 0.95; // Assume 5% tare
+                    const pkgs = Math.ceil(grossW / 25); // Assume 25kg per box
+
+                    document.getElementById('total-pkgs').innerText = `${pkgs} Packages`;
+
+                    // Line Item
+                    document.getElementById('prod-name').innerText = s.product_type;
+                    document.getElementById('gross-weight').innerText = `${grossW.toFixed(2)} kg`;
+                    document.getElementById('net-weight').innerText = `${netW.toFixed(2)} kg`;
+                    document.getElementById('volume').innerText = s.volume_cbm ? `${s.volume_cbm} CBM` : 'N/A';
+
+                    document.getElementById('total-gross').innerText = `${grossW.toFixed(2)} kg`;
+
+                }
+            } catch (err) {
+                console.error(err);
+                document.body.innerHTML = "<h2 style='text-align:center; color:red;'>Failed to load packing list data.</h2>";
+            }
+        }
+
+        loadData();
+    </script>
+</body>
+
+</html>
