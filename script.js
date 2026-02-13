@@ -27,23 +27,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 });
 
-// Scroll Animations (Enterprise Polish)
-const observerOptions = {
-  threshold: 0.15,
-  rootMargin: "0px 0px -50px 0px"
-};
-
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('active');
-      observer.unobserve(entry.target); // Only animate once
-    }
-  });
-}, observerOptions);
-
-document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-});
 
 function updateAuthUI() {
   const userId = localStorage.getItem('userId');

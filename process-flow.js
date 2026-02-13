@@ -88,50 +88,90 @@ async function init() {
 
 function renderUI() {
     // 1. Render Stepper
-    stepper.innerHTML = Object.keys(stepsData).map(id => `
+    const totalSteps = Object.keys(stepsData).length;
+    const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+
+    stepper.innerHTML = `
+        <div class="progress-track" style="position: absolute; top: 25px; left: 40px; right: 40px; height: 3px; background: rgba(255,255,255,0.1); z-index: 0;"></div>
+        <div class="progress-fill" style="position: absolute; top: 25px; left: 40px; width: calc(${progress}% - 40px); max-width: calc(100% - 80px); height: 3px; background: var(--success); z-index: 1; transition: width 0.5s ease;"></div>
+    ` + Object.keys(stepsData).map(id => `
         <div class="step-item ${id == currentStep ? 'active' : ''} ${completedSteps.includes(parseInt(id)) ? 'done' : ''}" 
              onclick="jumpToStep(${id})" style="cursor: pointer;">
             <div class="step-number">${completedSteps.includes(parseInt(id)) ? '<i class="fas fa-check"></i>' : id}</div>
             <div class="step-label">${stepsData[id].title.split(' ')[0]}</div>
         </div>`).join('');
 
-    // 2. Render Content
+    // 2. Render Content with Smooth Transition
     const content = stepsData[currentStep];
     const contentDiv = document.getElementById('step-content');
 
-    let fieldsHTML = content.fields.map(f => {
-        // Retrieve value from sessionData
-        const existingVal = sessionData[f.id] || '';
+    // Start Fade Out
+    contentDiv.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+    contentDiv.style.opacity = '0';
+    contentDiv.style.transform = 'translateY(10px)';
 
-        return `
-        <div class="mb-4">
-            <label class="form-label fw-bold small text-muted">${f.label.toUpperCase()}</label>
-            <input type="${f.type}" class="form-control form-control-lg bg-light border-0" id="${f.id}" 
-                maxlength="${f.max || ''}" 
-                value="${f.type !== 'file' ? existingVal : ''}"
-                placeholder="${f.type === 'file' ? 'Upload File...' : 'Enter Value'}"
-                oninput="updateSessionData('${f.id}')" onchange="updateSessionData('${f.id}')">
-            ${f.type === 'file' && existingVal ? `<small class="text-success mt-2 d-block"><i class="fas fa-check-circle me-1"></i> File Uploaded</small>` : ''}
-        </div>`
-    }).join('');
+    setTimeout(() => {
+        let fieldsHTML = content.fields.map(f => {
+            // Retrieve value from sessionData
+            const existingVal = sessionData[f.id] || '';
 
-    contentDiv.innerHTML = `
-        <h2 class="text-primary fw-bold mb-2">${content.title}</h2>
-        <p class="text-muted mb-4">${content.desc}</p>
-        <div class="row"><div class="col-md-9">${fieldsHTML}</div></div>`;
+            return `
+            <div class="mb-4">
+                <label class="form-label fw-bold text-muted small text-uppercase">${f.label}</label>
+                <input type="${f.type}" class="form-control form-control-lg" id="${f.id}" 
+                    maxlength="${f.max || ''}" 
+                    value="${f.type !== 'file' ? existingVal : ''}"
+                    placeholder="${f.type === 'file' ? 'Upload File...' : 'Enter Value'}"
+                    oninput="updateSessionData('${f.id}')" onchange="updateSessionData('${f.id}')">
+                ${f.type === 'file' && existingVal ? `<small class="text-success mt-2 d-block"><i class="fas fa-check-circle me-1"></i> File Uploaded</small>` : ''}
+            </div>`
+        }).join('');
 
-    // 3. SPECIAL: Auto-Generate Tools for Specific Steps
-    injectTools(currentStep, contentDiv);
+        // AI Auto-Complete Button (For non-last steps)
+        const aiButton = `
+            <div class="d-flex justify-content-end mb-4">
+                <button class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="simulateAI(${currentStep})">
+                    <i class="fas fa-magic me-2"></i> AI Auto-Complete
+                </button>
+            </div>`;
 
-    // 4. Navigation Visibility
-    const backBtn = document.getElementById('back-btn');
-    if (backBtn) backBtn.classList.toggle('d-none', currentStep === 1);
+        contentDiv.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="text-white fw-bold m-0">${content.title}</h2>
+                ${currentStep < 5 ? `<span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 rounded-pill"><i class="fas fa-clock me-1"></i> Est. 2 mins</span>` : ''}
+            </div>
+            
+            <p class="text-white-50 mb-4 fs-5">${content.desc}</p>
+            
+            ${currentStep <= 4 ? aiButton : ''}
+    
+            <div class="row">
+                <div class="col-md-8 mx-auto">
+                    <div class="p-4 rounded-4" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05);">
+                        ${fieldsHTML}
+                    </div>
+                </div>
+            </div>`;
 
-    // Final Step Submit Button Toggle
-    const nextBtnText = document.getElementById('next-btn-text');
-    if (nextBtnText) {
-        nextBtnText.innerText = (currentStep === 6) ? "Final Submit" : "Next Step";
-    }
+        // 3. SPECIAL: Auto-Generate Tools for Specific Steps
+        injectTools(currentStep, contentDiv);
+
+        // Fade In
+        requestAnimationFrame(() => {
+            contentDiv.style.opacity = '1';
+            contentDiv.style.transform = 'translateY(0)';
+        });
+
+        // 4. Navigation Visibility
+        const backBtn = document.getElementById('back-btn');
+        if (backBtn) backBtn.classList.toggle('d-none', currentStep === 1);
+
+        // Final Step Submit Button Toggle
+        const nextBtnText = document.getElementById('next-btn-text');
+        if (nextBtnText) {
+            nextBtnText.innerText = (currentStep === 6) ? "Final Submit" : "Next Step";
+        }
+    }, 200);
 }
 
 function injectTools(step, container) {
@@ -319,4 +359,47 @@ async function searchHS() {
 // Global scope for port finder as well
 function openPortFinder() {
     alert("Port Finder Tool Active (Mock)");
+}
+
+// Mock AI Simulation
+async function simulateAI(step) {
+    const btn = document.querySelector('.btn-outline-info');
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Generating...';
+        btn.disabled = true;
+    }
+
+    // Simulate Network Delay
+    await new Promise(r => setTimeout(r, 800));
+
+    const fields = stepsData[step].fields;
+    fields.forEach(f => {
+        const input = document.getElementById(f.id);
+        if (input) {
+            let mockVal = "AI-Generated-Val";
+            if (f.id.includes('iec')) mockVal = "AKJPD1234F";
+            if (f.id.includes('sdf')) mockVal = "SDF-2026-X99";
+
+            if (f.type === 'file') {
+                // Simulate file present
+                input.classList.add('is-valid');
+                sessionData[f.id] = "ai_generated_doc.pdf";
+                // Visual indicator
+                const parent = input.parentElement;
+                if (!parent.querySelector('.text-success')) {
+                    parent.insertAdjacentHTML('beforeend', `<small class="text-success mt-2 d-block"><i class="fas fa-check-circle me-1"></i> AI Generated Document Ready</small>`);
+                }
+            } else {
+                input.value = mockVal;
+                updateSessionData(f.id);
+            }
+        }
+    });
+
+    showToast("✨ Data Auto-Completed by AI", "success");
+    if (btn) {
+        btn.innerHTML = '<i class="fas fa-check me-2"></i> Done';
+        // Auto-advance convenience?
+        // setTimeout(validateAndNext, 500); // Optional: Auto Click Next
+    }
 }

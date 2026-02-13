@@ -117,98 +117,6 @@
                         </div>
                     </li>
 
-                    <!-- Services Mega Menu -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="services.html" role="button"
-                            data-bs-toggle="dropdown">Services</a>
-                        <div class="dropdown-menu mega-menu glass border-0 shadow-lg p-4">
-                            <div class="container">
-                                <div class="row g-4">
-                                    <div class="col-lg-3">
-                                        <h6
-                                            class="text-uppercase text-primary fw-bold mb-3 small ls-1 border-bottom border-primary pb-2 d-inline-block">
-                                            Transport</h6>
-                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
-                                            <li><a href="services.html#ocean"
-                                                    class="text-white-50 text-decoration-none hover-white">Ocean
-                                                    Transport</a></li>
-                                            <li><a href="services.html#inland"
-                                                    class="text-white-50 text-decoration-none hover-white">Inland
-                                                    Transport</a></li>
-                                            <li><a href="services.html#lcl"
-                                                    class="text-white-50 text-decoration-none hover-white">LCL
-                                                    Shipping</a></li>
-                                            <li><a href="services.html#air"
-                                                    class="text-white-50 text-decoration-none hover-white">Air
-                                                    Freight</a></li>
-                                            <li><a href="services.html#ground"
-                                                    class="text-white-50 text-decoration-none hover-white">Ground
-                                                    Freight</a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="col-lg-3">
-                                        <h6
-                                            class="text-uppercase text-primary fw-bold mb-3 small ls-1 border-bottom border-primary pb-2 d-inline-block">
-                                            Store</h6>
-                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
-                                            <li><a href="services.html#warehousing"
-                                                    class="text-white-50 text-decoration-none hover-white">Warehousing</a>
-                                            </li>
-                                            <li><a href="services.html#depot"
-                                                    class="text-white-50 text-decoration-none hover-white">Depot</a>
-                                            </li>
-                                            <li><a href="services.html#cold"
-                                                    class="text-white-50 text-decoration-none hover-white">Cold
-                                                    Storage</a></li>
-                                        </ul>
-                                        <h6
-                                            class="text-uppercase text-primary fw-bold mb-3 mt-4 small ls-1 border-bottom border-primary pb-2 d-inline-block">
-                                            Clear & Protect</h6>
-                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
-                                            <li><a href="#"
-                                                    class="text-white-50 text-decoration-none hover-white">Customs
-                                                    Services</a></li>
-                                            <li><a href="#" class="text-white-50 text-decoration-none hover-white">Value
-                                                    Protect</a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="col-lg-3">
-                                        <h6
-                                            class="text-uppercase text-primary fw-bold mb-3 small ls-1 border-bottom border-primary pb-2 d-inline-block">
-                                            Logistics Management</h6>
-                                        <ul class="list-unstyled text-sm gap-1 d-flex flex-column">
-                                            <li><a href="#"
-                                                    class="text-white-50 text-decoration-none hover-white">Digital
-                                                    Services</a></li>
-                                            <li><a href="#"
-                                                    class="text-white-50 text-decoration-none hover-white">E-Commerce</a>
-                                            </li>
-                                            <li><a href="#" class="text-white-50 text-decoration-none hover-white">Cold
-                                                    Chain Logistics</a></li>
-                                            <li><a href="#" class="text-white-50 text-decoration-none hover-white">Lead
-                                                    Logistics</a></li>
-                                            <li><a href="#"
-                                                    class="text-white-50 text-decoration-none hover-white">Project
-                                                    Logistics</a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="col-lg-3 bg-secondary rounded-3 p-3">
-                                        <h6 class="text-uppercase text-white fw-bold mb-3 small">By Industry</h6>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <span class="badge bg-dark border border-secondary">FMCG</span>
-                                            <span class="badge bg-dark border border-secondary">Fashion</span>
-                                            <span class="badge bg-dark border border-secondary">Retail</span>
-                                            <span class="badge bg-dark border border-secondary">Chemicals</span>
-                                            <span class="badge bg-dark border border-secondary">Automotive</span>
-                                            <span class="badge bg-dark border border-secondary">Pharma</span>
-                                        </div>
-                                        <a href="services.html" class="btn btn-outline-light btn-sm mt-3 w-100">View All
-                                            Solutions</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
 
                     <li class="nav-item"><a class="nav-link" href="company.html">Company</a></li>
                 </ul>
@@ -240,7 +148,7 @@
                             <span class="input-group-text bg-transparent text-white-50 border-end-0"><i
                                     class="fas fa-map-marker-alt"></i></span>
                             <input type="text" class="form-control bg-transparent text-white border-start-0"
-                                placeholder="City or Port" id="origin-input" required>
+                                placeholder="City or Port" id="origin-input" list="ports" required>
                         </div>
                     </div>
                     <div class="col-md-5">
@@ -249,12 +157,26 @@
                             <span class="input-group-text bg-transparent text-white-50 border-end-0"><i
                                     class="fas fa-map-marker-alt"></i></span>
                             <input type="text" class="form-control bg-transparent text-white border-start-0"
-                                placeholder="City or Port" id="destination-input" required>
+                                placeholder="City or Port" id="destination-input" list="ports" required>
                         </div>
                     </div>
                     <div class="col-md-2 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary w-100">Search</button>
+                        <button type="submit" class="btn btn-primary w-100" id="search-btn">Search</button>
                     </div>
+
+                    <!-- Autosuggest Data -->
+                    <datalist id="ports">
+                        <option value="Singapore (SG SIN)">
+                        <option value="Los Angeles (US LAX)">
+                        <option value="Mumbai (IN BOM)">
+                        <option value="Le Havre (FR LEH)">
+                        <option value="Shanghai (CN PVG)">
+                        <option value="Rotterdam (NL RTM)">
+                        <option value="Dubai (AE DXB)">
+                        <option value="New York (US NYC)">
+                        <option value="Hamburg (DE HAM)">
+                        <option value="Tokyo (JP TYO)">
+                    </datalist>
                 </form>
                 <div id="schedule-results" class="mt-4 d-none">
                     <h6 class="text-muted fw-bold mb-3">Available Schedules</h6>
@@ -267,44 +189,7 @@
     </header>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
-    <script>
-        document.getElementById('schedules-form').addEventListener('submit', function (e) {
-            e.preventDefault();
-            const origin = document.getElementById('origin-input').value;
-            const dest = document.getElementById('destination-input').value;
-            const resultsContainer = document.getElementById('schedule-results');
-            const list = resultsContainer.querySelector('.list-group');
-
-            // Mock Data
-            const routes = [
-                { id: 'MAEU' + Math.floor(Math.random() * 1000), dep: '14 May', arr: '28 May', vessel: 'MAERSK SEOUL' },
-                { id: 'MAEU' + Math.floor(Math.random() * 1000), dep: '21 May', arr: '04 Jun', vessel: 'MSC GULSUN' },
-                { id: 'MAEU' + Math.floor(Math.random() * 1000), dep: '28 May', arr: '11 Jun', vessel: 'CMA CGM MARCO POLO' }
-            ];
-
-            list.innerHTML = routes.map(r => `
-                <div class="list-group-item bg-transparent border-secondary text-white p-3 mb-2 rounded">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="d-flex align-items-center gap-3 mb-2">
-                                <span class="badge bg-primary">${r.id}</span>
-                                <small class="text-white-50">${r.vessel}</small>
-                            </div>
-                            <div class="d-flex gap-4">
-                                <div><small class="text-muted d-block">Departure</small><strong>${r.dep}</strong></div>
-                                <i class="fas fa-arrow-right text-muted align-self-center"></i>
-                                <div><small class="text-muted d-block">Arrival</small><strong>${r.arr}</strong></div>
-                            </div>
-                        </div>
-                        <button class="btn btn-sm btn-outline-light">Book</button>
-                    </div>
-                </div>
-            `).join('');
-
-            resultsContainer.classList.remove('d-none');
-        });
-    </script>
+    <script src="schedules.js"></script>
 </body>
 
 </html>

@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="style.css">
+    <script src="auth-guard.js"></script>
 </head>
 
 <body class="home-page">
@@ -32,24 +33,26 @@
                             <div class="container">
                                 <div class="row g-4">
                                     <div class="col-md-4">
-                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Book</h6>
+                                        <h6 class="text-uppercase text-white-50 fw-bold mb-3 small ls-1">Book</h6>
                                         <ul class="list-unstyled d-flex flex-column gap-2">
                                             <li><a href="wizard.html?type=ocean" class="dropdown-item rounded"><i
                                                         class="fas fa-ship me-2 text-primary"></i>Ocean Transport
-                                                    (Containers) <span class="d-block small text-muted ms-4">Full
+                                                    (Containers) <span class="d-block small text-white-50 ms-4">Full
                                                         container ocean shipments + inland options</span></a></li>
                                             <li><a href="wizard.html?type=lcl" class="dropdown-item rounded"><i
                                                         class="fas fa-boxes me-2 text-info"></i>Less-than-Container-Load
-                                                    (LCL) <span class="d-block small text-muted ms-4">Ship small-volume
+                                                    (LCL) <span class="d-block small text-white-50 ms-4">Ship
+                                                        small-volume
                                                         cargo via ocean</span></a></li>
                                             <li><a href="wizard.html?type=air" class="dropdown-item rounded"><i
                                                         class="fas fa-plane me-2 text-warning"></i>Air Freight <span
-                                                        class="d-block small text-muted ms-4">Small-volume air freight +
+                                                        class="d-block small text-white-50 ms-4">Small-volume air
+                                                        freight +
                                                         inland options</span></a></li>
                                         </ul>
                                     </div>
                                     <div class="col-md-4">
-                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Features</h6>
+                                        <h6 class="text-uppercase text-white-50 fw-bold mb-3 small ls-1">Features</h6>
                                         <ul class="list-unstyled d-flex flex-column gap-2">
                                             <li><a href="#" class="dropdown-item rounded"><i
                                                         class="fas fa-laptop me-2"></i>Easy Online Booking</a></li>
@@ -81,7 +84,8 @@
                             <div class="container">
                                 <div class="row g-4">
                                     <div class="col-6">
-                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Management Tools
+                                        <h6 class="text-uppercase text-white-50 fw-bold mb-3 small ls-1">Management
+                                            Tools
                                         </h6>
                                         <ul class="list-unstyled d-flex flex-column gap-2">
                                             <li><a href="shipments.html"
@@ -101,7 +105,8 @@
                                         </ul>
                                     </div>
                                     <div class="col-6">
-                                        <h6 class="text-uppercase text-muted fw-bold mb-3 small ls-1">Supply Chain</h6>
+                                        <h6 class="text-uppercase text-white-50 fw-bold mb-3 small ls-1">Supply Chain
+                                        </h6>
                                         <ul class="list-unstyled d-flex flex-column gap-2">
                                             <li><a href="#" class="dropdown-item rounded"><strong>Smart
                                                         Captain™</strong> - Visibility of reefer goods</a></li>
@@ -118,18 +123,7 @@
                         </div>
                     </li>
 
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="services.html" role="button"
-                            data-bs-toggle="dropdown">Services</a>
-                        <div class="dropdown-menu mega-menu glass border-0 shadow-lg p-4">
-                            <!-- Services Menu Content (Reduced for brevity in template, can copy full if needed) -->
-                            <div class="container">
-                                <div class="row g-4">
-                                    <div class="col-12 text-center text-muted">Services Menu Content</div>
-                                </div>
-                            </div>
-                        </div>
-                    </li>
+
 
                     <li class="nav-item"><a class="nav-link" href="company.html">Company</a></li>
                 </ul>
@@ -144,27 +138,40 @@
     </nav>
 
     <!-- Header -->
-    <header class="hero-section d-flex align-items-center position-relative" style="min-height: 60vh;">
+    <header class="hero-section d-flex align-items-center position-relative" style="min-height: 40vh;">
         <div class="container position-relative z-2">
-            <h1 class="display-3 fw-bold mb-4">MyCustoms</h1>
-            <p class="lead text-white-50 mb-5" style="max-width: 600px;">Manage your customs declarations and compliance
-                documents efficiently.</p>
+            <div class="d-flex justify-content-between align-items-end mb-4">
+                <div>
+                    <h1 class="display-3 fw-bold mb-2">MyCustoms</h1>
+                    <p class="lead text-white-50" style="max-width: 600px;">Manage your customs declarations and
+                        compliance documents.</p>
+                </div>
+                <button class="btn btn-primary rounded-pill px-4 shadow-lg" onclick="createQuickDeclaration()">
+                    <i class="fas fa-plus me-2"></i>New Declaration
+                </button>
+            </div>
 
-            <div class="row g-4">
+            <div class="row g-4 mb-5">
                 <div class="col-md-4">
                     <div class="card-enterprise p-4 h-100">
                         <h5 class="fw-bold"><i class="fas fa-file-invoice me-2 text-info"></i>Active Declarations</h5>
-                        <h2 class="display-4 fw-bold mt-2">12</h2>
-                        <a href="#" class="btn btn-outline-light btn-sm mt-3">View Details</a>
+                        <h2 class="display-4 fw-bold mt-2" id="stat-active">0</h2>
                     </div>
                 </div>
                 <div class="col-md-4">
                     <div class="card-enterprise p-4 h-100">
                         <h5 class="fw-bold"><i class="fas fa-exclamation-circle me-2 text-warning"></i>Pending Actions
                         </h5>
-                        <h2 class="display-4 fw-bold mt-2">3</h2>
-                        <a href="#" class="btn btn-outline-light btn-sm mt-3">Take Action</a>
+                        <h2 class="display-4 fw-bold mt-2" id="stat-pending">0</h2>
                     </div>
+                </div>
+            </div>
+
+            <!-- Declarations List -->
+            <h4 class="fw-bold text-white mb-3">Recent Filings</h4>
+            <div id="declarations-container" class="pb-5">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
                 </div>
             </div>
 
@@ -172,7 +179,7 @@
     </header>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
+    <script src="customs.js"></script>
 </body>
 
 </html>

@@ -129,7 +129,7 @@ async function handleFinalSubmit(e) {
         if (data.success) {
             showToast("Success! Redirecting...", 'success');
             localStorage.setItem('userId', data.userId);
-            localStorage.setItem('userName', data.user.name || 'Valued Client');
+            localStorage.setItem('userName', data.user.name || data.user.email.split('@')[0]);
             localStorage.setItem('userEmail', data.user.email || '');
             setTimeout(() => {
                 window.location.href = "shipments.html";

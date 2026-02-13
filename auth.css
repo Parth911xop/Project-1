@@ -1,33 +1,91 @@
-/* Enhanced Auth Styling */
-* {
-    box-sizing: border-box;
-    font-family: 'Inter', sans-serif;
-}
+/* Auth Page - Dark Glass Theme */
 
-body {
-    margin: 0;
-    height: 100vh;
-    /* High-quality shipping background with overlay */
-    background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.9)),
+body.hero-section {
+    background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95)),
         url('https://images.unsplash.com/photo-1494412574643-35d324698428?auto=format&fit=crop&w=1920&q=80');
     background-size: cover;
     background-position: center;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    color: white;
 }
 
-.auth-wrapper {
-    width: 950px;
-    height: 600px;
-    background: rgba(255, 255, 255, 0.95);
-    /* Slight transparency */
-    backdrop-filter: blur(10px);
-    border-radius: 24px;
-    display: flex;
-    overflow: hidden;
+/* Glass Card Override if needed, though style.css handles .glass */
+.glass {
+    background: rgba(30, 41, 59, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    animation: fadeIn 0.6s ease-out;
+}
+
+/* Inputs - Critical Fix for Visibility */
+.form-control {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #fff !important;
+    /* Force White Text */
+    padding: 12px 16px;
+    min-height: 50px;
+}
+
+.form-control:focus {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-color: #3b82f6 !important;
+    /* Primary Blue */
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+    color: #fff !important;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+    /* Visible Placeholder */
+}
+
+/* Select Dropdown */
+select.form-control {
+    color: #fff !important;
+}
+
+select.form-control option {
+    background-color: #0f172a;
+    /* Dark background for dropdown options */
+    color: white;
+}
+
+/* Input Group Text (Icon) */
+.input-group-text {
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-right: none;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* OTP Input Specifics */
+#email-otp-container input {
+    letter-spacing: 8px;
+    font-family: monospace;
+}
+
+/* Switch Text */
+.switch-text a {
+    color: #3b82f6;
+    transition: color 0.2s;
+}
+
+.switch-text a:hover {
+    color: #60a5fa;
+    text-decoration: underline;
+}
+
+/* Button override */
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.4);
 }
 
 @keyframes fadeIn {

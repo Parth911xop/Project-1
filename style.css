@@ -43,16 +43,125 @@
   --shadow-glow: 0 0 15px var(--accent-glow);
 }
 
+/* ... (previous content) ... */
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  height: 100%;
+  /* Ensure full height for background */
+}
+
 body {
   font-family: 'Inter', sans-serif;
   color: var(--text-main);
-  background-color: var(--secondary);
+  background:
+    radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(6, 182, 212, 0.15), transparent 25%),
+    linear-gradient(135deg, #020617 0%, #0f172a 50%, #1e3a8a 100%);
+  background-attachment: fixed;
+  /* Ensures gradient stays during scroll */
   line-height: 1.6;
   overflow-x: hidden;
+  min-height: 100vh;
+  position: relative;
+  margin: 0;
+  padding: 0;
+
+  /* Fix Double Scrollbar: Ensure body behaves as the main scroll container or html does, not both */
+  height: auto;
+}
+
+/* Background Pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
   background-image:
     radial-gradient(at 0% 0%, rgba(59, 130, 246, 0.15) 0px, transparent 50%),
     radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%);
-  background-attachment: fixed;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ... (Glass Utility) ... */
+
+/* Navbar Styling */
+.navbar {
+  /* ... */
+  z-index: 1000;
+  /* Ensure navbar is on top */
+}
+
+/* Hero Section */
+.hero-section {
+  position: relative;
+  background: radial-gradient(circle at top right, #1e40af, #0f172a);
+  min-height: 100vh;
+  padding-top: 140px;
+  overflow: hidden;
+  /* Prevent child overflow causing scrollbars */
+  display: flex;
+  align-items: center;
+  z-index: 1;
+  /* New stacking context */
+}
+
+/* Animated background shapes */
+.hero-section::before {
+  /* ... */
+  z-index: 0;
+  /* Behind content */
+}
+
+.hero-section::after {
+  /* ... */
+  z-index: 0;
+  /* Behind content */
+}
+
+.hero-content {
+  position: relative;
+  z-index: 10 !important;
+  /* Force on top */
+}
+
+.display-4 {
+  font-size: 3.5rem;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1.1;
+  color: #ffffff;
+  /* Explicit fallback */
+}
+
+.text-primary-gradient {
+  background: linear-gradient(135deg, #67e8f9, #2563eb);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: #3b82f6;
+  /* Fallback color if gradient fails */
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  display: inline-block;
+  /* Helps with background-clip sometimes */
+}
+
+/* ... (rest of css) ... */
+
+/* Remove the body.home-page hacks that might cause issues */
+body.home-page {
+  padding-top: 0;
+  /* Reset overflow to default to avoid double bars */
+  overflow-y: auto;
+}
+
+body.home-page::-webkit-scrollbar {
+  display: block;
+  /* Restore default scrollbar */
 }
 
 /* Enterprise Glass Utility */
@@ -97,6 +206,8 @@ body {
   font-weight: 500;
   opacity: 0.9;
   transition: all 0.2s;
+  white-space: nowrap;
+  /* Prevent text wrapping */
 }
 
 .nav-link:hover {
@@ -109,15 +220,18 @@ body {
 .hero-section {
   position: relative;
   background: radial-gradient(circle at top right, #1e40af, #0f172a);
-  min-height: 90vh;
-  /* Reduced slightly */
-  padding-top: 100px;
-  min-height: 90vh;
-  /* Reduced slightly */
-  padding-top: 100px;
+  min-height: 100vh;
+  /* Full height */
+  padding-top: 140px;
+  /* Increased clearance for Navbar */
   overflow-x: hidden;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  /* Allow wrapping on small screens */
+  gap: 2rem;
+  /* Add gap between items */
+  gap: 2rem;
 }
 
 /* Animated background shapes */
@@ -131,15 +245,11 @@ body {
   right: -200px;
   border-radius: 50%;
   animation: float 10s ease-in-out infinite;
-  z-index: 1;
-  /* Performance fixes for flickering */
+  z-index: 0;
+  /* Changed from 1 to 0 */
   will-change: transform;
-  -webkit-backface-visibility: hidden;
-  backface-visibility: hidden;
-  transform: translateZ(0);
 }
 
-/* Second Orb for Balance */
 .hero-section::after {
   content: '';
   position: absolute;
@@ -150,13 +260,26 @@ body {
   left: -100px;
   border-radius: 50%;
   animation: float 15s ease-in-out infinite reverse;
-  z-index: 1;
+  z-index: 0;
+  /* Changed from 1 to 0 */
   will-change: transform;
 }
 
 .hero-content {
   position: relative;
-  z-index: 2;
+  z-index: 10;
+  /* Ensure text is above orbs */
+}
+
+/* ... */
+
+body.home-page {
+  padding-top: 0;
+  /* Removed hacked scrollbar styles */
+}
+
+body.home-page::-webkit-scrollbar {
+  display: auto;
 }
 
 .display-4 {
@@ -213,11 +336,11 @@ body {
 
 /* Glassmorphism Card (Hero & General) */
 .hero-image-card {
-  background: rgba(30, 41, 59, 0.6);
-  /* Lighter glass */
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 23, 42, 0.9);
+  /* Darker, more opaque for readability */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 24px;
   transform: perspective(1000px) rotateY(-5deg) rotateX(2deg);
   transition: all 0.4s ease;
@@ -318,9 +441,12 @@ body {
 
 /* Features Section */
 .feature-card {
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  background: white;
+  background: #1e293b;
+  /* Dark Slate */
+  color: #f1f5f9;
+  /* White text */
   padding: 2.5rem 1.5rem;
   transition: all 0.3s ease;
   position: relative;
@@ -383,7 +509,7 @@ body {
 
 /* Stats & Journey Section */
 .journey-section {
-  background: #fff;
+  background: transparent;
   position: relative;
   overflow: hidden;
 }
@@ -392,16 +518,26 @@ body {
   padding: 1.5rem;
   border-radius: 12px;
   margin-bottom: 1rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: rgba(30, 41, 59, 0.5);
+  /* Semi-transparent dark */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
   transition: all 0.3s ease;
 }
 
 .step-item:hover {
-  background: #fff;
+  background: #1e293b;
   box-shadow: var(--shadow-md);
   transform: translateX(5px);
   border-color: var(--accent);
+}
+
+.step-item h5 {
+  color: #fff;
+}
+
+.step-item p {
+  color: #cbd5e1 !important;
 }
 
 /* Footer */
@@ -421,11 +557,28 @@ footer a:hover {
 /* --- Tracking Page & Advanced UI --- */
 
 /* Tabs */
+/* Tabs */
+.nav-pills {
+  display: flex;
+  flex-wrap: wrap !important;
+  /* Force wrap */
+  gap: 10px !important;
+  /* Enforce spacing */
+  margin-bottom: 20px;
+}
+
 .nav-pills .nav-link {
   background: transparent;
   color: var(--text-muted);
   transition: all 0.3s ease;
   border: 1px solid transparent;
+  white-space: normal !important;
+  /* Allow text to wrap inside the button if needed, better for mobile */
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
 }
 
 .nav-pills .nav-link:hover {
@@ -438,6 +591,7 @@ footer a:hover {
   box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.2);
   font-weight: 600;
+  color: white !important;
 }
 
 /* Tracking Input Fields */
@@ -448,6 +602,27 @@ footer a:hover {
 
 .input-group-text {
   border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Better visibility for inputs on dark backgrounds */
+.hero-image-card .form-control {
+  background: rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+}
+
+.hero-image-card .form-control:focus {
+  background: rgba(0, 0, 0, 0.5) !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
+}
+
+.hero-image-card label {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 /* Animations */
@@ -473,6 +648,18 @@ footer a:hover {
     position: static !important;
   }
 
+  /* Robust Fix: Invisible bridge extending UP from the menu to the text */
+  .mega-menu::before {
+    content: '';
+    position: absolute;
+    top: -40px;
+    /* Extend UP to catch the mouse from the navbar */
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: transparent;
+  }
+
   .mega-menu {
     position: absolute;
     top: 100%;
@@ -485,7 +672,7 @@ footer a:hover {
     display: block;
     transform: translateY(10px);
     pointer-events: none;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
   }
 
   .nav-item.dropdown:hover .mega-menu {
@@ -535,6 +722,13 @@ body {
 /* Exception for index.html if it has a hero image that should go under the nav */
 body.home-page {
   padding-top: 0;
+  /* Hide Scrollbar */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+body.home-page::-webkit-scrollbar {
+  display: none;
 }
 
 
@@ -559,9 +753,20 @@ body.home-page {
 
 /* Scroll Animations */
 .reveal {
-  opacity: 0;
-  transform: translateY(30px);
+  opacity: 1;
+  /* Was 0, changed to 1 to guarantee visibility. JS can add 'active' class for animation if loaded */
+  transform: translateY(0);
+  /* Was 30px */
   transition: all 0.8s ease-out;
+}
+
+/* Fallback for no-js or failed load */
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }
 
 .reveal.active {
@@ -585,4 +790,77 @@ body.home-page {
 .reveal.active.slide-in-right {
   opacity: 1;
   transform: translateX(0);
+}
+
+/* --- Global Visibility Fixes --- */
+
+/* Override Bootstrap's default text-muted which is too dark for dark mode */
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+/* Ensure standard Bootstrap cards match the theme */
+.card {
+  background-color: var(--secondary-light);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+}
+
+.card-body {
+  color: var(--text-main);
+}
+
+.card-header,
+.card-footer {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Fix Form Inputs to be visible on dark background */
+.form-control,
+.form-select {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--text-main) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--primary) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25) !important;
+}
+
+.form-control::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Fix List Groups */
+.list-group-item {
+  background-color: transparent;
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Fix Tables */
+.table {
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.table>:not(caption)>*>* {
+  background-color: transparent;
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-main);
+}
+
+.table-striped>tbody>tr:nth-of-type(odd)>* {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.table-hover>tbody>tr:hover>* {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.1);
 }

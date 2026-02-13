@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sustainability | Smart Shipping</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .eco-card {
+            background: rgba(25, 135, 84, 0.1);
+            border: 1px solid rgba(25, 135, 84, 0.2);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .eco-card:hover {
+            transform: translateY(-5px);
+            background: rgba(25, 135, 84, 0.15);
+        }
+
+        .project-img {
+            height: 200px;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+
+<body class="bg-dark text-white">
+
+    <!-- Navbar (Copy of Index) -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top glass-nav">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand fw-bold" href="index.html">
+                <i class="fas fa-ship me-2 text-primary"></i>Smart Shipping
+            </a>
+            <div class="ms-auto">
+                <a href="index.html" class="btn btn-outline-light btn-sm rounded-pill">Back to Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header -->
+    <header class="py-5 mt-5">
+        <div class="container pt-5 text-center">
+            <span
+                class="badge bg-success bg-opacity-25 text-success mb-3 px-3 py-2 rounded-pill border border-success border-opacity-25">
+                <i class="fas fa-leaf me-2"></i>Sustainability First
+            </span>
+            <h1 class="display-4 fw-bold mb-4">Our Commitment to <span class="text-success">Net Zero</span></h1>
+            <p class="lead text-white-50 mx-auto" style="max-width: 700px;">
+                Logistics doesn't have to cost the earth. Track your emissions, offset your footprint, and support
+                certified green projects globally.
+            </p>
+        </div>
+    </header>
+
+    <!-- Stats Dashboard -->
+    <section class="py-5">
+        <div class="container">
+            <div class="row g-4 justify-content-center">
+                <div class="col-md-4">
+                    <div class="eco-card p-4 text-center">
+                        <div class="display-4 fw-bold text-success mb-2">12,500</div>
+                        <p class="text-white-50 mb-0">Tons of CO2 Offset</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="eco-card p-4 text-center">
+                        <div class="display-4 fw-bold text-success mb-2">85,000</div>
+                        <p class="text-white-50 mb-0">Trees Planted</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="eco-card p-4 text-center">
+                        <div class="display-4 fw-bold text-success mb-2">42%</div>
+                        <p class="text-white-50 mb-0">Green Route Adoption</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects -->
+    <section class="py-5">
+        <div class="container">
+            <h2 class="fw-bold mb-5 text-center">Supported Projects</h2>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="card bg-dark border border-secondary border-opacity-25 rounded-4 overflow-hidden h-100">
+                        <div class="row g-0 h-100">
+                            <div class="col-md-5 bg-secondary d-flex align-items-center justify-content-center">
+                                <i class="fas fa-tree fa-4x text-white-50"></i>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="card-body p-4 d-flex flex-column h-100 justify-content-center">
+                                    <h5 class="fw-bold text-white mb-2">Reforestation Initiative</h5>
+                                    <p class="text-white-50 small mb-3">Restoring biodiversity in the Amazon rainforest
+                                        through community-led planting.</p>
+                                    <div class="mt-auto">
+                                        <span class="badge bg-success bg-opacity-25 text-success">Verified Gold
+                                            Standard</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-dark border border-secondary border-opacity-25 rounded-4 overflow-hidden h-100">
+                        <div class="row g-0 h-100">
+                            <div class="col-md-5 bg-secondary d-flex align-items-center justify-content-center">
+                                <i class="fas fa-wind fa-4x text-white-50"></i>
+                            </div>
+                            <div class="col-md-7">
+                                <div class="card-body p-4 d-flex flex-column h-100 justify-content-center">
+                                    <h5 class="fw-bold text-white mb-2">Offshore Wind Power</h5>
+                                    <p class="text-white-50 small mb-3">Investing in renewable energy infrastructure in
+                                        the North Sea.</p>
+                                    <div class="mt-auto">
+                                        <span class="badge bg-info bg-opacity-25 text-info">Clean Energy</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-dark pt-5 pb-4 mt-5 border-top border-secondary border-opacity-10">
+        <div class="container text-center text-white-50 small">
+            &copy; 2026 Smart Shipping Inc. Sustainability Report.
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
