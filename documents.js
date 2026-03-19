@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000';
+const API_URL = `http://${window.location.hostname}:3000`;
 // In a real app, we'd fetch docs for a specific shipment or all user shipments.
 // For demo, we default to Shipment 32 or fetch all if supported.
 const defaultShipmentId = 32;
@@ -11,7 +11,9 @@ async function fetchDocuments() {
     const list = document.getElementById('documents-list');
 
     try {
-        const res = await fetch(`${API_URL}/api/documents/${defaultShipmentId}`);
+        const res = await fetch(`${API_URL}/api/documents/user/all`, {
+            credentials: 'include'
+        });
         const data = await res.json();
 
         if (data.success && data.documents.length > 0) {
@@ -20,7 +22,7 @@ async function fetchDocuments() {
             list.innerHTML = `
                 <div class="text-center py-5 text-white-50">
                     <i class="fas fa-folder-open fa-3x mb-3 opacity-50"></i>
-                    <p>No documents found for this shipment.</p>
+                    <p>No documents found. Upload documents to get started.</p>
                 </div>
             `;
         }
@@ -33,24 +35,51 @@ async function fetchDocuments() {
 function renderDocuments(docs) {
     const list = document.getElementById('documents-list');
     list.innerHTML = docs.map(doc => `
-        <div class="d-flex align-items-center justify-content-between p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25">
+        <div class="d-flex align-items-center justify-content-between p-3 bg-dark bg-opacity-50 rounded-3 border border-secondary border-opacity-25 shadow-sm">
             <div class="d-flex align-items-center">
-                <div class="icon-box bg-primary bg-opacity-10 text-primary me-3" style="width: 40px; height: 40px;">
-                    <i class="fas fa-file-alt"></i>
+                <div class="icon-box bg-primary bg-opacity-10 text-primary me-3 d-flex align-items-center justify-content-center rounded" style="width: 45px; height: 45px; min-width: 45px;">
+                    <i class="fas ${doc.type.includes('KYC') || doc.type.includes('Address') ? 'fa-id-card' :
+            doc.type.includes('Invoice') || doc.type.includes('Packing') ? 'fa-file-invoice-dollar' :
+                doc.type.includes('IEC') ? 'fa-stamp text-info' :
+                    doc.type === 'Booking Summary' ? 'fa-file-pdf text-danger' :
+                        doc.type.includes('Insurance') ? 'fa-shield-alt text-success' : 'fa-file-contract'
+        } fa-lg"></i>
                 </div>
                 <div>
                     <h6 class="text-white mb-0 fw-bold">${doc.type}</h6>
                     <small class="text-white-50">${doc.filename} • ${new Date(doc.uploaded_at).toLocaleDateString()}</small>
+                    <div class="x-small text-info mt-1"><i class="fas fa-ship me-1"></i> ${doc.origin_address} ➔ ${doc.destination_address}</div>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <span class="badge ${getStatusBadge(doc.status)}">${doc.status}</span>
-                <button class="btn btn-icon btn-sm btn-outline-light rounded-circle">
-                    <i class="fas fa-download"></i>
+                <span class="badge ${getStatusBadge(doc.status)} px-3 rounded-pill">${doc.status}</span>
+                ${doc.status === 'Rejected' ? `
+                <button class="btn btn-sm btn-danger rounded-pill fw-bold" onclick="openReuploadModal('${doc.shipment_id}', '${doc.type}')" title="Re-upload this document">
+                    <i class="fas fa-redo me-1"></i> Re-Upload
+                </button>
+                ` : ''}
+                <button class="btn btn-icon btn-sm ${doc.status === 'Rejected' ? 'btn-outline-secondary' : 'btn-outline-primary'} rounded-circle" onclick="previewDoc('${doc.url || doc.file_url}', '${doc.doc_name || doc.filename || 'Document'}')" title="Preview Document">
+                    <i class="fas fa-eye"></i>
                 </button>
             </div>
         </div>
     `).join('');
+}
+
+function openReuploadModal(shipmentId, type) {
+    document.getElementById('docType').value = type;
+    document.getElementById('shipmentId').value = shipmentId;
+    // reset file input
+    document.getElementById('docFile').value = '';
+    const modal = new bootstrap.Modal(document.getElementById('uploadModal'));
+    modal.show();
+}
+
+function previewDoc(url, filename) {
+    document.getElementById('previewTitle').innerText = filename;
+    document.getElementById('previewFrame').src = url;
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
 }
 
 function getStatusBadge(status) {
@@ -71,13 +100,17 @@ async function uploadDocument() {
         return;
     }
 
-    const filename = fileInput.files[0].name;
+    const formData = new FormData();
+    formData.append('docFile', fileInput.files[0]);
+    formData.append('type', type);
+    if (shipmentId) formData.append('shipmentId', shipmentId);
+    formData.append('docName', fileInput.files[0].name);
 
     try {
         const res = await fetch(`${API_URL}/api/documents/upload`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ shipmentId, type, filename })
+            credentials: 'include',
+            body: formData
         });
 
         const data = await res.json();
@@ -89,6 +122,8 @@ async function uploadDocument() {
             // Refresh list
             fetchDocuments();
             alert("Document uploaded successfully!");
+        } else {
+            alert(data.error || "Upload failed");
         }
     } catch (err) {
         console.error(err);

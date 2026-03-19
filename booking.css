@@ -248,4 +248,46 @@ body.booking-page {
     .mode-toggle-group {
         grid-template-columns: 1fr;
     }
+
+    .trade-type-btn {
+        flex: 1 !important;
+    }
+}
+
+/* ── Trade Type Toggle (Export / Import) ─────── */
+.trade-type-btn {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.trade-type-btn:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.trade-type-btn.active {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.trade-type-btn[data-type="Import"].active {
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.trade-type-btn i.check {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.trade-type-btn.active i.check {
+    opacity: 1;
 }

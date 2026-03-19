@@ -312,7 +312,7 @@
             }
 
             try {
-                const res = await fetch(`http://localhost:3000/api/shipment/${shipmentId}`);
+                const res = await fetch(`http://${window.location.hostname}:3000/api/shipment/${shipmentId}`, { credentials: 'include' });
                 const data = await res.json();
 
                 if (data.success) {
@@ -337,8 +337,8 @@
                     `;
 
                     // Details
-                    document.getElementById('origin').innerText = s.from_country;
-                    document.getElementById('destination').innerText = s.to_country;
+                    document.getElementById('origin').innerText = s.origin_address || s.from_country;
+                    document.getElementById('destination').innerText = s.destination_address || s.to_country;
                     document.getElementById('terms').innerText = s.incoterms || 'Ex Works';
                     document.getElementById('mode').innerText = s.mode || 'Sea';
 

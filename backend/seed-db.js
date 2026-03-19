@@ -2,52 +2,64 @@ require("dotenv").config();
 const { Pool } = require("pg");
 
 const pool = new Pool({
-    host: process.env.PGHOST,
-    user: process.env.PGUSER,
-    password: process.env.PGPASSWORD,
-    database: process.env.PGDATABASE,
-    port: Number(process.env.PGPORT),
+    connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
 });
 
 const mockUsers = [
-    { email: "test@example.com", password: "password123", phone: "1234567890", auth_method: "email" },
-    { email: "demo@smartshipping.com", password: "demo", phone: "9876543210", auth_method: "email" }
+    { email: "admin@smartshipping.com", phone: "0000000000", role: "admin", name: "System Admin" },
+    { email: "test@example.com", phone: "1234567890", role: "customer", name: "Test Customer" },
+    { email: "demo@smartshipping.com", phone: "9876543210", role: "customer", name: "Demo User" },
+    { email: "fedex@example.com", phone: "1112223333", role: "company", name: "FedEx Global" }
 ];
 
 async function seed() {
+    console.log("🌱 Seeding enterprise database...");
+    const client = await pool.connect();
+
     try {
-        console.log("🌱 Seeding database...");
+        await client.query('BEGIN');
 
         for (const user of mockUsers) {
             // Check if exists
-            const check = await pool.query("SELECT * FROM users WHERE email = $1", [user.email]);
+            const check = await client.query("SELECT id FROM users WHERE email = $1", [user.email]);
             if (check.rows.length > 0) {
                 console.log(`⚠️ User ${user.email} already exists. Skipping.`);
                 continue;
             }
 
-            // Insert User
-            const res = await pool.query(
-                "INSERT INTO users (email, password, phone, auth_method) VALUES ($1, $2, $3, $4) RETURNING id",
-                [user.email, user.password, user.phone, user.auth_method]
+            // Insert Base User
+            const res = await client.query(
+                "INSERT INTO users (email, phone, name, otp_code, role, company_status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+                [user.email, user.phone, user.name, '123456', user.role, user.role === 'company' ? 'approved' : 'pending']
             );
             const userId = res.rows[0].id;
-            console.log(`✅ Created user: ${user.email} (ID: ${userId})`);
+            console.log(`✅ Created base user: ${user.email} (ID: ${userId})`);
 
-            // Insert Journey Progress
-            await pool.query(
-                "INSERT INTO journey_progress (user_id, current_step) VALUES ($1, 1)",
-                [userId]
-            );
-            console.log(`   ➡️ Journey initialized for ID: ${userId}`);
+            // Seed Profiles based on Role
+            if (user.role === 'customer') {
+                await client.query(
+                    "INSERT INTO customer_profiles (user_id, full_name, company_name) VALUES ($1, $2, $3)",
+                    [userId, user.name, 'Independent']
+                );
+                console.log(`   ➡️ Customer profile initialized`);
+            } else if (user.role === 'company') {
+                await client.query(
+                    "INSERT INTO company_profiles (user_id, company_name, rating, total_deliveries) VALUES ($1, $2, $3, $4)",
+                    [userId, user.name, 4.8, 150]
+                );
+                console.log(`   ➡️ Company profile initialized`);
+            }
         }
 
+        await client.query('COMMIT');
         console.log("✨ Seeding complete!");
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("❌ Seeding failed:", err);
     } finally {
-        pool.end();
+        client.release();
+        await pool.end();
     }
 }
 

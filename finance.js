@@ -1,120 +1,125 @@
-const API_URL = 'http://localhost:3000';
-const userId = localStorage.getItem('userId');
+const API_URL = `http://${window.location.hostname}:3000`;
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Auth Check handled by auth-guard.js
-    updateUserProfile();
+document.addEventListener('DOMContentLoaded', async () => {
+    // Fetch session from JWT cookie — localStorage.userId is no longer used
+    try {
+        const sessionRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        const sessionData = await sessionRes.json();
+        if (!sessionData.success) { window.location.href = 'auth.html'; return; }
+        updateUserProfile(sessionData.user);
+    } catch (e) { window.location.href = 'auth.html'; return; }
+
     fetchInvoices();
 });
 
-function updateUserProfile() {
-    const name = localStorage.getItem('userName') || 'User';
-    document.getElementById('user-name-display').innerText = name;
-    document.getElementById('user-avatar').innerText = name.substring(0, 2).toUpperCase();
+function updateUserProfile(user) {
+    const name = user?.name || 'User';
+    const nameEl = document.getElementById('user-name-display');
+    if (nameEl) nameEl.innerText = name;
+    const avatarEl = document.getElementById('user-avatar');
+    if (avatarEl) avatarEl.innerText = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 }
 
 async function fetchInvoices() {
     try {
-        const res = await fetch(`${API_URL}/api/finance/all?userId=${userId}`);
+        // JWT-authenticated — backend reads userId from token, not query param
+        const res = await fetch(`${API_URL}/api/finance/invoices`, { credentials: 'include' });
         const data = await res.json();
 
         if (data.success) {
             renderFinanceDashboard(data.invoices, data.summary);
         } else {
-            console.error("Failed to fetch invoices");
-            // Fallback for demo if no backend connectivity
             renderFinanceDashboard([], { totalDue: 0, overdue: 0, openCount: 0, disputeCount: 0 });
         }
     } catch (error) {
         console.error('Error loading invoices:', error);
-        // showToast('Could not load finance data', 'error');
+        renderFinanceDashboard([], { totalDue: 0, overdue: 0, openCount: 0, disputeCount: 0 });
     }
 }
 
 function renderFinanceDashboard(invoices, summary) {
-    // 1. Update Summary Cards
-    document.getElementById('total-due').innerText = formatCurrency(summary.totalDue);
+    // Summary cards
+    const tdEl = document.getElementById('total-due');
+    if (tdEl) tdEl.innerText = formatCurrency(summary?.totalDue || 0);
 
-    // overdue warning logic
     const overdueEl = document.getElementById('overdue-text');
-    if (summary.overdue > 0) {
-        overdueEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> ${formatCurrency(summary.overdue)} Overdue`;
-        overdueEl.className = "text-danger small mt-2 mb-0";
-    } else {
-        overdueEl.innerHTML = `<i class="fas fa-check-circle me-1"></i> No overdue payments`;
-        overdueEl.className = "text-success small mt-2 mb-0";
+    if (overdueEl) {
+        if ((summary?.overdue || 0) > 0) {
+            overdueEl.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> ${formatCurrency(summary.overdue)} Overdue`;
+            overdueEl.className = 'text-danger small mt-2 mb-0';
+        } else {
+            overdueEl.innerHTML = `<i class="fas fa-check-circle me-1"></i> No overdue payments`;
+            overdueEl.className = 'text-success small mt-2 mb-0';
+        }
     }
 
-    document.getElementById('open-count').innerText = summary.openCount;
-    document.getElementById('dispute-count').innerText = summary.disputeCount;
+    const ocEl = document.getElementById('open-count');
+    if (ocEl) ocEl.innerText = summary?.openCount || 0;
+    const dcEl = document.getElementById('dispute-count');
+    if (dcEl) dcEl.innerText = summary?.disputeCount || 0;
 
-    // 2. Render Table
+    // Table
     const tableBody = document.querySelector('tbody');
     if (!tableBody) return;
 
-    if (invoices.length === 0) {
-        tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-white-50 py-5">No invoices found.</td></tr>`;
+    if (!invoices || invoices.length === 0) {
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-5">
+                    <i class="fas fa-file-invoice text-white-50 mb-3" style="font-size:2rem;display:block"></i>
+                    <span class="text-white-50">No invoices yet. Complete a shipment booking to generate your first invoice.</span>
+                </td>
+            </tr>`;
         return;
     }
 
     tableBody.innerHTML = invoices.map(inv => {
-        let statusBadge = '';
-        let dateClass = 'text-white-50';
-
-        switch (inv.status) {
-            case 'Paid':
-                statusBadge = '<span class="badge bg-success bg-opacity-10 text-success border border-success">Paid</span>';
-                break;
-            case 'Overdue':
-                statusBadge = '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger">Overdue</span>';
-                dateClass = 'text-danger';
-                break;
-            default:
-                statusBadge = '<span class="badge bg-warning bg-opacity-10 text-warning border border-warning">Pending</span>';
-        }
-
+        const statusMap = {
+            'Completed': `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Paid</span>`,
+            'Paid': `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25">Paid</span>`,
+            'Pending': `<span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">Pending</span>`,
+            'Overdue': `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25">Overdue</span>`,
+        };
+        const statusBadge = statusMap[inv.status] || statusMap['Pending'];
+        const dateClass = inv.status === 'Overdue' ? 'text-danger' : 'text-white-50';
         const dateStr = new Date(inv.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        const dueStr = inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+        const dueStr = inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
         return `
         <tr>
-            <td class="ps-4 fw-bold text-white-50">${inv.invoice_number}</td>
+            <td class="ps-4 fw-bold text-white-50 font-monospace">${inv.invoice_number || `INV-${inv.id}`}</td>
             <td class="text-white-50">${dateStr}</td>
-            <td class="text-white-50">Ref #${inv.shipment_id || '-'}</td>
+            <td class="text-white-50">Shipment #${inv.shipment_id || '—'}</td>
             <td class="fw-bold text-white">${formatCurrency(inv.amount)}</td>
             <td>${statusBadge}</td>
             <td class="${dateClass}">${dueStr}</td>
             <td class="text-end pe-4">
-                ${inv.status !== 'Paid'
-                ? `<button class="btn btn-outline-light btn-sm rounded-pill" onclick="payInvoice(${inv.id})">Pay Now</button>`
-                : `<button class="btn btn-sm btn-link text-white-50 text-decoration-none"><i class="fas fa-download"></i> PDF</button>`}
+                ${inv.status !== 'Completed' && inv.status !== 'Paid'
+                ? `<button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="payInvoice(${inv.id})"><i class="fas fa-credit-card me-1"></i>Pay Now</button>`
+                : `<button class="btn btn-sm btn-link text-white-50 text-decoration-none"><i class="fas fa-download me-1"></i>PDF</button>`}
             </td>
-        </tr>
-        `;
+        </tr>`;
     }).join('');
 }
 
 async function payInvoice(id) {
-    if (!confirm("Simulate payment for this invoice?")) return;
-
+    if (!confirm('Simulate payment for this invoice?')) return;
     try {
         const res = await fetch(`${API_URL}/api/finance/pay`, {
             method: 'POST',
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ invoiceId: id })
         });
         const data = await res.json();
-        if (data.success) {
-            // Reload to show update
-            fetchInvoices();
-        } else {
-            alert("Payment failed");
-        }
+        if (data.success) { fetchInvoices(); }
+        else { alert('Payment failed: ' + (data.message || 'Unknown error')); }
     } catch (err) {
         console.error(err);
+        alert('Network error. Please check the server is running.');
     }
 }
 
 function formatCurrency(amount) {
-    return '₹' + parseFloat(amount).toLocaleString('en-IN');
+    return '$' + parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

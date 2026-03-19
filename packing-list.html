@@ -276,17 +276,8 @@
                     <th class="text-right">Volume</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td>
-                        <strong id="prod-name">Product Name</strong><br>
-                        <span style="font-size: 12px; color: #666;">Standard Cargo</span>
-                    </td>
-                    <td class="text-right">1 Lot</td>
-                    <td class="text-right" id="net-weight">-</td>
-                    <td class="text-right" id="gross-weight">-</td>
-                    <td class="text-right" id="volume">-</td>
-                </tr>
+            <tbody id="items-tbody">
+                <!-- Injected via JS -->
             </tbody>
             <tfoot>
                 <tr>
@@ -321,49 +312,88 @@
             }
 
             try {
-                const res = await fetch(`http://localhost:3000/api/shipment/${shipmentId}`);
-                const data = await res.json();
+                // Fetch Base Shipment Info
+                const shipRes = await fetch(`http://${window.location.hostname}:3000/api/shipment/${shipmentId}`, { credentials: 'include' });
+                const shipData = await shipRes.json();
 
-                if (data.success) {
-                    const s = data.shipment;
+                // Fetch Real Packing List Info
+                const packRes = await fetch(`http://${window.location.hostname}:3000/api/packing-list/${shipmentId}`, { credentials: 'include' });
+                const packData = await packRes.json();
+
+                if (shipData.success) {
+                    const s = shipData.shipment;
+                    const pl = packData.packingList || {};
+                    const items = packData.items || [];
 
                     // Meta
                     document.getElementById('inv-num').innerText = `PL-${new Date().getFullYear()}-${1000 + s.id}`;
-                    document.getElementById('inv-date').innerText = new Date(s.created_at).toLocaleDateString();
+                    document.getElementById('inv-date').innerText = new Date(pl.created_at || s.created_at).toLocaleDateString();
 
                     // Shipper
-                    const sh = s.shipper_details || {};
                     document.getElementById('shipper-info').innerHTML = `
-                        <p><strong>${sh.name || 'N/A'}</strong><br>
-                        ${sh.address || 'Address Not Provided'}</p>
+                        <p><strong>${pl.exporter_name || s.customer_name || 'Exporter Ltd'}</strong><br>
+                        ${pl.exporter_address || s.origin_address || 'Address Not Provided'}</p>
                     `;
 
                     // Consignee
-                    const cn = s.consignee_details || {};
                     document.getElementById('consignee-info').innerHTML = `
-                        <p><strong>${cn.name || 'N/A'}</strong><br>
-                        ${cn.address || 'Address Not Provided'}</p>
+                        <p><strong>${pl.consignee_name || 'Consignee Global LLC'}</strong><br>
+                        ${pl.consignee_address || s.destination_address || 'Address Not Provided'}</p>
                     `;
 
                     // Details
-                    document.getElementById('origin').innerText = s.from_country;
-                    document.getElementById('destination').innerText = s.to_country;
+                    document.getElementById('origin').innerText = s.origin_address || s.from_country;
+                    document.getElementById('destination').innerText = s.destination_address || s.to_country;
                     document.getElementById('mode').innerText = s.mode || 'Sea';
 
-                    // Mock Logic for Packaging
-                    const grossW = parseFloat(s.weight) || 0;
-                    const netW = grossW * 0.95; // Assume 5% tare
-                    const pkgs = Math.ceil(grossW / 25); // Assume 25kg per box
+                    let totalPkgs = 0;
+                    let totalGross = 0;
 
-                    document.getElementById('total-pkgs').innerText = `${pkgs} Packages`;
+                    // Items
+                    const tbody = document.getElementById('items-tbody');
+                    tbody.innerHTML = '';
 
-                    // Line Item
-                    document.getElementById('prod-name').innerText = s.product_type;
-                    document.getElementById('gross-weight').innerText = `${grossW.toFixed(2)} kg`;
-                    document.getElementById('net-weight').innerText = `${netW.toFixed(2)} kg`;
-                    document.getElementById('volume').innerText = s.volume_cbm ? `${s.volume_cbm} CBM` : 'N/A';
+                    if (items.length > 0) {
+                        items.forEach(it => {
+                            totalPkgs += Number(it.quantity);
+                            totalGross += Number(it.gross_weight);
 
-                    document.getElementById('total-gross').innerText = `${grossW.toFixed(2)} kg`;
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>
+                                        <strong>${it.description}</strong><br>
+                                        <span style="font-size: 12px; color: #666;">${it.package_type}</span>
+                                    </td>
+                                    <td class="text-right">${it.quantity}</td>
+                                    <td class="text-right">${Number(it.net_weight).toFixed(2)} kg</td>
+                                    <td class="text-right">${Number(it.gross_weight).toFixed(2)} kg</td>
+                                    <td class="text-right">${it.volume_cbm ? Number(it.volume_cbm).toFixed(2) + ' CBM' : '-'}</td>
+                                </tr>
+                            `;
+                        });
+                    } else {
+                        // Fallback generic logic if no precise list made yet
+                        const mockGrossW = parseFloat(s.weight) || 0;
+                        const mockNetW = mockGrossW * 0.95;
+                        totalPkgs = Math.ceil(mockGrossW / 25);
+                        totalGross = mockGrossW;
+
+                        tbody.innerHTML = `
+                             <tr>
+                                <td>
+                                    <strong>${s.product_type || 'General Cargo'}</strong><br>
+                                    <span style="font-size: 12px; color: #666;">Pallet</span>
+                                </td>
+                                <td class="text-right">${totalPkgs}</td>
+                                <td class="text-right">${mockNetW.toFixed(2)} kg</td>
+                                <td class="text-right">${mockGrossW.toFixed(2)} kg</td>
+                                <td class="text-right">${s.volume_cbm || '-'}</td>
+                            </tr>
+                        `;
+                    }
+
+                    document.getElementById('total-pkgs').innerText = `${totalPkgs} Packages`;
+                    document.getElementById('total-gross').innerText = `${totalGross.toFixed(2)} kg`;
 
                 }
             } catch (err) {

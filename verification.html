@@ -112,7 +112,9 @@
             margin-bottom: 1rem;
             background: linear-gradient(135deg, var(--primary), var(--accent));
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
+            color: transparent;
         }
     </style>
 </head>
@@ -120,18 +122,6 @@
 <body class="home-page" style="padding-top: 100px;">
 
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top glass-nav">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="index.html">
-                <i class="fas fa-ship me-2 text-primary"></i>Smart Shipping
-            </a>
-            <div class="ms-auto">
-                <span class="text-white-50 small me-3">Shipment Ref: <span id="ref-id"
-                        class="text-white font-monospace">SS-PENDING</span></span>
-            </div>
-        </div>
-    </nav>
-
     <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-lg-8">
@@ -258,7 +248,7 @@
                         <div class="bg-dark bg-opacity-50 p-4 rounded-3 mb-4 text-start">
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Booking Reference</span>
-                                <span class="text-white fw-bold">Pending</span>
+                                <span class="text-white fw-bold" id="ref-id">Pending</span>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
                                 <span class="text-muted">Documents</span>

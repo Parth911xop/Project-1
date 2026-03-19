@@ -4,11 +4,8 @@ const router = express.Router();
 // Initialize Journey Table
 const createJourneyTable = async (pool) => {
     try {
-        // FORCE RESET for Schema Fix (User had bad schema with user_id as PK)
-        await pool.query(`DROP TABLE IF EXISTS journey_progress`);
-
         await pool.query(`
-            CREATE TABLE journey_progress (
+            CREATE TABLE IF NOT EXISTS journey_progress (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER, -- Not Unique, user can have multiple journeys
                 shipment_id INTEGER UNIQUE, -- One journey per shipment
@@ -22,7 +19,7 @@ const createJourneyTable = async (pool) => {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("✅ Table 'journey_progress' ready (Recreated)");
+        console.log("✅ Table 'journey_progress' ready");
     } catch (err) {
         console.error("❌ Error creating 'journey_progress' table:", err);
     }

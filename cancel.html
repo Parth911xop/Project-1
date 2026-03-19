@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Cancelled - Smart Shipping</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #0f172a;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .cancel-card {
+            background-color: #1e293b;
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+
+        .icon {
+            font-size: 60px;
+            color: #ef4444;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="cancel-card">
+        <i class="bi bi-x-circle-fill icon"></i>
+        <h2>Checkout Cancelled</h2>
+        <p class="text-secondary mt-3">You have aborted the secure payment flow. No charges have been made to your card.
+            Your shipment configuration has been saved in draft mode.</p>
+
+        <div class="mt-4">
+            <a href="shipments.html" class="btn btn-outline-light px-4 py-2 fw-semibold">Return to Dashboard</a>
+            <a href="wizard.html" class="btn btn-primary px-4 py-2 ms-2">Try Again</a>
+        </div>
+    </div>
+
+</body>
+
+</html>

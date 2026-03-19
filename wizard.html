@@ -46,11 +46,40 @@
             </div>
           </div>
 
+          <!-- Export / Import Toggle -->
+          <div class="mb-4">
+            <label class="text-white small fw-bold mb-2">SHIPMENT TYPE</label>
+            <div class="d-flex gap-3" id="tradeTypeToggle">
+              <div class="trade-type-btn active" data-type="Export" onclick="setTradeType('Export', this)">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="bg-primary bg-opacity-25 p-2 rounded text-primary"><i class="fas fa-file-export"></i>
+                  </div>
+                  <div>
+                    <span class="d-block text-white fw-bold small">Export</span>
+                    <span class="d-block text-white-50 x-small">Send goods to another country</span>
+                  </div>
+                </div>
+                <i class="fas fa-check-circle check text-primary"></i>
+              </div>
+              <div class="trade-type-btn" data-type="Import" onclick="setTradeType('Import', this)">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="bg-success bg-opacity-25 p-2 rounded text-success"><i class="fas fa-file-import"></i>
+                  </div>
+                  <div>
+                    <span class="d-block text-white fw-bold small">Import</span>
+                    <span class="d-block text-white-50 x-small">Receive goods from another country</span>
+                  </div>
+                </div>
+                <i class="fas fa-check-circle check text-success"></i>
+              </div>
+            </div>
+          </div>
+
           <!-- 1. Route Input -->
           <div class="bg-dark bg-opacity-25 p-3 rounded-4 mb-4 border border-secondary border-opacity-10">
             <div class="d-flex align-items-center gap-3">
               <div class="flex-grow-1">
-                <label class="small text-muted fw-bold mb-1">ORIGIN</label>
+                <label class="small text-muted fw-bold mb-1" id="originLabel">ORIGIN (Your Location)</label>
                 <div class="input-group">
                   <span class="input-group-text bg-transparent border-0 text-primary ps-0"><i
                       class="fas fa-map-marker-alt"></i></span>
@@ -63,7 +92,7 @@
                 <i class="fas fa-exchange-alt"></i>
               </div>
               <div class="flex-grow-1 text-end">
-                <label class="small text-muted fw-bold mb-1">DESTINATION</label>
+                <label class="small text-muted fw-bold mb-1" id="destLabel">DESTINATION (Buyer's Location)</label>
                 <div class="input-group justify-content-end">
                   <input type="text" id="destInput" list="ports"
                     class="form-control bg-transparent border-0 text-white text-end shadow-none"
@@ -122,22 +151,55 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="text-white-50 small mb-1">Commodity</label>
-                <select class="form-select bg-dark border-secondary text-white">
-                  <option>Electronics 📱</option>
-                  <option>Textiles 👕</option>
-                  <option>Machinery ⚙️</option>
+                <select class="form-select bg-dark border-secondary text-white" id="cargoType"
+                  onchange="toggleVehicleFields()">
+                  <option value="General">General Cargo 📦</option>
+                  <option value="Electronics">Electronics 📱</option>
+                  <option value="Textiles">Textiles 👕</option>
+                  <option value="Machinery">Machinery ⚙️</option>
+                  <option value="Vehicle">Vehicle 🚗</option>
                 </select>
               </div>
               <div class="col-md-3">
                 <label class="text-white-50 small mb-1">Total Weight (kg)</label>
-                <input type="number" class="form-control bg-dark border-secondary text-white" value="5000">
+                <input type="number" id="cargoWeight" class="form-control bg-dark border-secondary text-white"
+                  value="1000">
               </div>
               <div class="col-md-3">
-                <label class="text-white-50 small mb-1">Containers</label>
-                <select class="form-select bg-dark border-secondary text-white">
-                  <option>2 x 20ft</option>
-                  <option>1 x 40ft</option>
+                <label class="text-white-50 small mb-1">Shipping Method</label>
+                <select id="shippingMethod" class="form-select bg-dark border-secondary text-white">
+                  <option value="FCL">Full Container (FCL)</option>
+                  <option value="LCL">Shared Container (LCL)</option>
+                  <option value="RoRo">RoRo (Roll-on/Roll-off)</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- Vehicle Specific Fields (Hidden by default) -->
+            <div id="vehicleSection"
+              class="mt-3 p-3 bg-primary bg-opacity-10 rounded-3 border border-primary border-opacity-25 d-none animate-fade-in">
+              <h6 class="text-primary small fw-bold mb-3">Vehicle Details</h6>
+              <div class="row g-2">
+                <div class="col-md-3">
+                  <label class="text-white-50 x-small fw-bold">BRAND</label>
+                  <input type="text" id="v-brand"
+                    class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Toyota">
+                </div>
+                <div class="col-md-3">
+                  <label class="text-white-50 x-small fw-bold">MODEL</label>
+                  <input type="text" id="v-model"
+                    class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="Camry">
+                </div>
+                <div class="col-md-3">
+                  <label class="text-white-50 x-small fw-bold">YEAR</label>
+                  <input type="number" id="v-year"
+                    class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="2024">
+                </div>
+                <div class="col-md-3">
+                  <label class="text-white-50 x-small fw-bold">VIN</label>
+                  <input type="text" id="v-vin" class="form-control form-control-sm bg-dark text-white border-secondary"
+                    placeholder="17-char ID">
+                </div>
               </div>
             </div>
             <div class="form-check form-switch mt-3">
@@ -146,7 +208,46 @@
             </div>
           </div>
 
-          <!-- 4. AI Prefs -->
+          <!-- 3.5 Incoterms & Insurance -->
+          <div class="mb-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="text-white small fw-bold mb-2">INCOTERMS</label>
+                <select class="form-select bg-dark border-secondary text-white" id="incotermsSelect">
+                  <option value="FOB">FOB (Free On Board) - Seller pays until port loading, Buyer pays shipping</option>
+                  <option value="EXW">EXW (Ex Works) - Buyer handles all shipping from seller door</option>
+                  <option value="CIF">CIF (Cost, Insurance & Freight) - Seller pays shipping & insurance to dest port
+                  </option>
+                  <option value="DAP">DAP (Delivered at Place) - Seller handles everything except import customs
+                  </option>
+                  <option value="DDP">DDP (Delivered Duty Paid) - Seller handles all costs including customs</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="text-white small fw-bold mb-2">ADDITIONAL SERVICES</label>
+                <div class="card bg-dark border border-secondary p-3">
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="insuranceToggle" checked>
+                    <label class="form-check-label text-white small" for="insuranceToggle">
+                      <i class="fas fa-shield-alt text-success me-1"></i> Cargo Insurance (1.5% Value)
+                    </label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="pickupToggle">
+                    <label class="form-check-label text-white small" for="pickupToggle">
+                      <i class="fas fa-truck-loading text-info me-1"></i> Door Pickup Service
+                    </label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="deliveryToggle">
+                    <label class="form-check-label text-white small" for="deliveryToggle">
+                      <i class="fas fa-home text-warning me-1"></i> Final Destination Delivery
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="mb-4">
             <h5 class="text-white fw-bold mb-3 small text-uppercase text-muted">AI Optimization Goal</h5>
             <div class="d-flex flex-column gap-2">
@@ -238,8 +339,216 @@
       </div>
     </div>
 
+    <!-- Final Details & Document Modal -->
+    <div class="modal fade" id="docUploadModal" tabindex="-1" data-bs-backdrop="static">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark border border-secondary text-white">
+          <div class="modal-header border-secondary">
+            <h5 class="modal-title"><i class="fas fa-file-invoice text-primary me-2"></i>Final Details & Documents</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body pb-0">
+            <div id="modal-step-1" style="max-height: 65vh; overflow-y: auto; padding-right: 15px;">
+              <!-- 1. Mandatory Shipment Details -->
+              <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-info-circle me-2"></i>1.
+                Shipment Details</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-4">
+                  <label class="form-label text-white-50 small fw-bold">HS CODE <span
+                      class="text-danger">*</span></label>
+                  <div class="input-group">
+                    <input type="text" id="hsCode" class="form-control bg-dark text-white border-secondary"
+                      placeholder="8517.13" required onkeyup="handleHSCodeTyping(this.value)">
+                    <button class="btn btn-outline-secondary border-secondary" type="button"
+                      onclick="searchHSCodePrompt()">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                  <div id="hscode-results" class="list-group position-absolute shadow-lg d-none"
+                    style="z-index: 1000; width: 250px;"></div>
+                </div>
+                <div class="col-md-8">
+                  <label class="form-label text-white-50 small fw-bold">DESCRIPTION OF GOODS <span
+                      class="text-danger">*</span></label>
+                  <input type="text" id="goodsDesc" class="form-control bg-dark text-white border-secondary"
+                    placeholder="Lithium-Ion Batteries" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">CONSIGNEE NAME <span
+                      class="text-danger">*</span></label>
+                  <input type="text" id="consigneeName" class="form-control bg-dark text-white border-secondary"
+                    placeholder="Recipient Name" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">CONSIGNEE CONTACT <span
+                      class="text-danger">*</span></label>
+                  <input type="text" id="consigneeContact" class="form-control bg-dark text-white border-secondary"
+                    placeholder="Phone or Email" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">COUNTRY OF ORIGIN <span
+                      class="text-danger">*</span></label>
+                  <select id="originCountry" class="form-select bg-dark text-white border-secondary">
+                    <option value="Singapore">Singapore 🇸🇬</option>
+                    <option value="India">India 🇮🇳</option>
+                    <option value="USA">USA 🇺🇸</option>
+                    <option value="China">China 🇨🇳</option>
+                    <option value="Japan">Japan 🇯🇵</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">CARGO VALUE (USD) <span
+                      class="text-danger">*</span></label>
+                  <input type="number" id="cargoValue" class="form-control bg-dark text-white border-secondary"
+                    value="10000">
+                </div>
+              </div>
+
+              <!-- 2. Identity Verification (KYC) -->
+              <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-user-shield me-2"></i>2.
+                Identity Verification (KYC)</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">IDENTITY PROOF TYPE <span
+                      class="text-danger">*</span></label>
+                  <select id="kycType" class="form-select bg-dark text-white border-secondary">
+                    <option value="Aadhaar Card">Aadhaar Card</option>
+                    <option value="PAN Card">PAN Card</option>
+                    <option value="Passport">Passport</option>
+                    <option value="Driving Licence">Driving Licence</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">UPLOAD IDENTITY DOC <span
+                      class="text-danger">*</span></label>
+                  <input type="file" id="kycFile" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">ADDRESS PROOF TYPE <span
+                      class="text-danger">*</span></label>
+                  <select id="addrType" class="form-select bg-dark text-white border-secondary">
+                    <option value="Aadhaar Card">Aadhaar Card</option>
+                    <option value="Voter ID Card">Voter ID Card</option>
+                    <option value="Utility Bill">Utility Bill</option>
+                    <option value="Bank Statement">Bank Statement</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">UPLOAD ADDRESS PROOF <span
+                      class="text-danger">*</span></label>
+                  <input type="file" id="addrFile" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+              </div>
+
+              <!-- 3. Trade Documentation -->
+              <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-passport me-2"></i>3. Trade
+                Documentation</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold" id="tradeCodeLabel">EXPORT CODE (IEC) / GST
+                    <span class="text-danger">*</span></label>
+                  <input type="text" id="iecNum" class="form-control bg-dark text-white border-secondary"
+                    placeholder="IEC or GST Number" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">UPLOAD CERTIFICATE <span
+                      class="text-danger">*</span></label>
+                  <select id="addrType" class="form-select bg-dark text-white border-secondary mb-2">
+                    <option value="Electricity Bill">Electricity Bill</option>
+                    <option value="Passport">Passport Copy</option>
+                    <option value="Utility Bill">Utility Bill</option>
+                  </select>
+                  <input type="file" id="addrFile" class="form-control bg-dark border-secondary text-white btn-sm"
+                    required>
+                </div>
+
+                <!-- Mandatory Documents for All -->
+                <div class="col-md-4">
+                  <label class="form-label text-white-50 x-small fw-bold">IEC / GST CERT <span
+                      class="text-danger">*</span></label>
+                  <input type="file" id="iecFile" class="form-control bg-dark border-secondary text-white btn-sm"
+                    required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label text-white-50 x-small fw-bold">COMMERCIAL INVOICE <span
+                      class="text-danger">*</span></label>
+                  <input type="file" id="invoiceFile" class="form-control bg-dark border-secondary text-white btn-sm"
+                    required>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label text-white-50 x-small fw-bold">PACKING LIST <span
+                      class="text-danger">*</span></label>
+                  <input type="file" id="packingListFile"
+                    class="form-control bg-dark border-secondary text-white btn-sm" required>
+                </div>
+
+                <!-- Conditional Vehicle Docs -->
+                <div id="vehicleDocSection" class="col-12 d-none">
+                  <div class="p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3">
+                    <h6 class="text-primary small fw-bold mb-3">Vehicle Documentation</h6>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <label class="form-label text-white-50 x-small fw-bold">REGISTRATION CERT (RC) <span
+                            class="text-danger">*</span></label>
+                        <input type="file" id="rcFile" class="form-control bg-dark border-secondary text-white btn-sm">
+                      </div>
+                      <div class="col-md-6">
+                        <label class="form-label text-white-50 x-small fw-bold">VEHICLE INSURANCE <span
+                            class="text-danger">*</span></label>
+                        <input type="file" id="insFile" class="form-control bg-dark border-secondary text-white btn-sm">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Optional Docs -->
+                <div class="col-md-12 mt-2">
+                  <label class="form-label text-white-50 x-small fw-bold">OTHER (OPTIONAL)</label>
+                  <input type="file" id="otherFile" class="form-control bg-dark border-secondary text-white btn-sm">
+                </div>
+              </div>
+            </div>
+
+            <div id="modal-step-2" class="d-none pb-4">
+              <div class="text-center mb-4">
+                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                <h4 class="text-white">Booking Summary</h4>
+                <p class="text-white-50 small">Please review your shipment details before payment</p>
+              </div>
+
+              <div id="booking-summary-content"
+                class="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary mb-4 shadow-sm"
+                style="font-size: 0.9rem;">
+                <!-- Populated by JS -->
+              </div>
+
+              <div class="d-flex justify-content-center gap-3">
+                <button class="btn btn-outline-info btn-sm rounded-pill px-4" onclick="downloadBookingPDF()">
+                  <i class="fas fa-file-pdf me-2"></i>Download PDF Summary
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-outline-light rounded-pill px-4"
+              data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary rounded-pill px-4" id="proceedToSummaryBtn"
+              onclick="showBookingSummary()">
+              Review Summary <i class="fas fa-arrow-right ms-2"></i>
+            </button>
+            <button type="button" class="btn btn-success rounded-pill px-4 d-none" id="finalPaymentBtn"
+              onclick="submitBookingWithDocs()">
+              Confirm Booking Request <i class="fas fa-arrow-right ms-2"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Scripts -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="notifications.js"></script>
     <script src="wizard.js"></script>
 </body>

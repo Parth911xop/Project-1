@@ -6,17 +6,404 @@
     <title>Dashboard | Smart Shipping Enterprise</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="notifications.css">
     <link rel="stylesheet" href="dashboard.css">
     <script src="auth-guard.js"></script>
+    <style>
+        /* ── Search & Filter Bar ──────────────────────────────── */
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .filter-bar input,
+        .filter-bar select {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.82rem;
+            font-family: 'Inter', sans-serif;
+            min-width: 140px;
+        }
+
+        .filter-bar input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .filter-bar input:focus,
+        .filter-bar select:focus {
+            outline: none;
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            background: rgba(255, 255, 255, 0.09);
+            color: #fff;
+        }
+
+        .filter-bar select option {
+            background: #1a2035;
+            color: #fff;
+        }
+
+        .filter-bar .btn-filter-clear {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.5);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-bar .btn-filter-clear:hover {
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* ── Notification Bell ────────────────────────────────── */
+        .notif-bell-wrap {
+            position: relative;
+        }
+
+        .notif-bell-wrap .bell-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .notif-bell-wrap .bell-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .notif-badge {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid #0f1623;
+        }
+
+        .notif-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 320px;
+            background: #131d2e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: none;
+            overflow: hidden;
+        }
+
+        .notif-dropdown.show {
+            display: block;
+            animation: fadeInDown 0.2s ease;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .notif-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .notif-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .notif-item.unread {
+            border-left: 3px solid #3b82f6;
+        }
+
+        .notif-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+
+        /* ── 5-Step Timeline ──────────────────────────────────── */
+        .timeline-5step {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            min-width: 190px;
+            position: relative;
+        }
+
+        .tstep {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            flex: 1;
+            position: relative;
+            z-index: 2;
+        }
+
+        .tstep-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            flex-shrink: 0;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tstep-dot.done {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: #fff;
+        }
+
+        .tstep-dot.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: #fff;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+        }
+
+        .tstep-dot.pending {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .tstep-label {
+            font-size: 8px;
+            font-weight: 600;
+            white-space: nowrap;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .tstep-label.done,
+        .tstep-label.active {
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .tstep-line {
+            height: 2px;
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            position: relative;
+            z-index: 1;
+            margin-bottom: 14px;
+        }
+
+        .tstep-line.done {
+            background: #22c55e;
+        }
+
+        /* ── Status Badges ────────────────────────────────────── */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .status-pill.booked {
+            background: rgba(99, 102, 241, 0.15);
+            color: #818cf8;
+        }
+
+        .status-pill.transit {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        .status-pill.port {
+            background: rgba(251, 191, 36, 0.15);
+            color: #fbbf24;
+        }
+
+        .status-pill.arrived {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+        }
+
+        .status-pill.delivered {
+            background: rgba(16, 185, 129, 0.2);
+            color: #34d399;
+        }
+
+        .status-pill.delayed {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+
+        /* ── Slide Panel ──────────────────────────────────────── */
+        .panel-timeline {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin: 16px 0;
+        }
+
+        .ptl-step {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+            padding-bottom: 16px;
+            position: relative;
+        }
+
+        .ptl-step::before {
+            content: '';
+            position: absolute;
+            left: 13px;
+            top: 24px;
+            width: 2px;
+            height: calc(100% - 8px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .ptl-step.done::before {
+            background: #22c55e;
+        }
+
+        .ptl-step.active::before {
+            background: rgba(59, 130, 246, 0.4);
+        }
+
+        .ptl-step:last-child::before {
+            display: none;
+        }
+
+        .ptl-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            flex-shrink: 0;
+        }
+
+        .ptl-dot.done {
+            background: #22c55e;
+            color: #fff;
+        }
+
+        .ptl-dot.active {
+            background: #3b82f6;
+            color: #fff;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        .ptl-dot.pending {
+            background: rgba(255, 255, 255, 0.07);
+            color: rgba(255, 255, 255, 0.2);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+        }
+
+        /* ── Support Ticket Mini ──────────────────────────────── */
+        .ticket-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .ticket-row:hover {
+            border-color: rgba(99, 102, 241, 0.35);
+        }
+
+        /* ── Quick Actions Styling ───────────────────────────── */
+        .btn-quick {
+            background: rgba(255, 255, 255, 0.02) !important;
+            border-width: 1.5px !important;
+            font-weight: 600 !important;
+            padding: 10px 16px !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.85rem !important;
+            display: flex;
+            align-items: center;
+        }
+        .btn-quick:hover {
+            transform: translateX(4px);
+            background: rgba(255, 255, 255, 0.05) !important;
+        }
+        .btn-quick i { width: 22px; }
+        
+        .btn-quick-blue { border-color: #3b82f6 !important; color: #3b82f6 !important; }
+        .btn-quick-white { border-color: #ffffff !important; color: #ffffff !important; }
+        .btn-quick-green { border-color: #10b981 !important; color: #10b981 !important; }
+        .btn-quick-gold { border-color: #f59e0b !important; color: #f59e0b !important; }
+    </style>
 </head>
 
 <body class="dashboard-page">
 
-    <!-- 1. LEFT SIDEBAR -->
+    <!-- SIDEBAR -->
     <aside class="sidebar">
         <div class="brand-section">
             <a href="index.html" class="text-decoration-none">
@@ -26,14 +413,19 @@
         </div>
 
         <nav class="d-flex flex-column gap-1">
-            <a href="#" class="nav-item-dash active"><i class="fas fa-th-large w-5"></i> Dashboard</a>
-            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments <span
-                    class="badge bg-primary rounded-pill ms-auto">12</span></a>
+            <a href="shipments.html" class="nav-item-dash active" id="nav-dashboard">
+                <i class="fas fa-th-large w-5"></i> Dashboard
+                <span class="badge bg-primary rounded-pill ms-auto" id="sidebar-shipment-count">--</span>
+            </a>
             <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
             <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="documents.html" class="nav-item-dash"><i class="fas fa-folder-open w-5"></i> Documents</a>
+            <a href="#" class="nav-item-dash" id="nav-schedules" onclick="toggleSchedules(this); return false;"><i
+                    class="fas fa-calendar-alt w-5"></i> Schedules</a>
             <hr class="border-secondary opacity-25 my-3">
-            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice w-5"></i> Billing</a>
-            <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
+            <a href="earnings.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+            <a href="support.html" class="nav-item-dash"><i class="fas fa-headset w-5"></i> Support</a>
             <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
 
@@ -41,239 +433,573 @@
             <div class="d-flex align-items-center gap-2">
                 <div id="user-avatar"
                     class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                    style="width: 32px; height: 32px;">U</div>
-                <div class="d-grid">
-                    <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
-
+                    style="width:32px;height:32px;font-size:0.85rem;">U</div>
+                <div>
+                    <a href="profile.html" id="user-name-display"
+                        class="text-white text-sm fw-bold text-decoration-none d-block">User</a>
+                    <span class="text-muted x-small" id="user-role-display">Exporter</span>
                 </div>
             </div>
         </div>
     </aside>
 
-    <!-- 2. MAIN CONTENT -->
+    <!-- MAIN -->
     <main class="dashboard-main">
 
-        <!-- TOP STICKY HEADER -->
+        <!-- HEADER -->
         <header class="dashboard-header">
-            <div class="search-bar">
+            <div class="search-bar" style="flex:1;">
                 <i class="fas fa-search text-muted"></i>
-                <input type="text" placeholder="Search shipments, containers, or BL numbers... (⌘K)">
+                <input type="text" id="globalSearch" placeholder="Search by Shipment ID, container, route, or status..."
+                    oninput="handleSearch(this.value)">
             </div>
-
-            <div class="d-flex align-items-center gap-4">
-                <span class="text-success small fw-bold"><span class="spinner-grow spinner-grow-sm me-2"></span>Network
-                    Live</span>
-                <i class="fas fa-bell text-muted hover-white cursor-pointer position-relative">
-                    <span
-                        class="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-dark rounded-circle w-2 h-2"></span>
-                </i>
-                <a href="index.html" class="btn btn-outline-light btn-sm rounded-pill">Logout</a>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Notification Bell -->
+                <div class="notif-bell-wrap">
+                    <button class="bell-btn" onclick="toggleNotifDropdown()" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+                    </button>
+                    <div class="notif-dropdown" id="notif-dropdown">
+                        <div
+                            class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom border-secondary border-opacity-20">
+                            <span class="text-white fw-bold small">Notifications</span>
+                            <button class="btn p-0 text-muted x-small" onclick="markAllRead()">Mark all read</button>
+                        </div>
+                        <div id="notif-list" style="max-height:320px; overflow-y:auto;"></div>
+                        <a href="support.html"
+                            class="d-block text-center text-primary small py-3 border-top border-secondary border-opacity-20 text-decoration-none">View
+                            Support Tickets</a>
+                    </div>
+                </div>
+                <a href="wizard.html" class="btn btn-primary btn-sm rounded-pill px-4 fw-semibold">
+                    <i class="fas fa-plus me-1"></i> New Booking
+                </a>
+                <button onclick="handleLogout()" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</button>
             </div>
         </header>
 
-        <!-- DASHBOARD CONTENT -->
         <div class="p-4">
 
-            <!-- SUMMARY CARDS -->
-            <div class="summary-grid slide-in">
+            <!-- KPI CARDS -->
+            <div class="summary-grid slide-in mb-4">
                 <div class="summary-card active-glow">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-white small fw-bold mb-1">ACTIVE SHIPMENTS</p>
-                            <h3 class="text-white fw-bold mb-0" id="count-active">--</h3>
+                            <p class="text-white-50 small fw-bold mb-1 text-uppercase">Total Shipments</p>
+                            <h3 class="text-white fw-bold mb-0" id="count-total">--</h3>
                         </div>
-                        <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 small">+12%</span>
+                        <div class="bg-primary bg-opacity-15 rounded-3 d-flex align-items-center justify-content-center"
+                            style="width:36px;height:36px;">
+                            <i class="fas fa-box text-primary"></i>
+                        </div>
                     </div>
-                    <div class="progress-mini mt-3 w-100 bg-dark">
-                        <div class="progress-fill" style="width: 45%"></div>
+                    <div class="d-flex align-items-center gap-2 mt-3">
+                        <span class="text-success x-small fw-bold"><i class="fas fa-arrow-up"></i> All time</span>
                     </div>
                 </div>
                 <div class="summary-card">
-                    <p class="text-info small fw-bold mb-1">IN TRANSIT</p>
-                    <h3 class="text-info fw-bold mb-0" id="count-transit">--</h3>
-                    <div class="d-flex align-items-center gap-2 mt-2">
-                        <span class="text-success x-small"><i class="fas fa-arrow-up"></i> 94%</span>
-                        <span class="text-muted x-small">On-Time</span>
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-info small fw-bold mb-1 text-uppercase">Active / In Transit</p>
+                            <h3 class="text-info fw-bold mb-0" id="count-active">--</h3>
+                        </div>
+                        <div class="bg-info bg-opacity-15 rounded-3 d-flex align-items-center justify-content-center"
+                            style="width:36px;height:36px;">
+                            <i class="fas fa-ship text-info"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-3">
+                        <span class="text-info x-small">Currently on route</span>
+                    </div>
+                </div>
+                <div class="summary-card" style="border-color: rgba(34,197,94,0.2);">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-success small fw-bold mb-1 text-uppercase">Delivered</p>
+                            <h3 class="text-success fw-bold mb-0" id="count-delivered">--</h3>
+                        </div>
+                        <div class="bg-success bg-opacity-15 rounded-3 d-flex align-items-center justify-content-center"
+                            style="width:36px;height:36px;">
+                            <i class="fas fa-check-circle text-success"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-3">
+                        <span class="text-muted x-small">Completed successfully</span>
                     </div>
                 </div>
                 <div class="summary-card warning-glow">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <p class="text-warning small fw-bold mb-1">CUSTOMS PENDING</p>
-                            <h3 class="text-warning fw-bold mb-0">2</h3>
+                            <p class="text-warning small fw-bold mb-1 text-uppercase">Pending Docs</p>
+                            <h3 class="text-warning fw-bold mb-0" id="count-docs">--</h3>
                         </div>
-                        <i class="fas fa-file-contract text-white-50"></i>
-                    </div>
-                    <small class="text-muted d-block mt-2">Avg clearance: 4h</small>
-                </div>
-                <div class="summary-card critical-glow">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <p class="text-warning small fw-bold mb-1">EXCEPTIONS</p>
-                            <h3 class="text-danger fw-bold mb-0" id="count-exception">--</h3>
+                        <div class="bg-warning bg-opacity-15 rounded-3 d-flex align-items-center justify-content-center"
+                            style="width:36px;height:36px;">
+                            <i class="fas fa-file-exclamation text-warning"></i>
                         </div>
-                        <i class="fas fa-exclamation-triangle text-danger"></i>
                     </div>
-                    <small class="text-danger d-block mt-2">Action Required</small>
+                    <div class="d-flex align-items-center gap-2 mt-3">
+                        <a href="documents.html" class="text-warning x-small text-decoration-none">Upload now →</a>
+                    </div>
                 </div>
             </div>
 
-            <!-- MAIN GRID (70/30) -->
+            <!-- SEARCH & FILTER BAR -->
+            <div class="filter-bar">
+                <i class="fas fa-sliders-h text-white-50 small"></i>
+                <input type="text" id="filterById" placeholder="Shipment ID" oninput="applyFilters()">
+                <input type="text" id="filterByRoute" placeholder="Origin or Destination" oninput="applyFilters()">
+                <select id="filterByStatus" onchange="applyFilters()">
+                    <option value="">All Statuses</option>
+                    <option value="booked">Booked</option>
+                    <option value="port">At Origin Port</option>
+                    <option value="transit">In Transit / On Sea</option>
+                    <option value="arrived">Arrived</option>
+                    <option value="delivered">Delivered</option>
+                    <option value="delayed">Delayed</option>
+                </select>
+                <select id="filterByMode" onchange="applyFilters()">
+                    <option value="">All Modes</option>
+                    <option value="ocean">Ocean</option>
+                    <option value="air">Air</option>
+                </select>
+                <select id="filterByType" onchange="applyFilters()">
+                    <option value="">All Types</option>
+                    <option value="export">Export</option>
+                    <option value="import">Import</option>
+                </select>
+                <button class="btn-filter-clear" onclick="clearFilters()">
+                    <i class="fas fa-times me-1"></i>Clear
+                </button>
+                <span class="ms-auto text-muted x-small" id="filter-result-count"></span>
+            </div>
+
+            <!-- MAIN GRID -->
             <div class="content-grid">
 
-                <!-- LEFT: SHIPMENTS TABLE -->
+                <!-- SHIPMENTS TABLE -->
                 <div class="table-panel">
                     <div
                         class="p-3 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
-                        <h5 class="text-white fw-bold mb-0">Recent Shipments</h5>
+                        <h5 class="text-white fw-bold mb-0">Shipments</h5>
                         <div class="d-flex gap-2">
-                            <button
-                                class="btn btn-sm btn-outline-light rounded-pill px-3 active filter-chip">All</button>
-                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip">Ocean</button>
-                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip">Air</button>
-                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip">Delayed</button>
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip active"
+                                data-quick="all">All</button>
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip"
+                                data-quick="transit">In Transit</button>
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip"
+                                data-quick="delayed">Delayed</button>
+                            <button class="btn btn-sm btn-outline-light rounded-pill px-3 filter-chip"
+                                data-quick="delivered">Delivered</button>
                         </div>
                     </div>
                     <div class="table-responsive">
                         <table class="dash-table">
                             <thead>
                                 <tr>
-                                    <th class="text-white-50">ID</th>
+                                    <th class="text-white-50">Shipment ID</th>
+                                    <th class="text-white-50">Container</th>
                                     <th class="text-white-50">Route</th>
-                                    <th class="text-white-50">Mode</th>
                                     <th class="text-white-50">Status</th>
-                                    <th class="text-white-50">Progress / ETA</th>
+                                    <th class="text-white-50">Journey Timeline</th>
+                                    <th class="text-white-50">ETA</th>
                                     <th class="text-end text-white-50">Cost</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody id="shipments-body">
-                                <!-- JS Injected Rows -->
+                                <tr>
+                                    <td colspan="8" class="text-center py-5">
+                                        <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                                        <span class="text-white-50">Loading shipments...</span>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- RIGHT: INTELLIGENCE STACK -->
+                <!-- RIGHT: INTEL STACK -->
                 <div class="intel-stack">
 
-                    <!-- AI Insight Card -->
-                    <div class="intel-card"
-                        style="background: linear-gradient(to bottom, rgba(59, 130, 246, 0.1), rgba(10, 22, 38, 0.8));">
-                        <div class="ai-header">
-                            <span class="text-primary fw-bold small"><i class="fas fa-robot me-2"></i>AI INSIGHTS</span>
-                            <span class="badge bg-primary bg-opacity-20 text-primary">LIVE</span>
-                        </div>
-                        <p class="text-white small mb-3">Priority action recommended for <strong>SS-48292</strong>.</p>
-
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <div class="ai-score-ring text-warning">87%</div>
-                            <div>
-                                <span class="d-block text-white fw-bold text-sm">Delay Risk High</span>
-                                <span class="text-muted x-small">Port congestion at LAX +2 days</span>
-                            </div>
-                        </div>
-                        <button class="btn btn-primary btn-sm w-100 rounded-pill">View Prediction Details</button>
-                    </div>
-
-                    <!-- Doc Status -->
+                    <!-- Recent Activity -->
                     <div class="intel-card">
-                        <h6 class="text-white fw-bold small mb-3">DOCUMENT READINESS</h6>
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="text-muted small">Pending</span>
-                            <span class="text-white fw-bold">1 Doc</span>
-                        </div>
-                        <div class="alert alert-warning py-2 mb-0 small border-0">
-                            <i class="fas fa-exclamation-triangle me-2"></i>Commercial Inv. Missing
-                        </div>
-                    </div>
-
-                    <!-- Activity Feed -->
-                    <div class="intel-card">
-                        <h6 class="text-white fw-bold small mb-3">ACTIVITY FEED</h6>
-                        <ul class="list-unstyled mb-0 d-flex flex-column gap-3">
-                            <li class="d-flex gap-2">
-                                <i class="fas fa-check-circle text-success mt-1"></i>
-                                <div>
-                                    <span class="d-block text-white x-small">Container Loaded</span>
-                                    <span class="text-muted x-small">2 hours ago • SS-48291</span>
-                                </div>
-                            </li>
-                            <li class="d-flex gap-2">
-                                <i class="fas fa-plane text-primary mt-1"></i>
-                                <div>
-                                    <span class="d-block text-white x-small">Flight Departed</span>
-                                    <span class="text-muted x-small">5 hours ago • SS-48295</span>
-                                </div>
-                            </li>
+                        <h6 class="text-white fw-bold small mb-3 d-flex align-items-center gap-2">
+                            <i class="fas fa-clock text-primary"></i> RECENT ACTIVITY
+                        </h6>
+                        <ul class="list-unstyled mb-0 d-flex flex-column gap-3" id="activity-feed">
+                            <li class="text-white-50 x-small text-center py-2">Loading activity...</li>
                         </ul>
                     </div>
 
-                </div>
+                    <!-- Quick Actions -->
+                    <div class="intel-card">
+                        <h6 class="text-white fw-bold small mb-3 d-flex align-items-center gap-2">
+                            <i class="fas fa-bolt text-warning"></i> QUICK ACTIONS
+                        </h6>
+                        <div class="d-grid gap-3">
+                            <a href="wizard.html" class="btn btn-quick btn-quick-blue text-start rounded-3">
+                                <i class="fas fa-plus-circle me-2"></i>New Shipment Booking
+                            </a>
+                            <a href="documents.html" class="btn btn-quick btn-quick-white text-start rounded-3">
+                                <i class="fas fa-cloud-upload-alt me-2"></i>Upload Documents
+                            </a>
+                            <a href="#" class="btn btn-quick btn-quick-white text-start rounded-3" data-bs-toggle="modal" data-bs-target="#quickTrackModal">
+                                <i class="fas fa-map-marked-alt me-2"></i>Track a Shipment
+                            </a>
+                            <a href="finance.html" class="btn btn-quick btn-quick-green text-start rounded-3">
+                                <i class="fas fa-file-invoice-dollar me-2" style="color: #10b981;"></i>View Invoices & Pay
+                            </a>
+                            <a href="#" class="btn btn-quick btn-quick-gold text-start rounded-3" data-bs-toggle="modal" data-bs-target="#quickSupportModal">
+                                <i class="fas fa-headset me-2" style="color: #f59e0b;"></i>Open Support Ticket
+                            </a>
+                        </div>
+                    </div>
 
+                    <!-- Open Support Tickets -->
+                    <div class="intel-card">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-white fw-bold small mb-0 d-flex align-items-center gap-2">
+                                <i class="fas fa-ticket-alt text-info"></i> SUPPORT TICKETS
+                            </h6>
+                            <a href="support.html" class="text-primary x-small text-decoration-none">+ New</a>
+                        </div>
+                        <div id="tickets-list">
+                            <div class="text-white-50 x-small text-center py-2">No open tickets</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ── INLINE SCHEDULES SECTION ───────────────────────── -->
+        <div id="schedules-section" style="display:none;" class="p-4">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+                <div>
+                    <h3 class="text-white fw-bold mb-1"><i class="fas fa-calendar-alt text-primary me-2"></i>Vessel
+                        Schedules</h3>
+                    <p class="text-white-50 small mb-0">Find schedules for Point-to-Point, Port Calls, and Vessel
+                        routes.</p>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="toggleSchedules(null)">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </button>
+            </div>
+
+            <!-- Search Box -->
+            <div
+                style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:24px;margin-bottom:24px;">
+                <h6 class="text-white fw-bold mb-3">Search Schedules</h6>
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="text-white-50 small d-block mb-1">Origin</label>
+                        <div class="input-group">
+                            <span class="input-group-text"
+                                style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;"><i
+                                    class="fas fa-map-marker-alt"></i></span>
+                            <input type="text" id="sch-origin" class="form-control" placeholder="e.g. Mumbai, Singapore"
+                                style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="text-white-50 small d-block mb-1">Destination</label>
+                        <div class="input-group">
+                            <span class="input-group-text"
+                                style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#94a3b8;"><i
+                                    class="fas fa-map-marker-alt"></i></span>
+                            <input type="text" id="sch-dest" class="form-control"
+                                placeholder="e.g. Rotterdam, Los Angeles"
+                                style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="text-white-50 small d-block mb-1">Departure After</label>
+                        <input type="date" id="sch-date" class="form-control"
+                            style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:#fff;">
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100 rounded-pill fw-semibold" onclick="searchSchedules()"><i
+                                class="fas fa-search me-1"></i>Search</button>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <span class="text-white-50 small fw-bold me-2">Quick:</span>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill me-1"
+                        onclick="quickSearch('Mumbai','Rotterdam')">Mumbai → Rotterdam</button>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill me-1"
+                        onclick="quickSearch('Shanghai','Hamburg')">Shanghai → Hamburg</button>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill me-1"
+                        onclick="quickSearch('Singapore','Mumbai')">Singapore → Mumbai</button>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill"
+                        onclick="quickSearch('Mumbai','Dubai')">Mumbai → Dubai</button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div>
+                <h6 class="text-white fw-semibold mb-3" id="sch-results-label">Available Schedules</h6>
+                <div id="sch-results">
+                    <!-- Default schedules shown immediately -->
+                </div>
             </div>
         </div>
 
     </main>
 
-    <!-- SLIDE-IN PANEL (Hidden) -->
+    <!-- SLIDE-IN DETAIL PANEL -->
     <div id="slide-panel" class="slide-in-panel">
         <div class="panel-header d-flex justify-content-between align-items-center">
             <div>
                 <span class="text-primary font-monospace fw-bold" id="panel-id">--</span>
-                <span class="badge bg-dark border border-secondary ms-2" id="panel-status">--</span>
+                <span class="ms-2 small text-muted" id="panel-container">--</span>
             </div>
-            <button class="btn btn-icon text-white hover-bg rounded-circle" onclick="closePanel()"><i
-                    class="fas fa-times"></i></button>
+            <button class="btn btn-icon text-white hover-bg rounded-circle" onclick="closePanel()">
+                <i class="fas fa-times"></i>
+            </button>
         </div>
         <div class="panel-content">
             <h5 class="text-white fw-bold mb-1" id="panel-route">--</h5>
-            <p class="text-muted small mb-4">Maersk Line • 4 x 40ft HC</p>
+            <p class="text-muted small mb-1" id="panel-mode">--</p>
+            <p class="text-muted x-small mb-4">ETA: <span id="panel-eta" class="text-white fw-bold">--</span></p>
 
-            <div class="bg-dark bg-opacity-50 p-3 rounded-3 mb-4 border border-secondary border-opacity-10">
-                <span class="text-muted x-small fw-bold text-uppercase">AI Analysis</span>
-                <div class="d-flex justify-content-between align-items-center mt-2">
-                    <span class="text-white">On-Time Probability</span>
-                    <span class="text-success fw-bold" id="ai-risk-score">--</span>
-                </div>
-                <div class="progress-mini w-100 bg-dark mt-2" style="height: 6px;">
-                    <div class="progress-fill bg-success" style="width: 85%"></div>
-                </div>
+            <!-- 5-step panel timeline -->
+            <h6 class="text-white-50 x-small fw-bold text-uppercase mb-3">Journey Progress</h6>
+            <div class="panel-timeline" id="panel-timeline"><!-- JS --></div>
+
+            <!-- Live Map Mini -->
+            <div id="panel-map-wrap" style="display:none;" class="mb-4">
+                <h6 class="text-white-50 x-small fw-bold text-uppercase mb-2">Live Vessel Location</h6>
+                <div id="panel-map" style="height: 160px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #0b0f19;"></div>
             </div>
 
+            <!-- Docs status -->
+            <div class="bg-dark bg-opacity-50 p-3 rounded-3 mb-4 border border-secondary border-opacity-10">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="text-white-50 x-small fw-bold text-uppercase">Document Status</span>
+                    <a href="documents.html" class="text-primary x-small text-decoration-none">Manage →</a>
+                </div>
+                <div id="panel-docs-status" class="d-flex flex-column gap-2"><!-- JS --></div>
+            </div>
+
+            <!-- Quick actions -->
             <h6 class="text-white small fw-bold mb-3">Quick Actions</h6>
             <div class="d-grid gap-2">
-                <a href="track.html" class="btn btn-outline-primary btn-sm text-start"><i
-                        class="fas fa-map-marker-alt me-2"></i>Live Satellite Tracking</a>
-                <button class="btn btn-outline-light btn-sm text-start"><i class="fas fa-file-alt me-2"></i>View
-                    Documents (4)</button>
-                <button class="btn btn-outline-light btn-sm text-start"><i class="fas fa-robot me-2"></i>Ask AI
-                    Copilot</button>
+                <a id="btn-track" href="track.html" class="btn btn-outline-primary btn-sm text-start rounded-3">
+                    <i class="fas fa-map-marker-alt me-2"></i>Live Tracking
+                </a>
+                <a id="btn-docs" href="documents.html" class="btn btn-outline-light btn-sm text-start rounded-3">
+                    <i class="fas fa-file-alt me-2"></i>View & Upload Documents
+                </a>
+                <a id="btn-packing" href="#" class="btn btn-outline-info btn-sm text-start rounded-3">
+                    <i class="fas fa-clipboard-list me-2"></i>Manage Packing List
+                </a>
+                <a id="btn-invoice" href="finance.html" class="btn btn-outline-success btn-sm text-start rounded-3">
+                    <i class="fas fa-file-invoice-dollar me-2"></i>View Invoice & Pay
+                </a>
+                <a id="btn-support" href="support.html" class="btn btn-outline-warning btn-sm text-start rounded-3">
+                    <i class="fas fa-headset me-2"></i>Report Issue
+                </a>
             </div>
 
             <hr class="border-secondary opacity-25 my-4">
 
             <h6 class="text-white small fw-bold mb-3">Cost Breakdown</h6>
             <div class="d-flex justify-content-between text-muted x-small mb-1">
-                <span>Ocean Freight</span>
-                <span>₹82,320.00</span>
+                <span>Freight Base</span>
+                <span id="panel-cost-base">—</span>
             </div>
             <div class="d-flex justify-content-between text-muted x-small mb-1">
-                <span>Fuel Surcharge</span>
-                <span>₹7,140.00</span>
+                <span>Fuel Surcharge (8%)</span>
+                <span id="panel-cost-surge">—</span>
             </div>
             <div
                 class="d-flex justify-content-between text-white small fw-bold mt-2 pt-2 border-top border-secondary border-opacity-25">
                 <span>Total</span>
-                <span>₹1,04,160.00</span>
+                <span id="panel-cost-total">—</span>
             </div>
+        </div>
+    </div>
 
+    <!-- ── QUICK MODALS ────────────────────────────────────── -->
+    <div class="modal fade" id="quickTrackModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-nav border-0 shadow-lg" style="backdrop-filter: blur(20px);">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title text-white fw-bold">Quick Tracking</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-white-50 small mb-3">Enter a Shipment ID to see live logistics data.</p>
+                    <div class="input-group mb-4" style="background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                        <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i class="fas fa-hashtag"></i></span>
+                        <input type="text" id="quick-track-id" class="form-control bg-transparent border-0 text-white py-3 shadow-none" placeholder="e.g. 47" style="font-weight: 600;">
+                    </div>
+                    <button class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg" onclick="handleQuickTrack()">
+                        Track Shipment Now <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Support Modal -->
+    <div class="modal fade" id="quickSupportModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-nav border-0 shadow-lg" style="backdrop-filter: blur(20px);">
+                <div class="modal-header border-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title text-white fw-bold">Concierge Support</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="d-grid gap-3">
+                        <button class="btn btn-outline-light text-start p-3 rounded-4 border-secondary border-opacity-25" onclick="location.href='support.html'">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-primary bg-opacity-10 p-2 rounded-3"><i class="fas fa-ticket-alt text-primary"></i></div>
+                                <div>
+                                    <strong class="d-block text-white small">Open New Ticket</strong>
+                                    <div class="text-muted" style="font-size: 10px;">Get technical or logistical help.</div>
+                                </div>
+                            </div>
+                        </button>
+                        <button class="btn btn-outline-light text-start p-3 rounded-4 border-secondary border-opacity-25" onclick="alert('Connecting to a live agent...')">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="bg-success bg-opacity-10 p-2 rounded-3"><i class="fas fa-comments text-success"></i></div>
+                                <div>
+                                    <strong class="d-block text-white small">Live Chat with Expert</strong>
+                                    <div class="text-muted" style="font-size: 10px;">Average response time: 2 mins</div>
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="socket-client.js"></script>
     <script src="notifications.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="shipments.js"></script>
+    <script>
+        function handleQuickTrack() {
+            const val = document.getElementById('quick-track-id').value.trim();
+            const id = val.includes('-') ? val.split('-').pop() : val;
+            if(!id) return alert("Please enter a valid shipment ID");
+            window.location.href = `track.html?id=${id}`;
+        }
+        // ── Schedules toggle ──────────────────────────────────────────
+        const SCHEDULE_DATA = [
+            { line: 'MSC', vessel: 'MSC MADRID', code: 'MS8000', from: 'Singapore (SG SIN)', to: 'Mumbai (IN BOM)', depart: '14 Mar 2026', arrive: '15 Apr 2026', days: 32, type: 'Direct Service', price: 1850 },
+            { line: 'CMA CGM', vessel: 'CMA CGM MADRID', code: 'CC4500', from: 'Singapore (SG SIN)', to: 'Mumbai (IN BOM)', depart: '13 Mar 2026', arrive: '12 Apr 2026', days: 30, type: 'Direct Service', price: 1760 },
+            { line: 'Maersk', vessel: 'MAERSK GULSUN', code: 'ML9200', from: 'Mumbai (IN BOM)', to: 'Rotterdam (NL RTM)', depart: '18 Mar 2026', arrive: '09 Apr 2026', days: 22, type: 'Direct Service', price: 2400 },
+            { line: 'Hapag-Lloyd', vessel: 'BERLIN EXPRESS', code: 'HL7700', from: 'Mumbai (IN BOM)', to: 'Hamburg (DE HAM)', depart: '20 Mar 2026', arrive: '13 Apr 2026', days: 24, type: '1 Transhipment', price: 2200 },
+            { line: 'Evergreen', vessel: 'EVER ACE', code: 'EG3300', from: 'Shanghai (CN SHA)', to: 'Rotterdam (NL RTM)', depart: '15 Mar 2026', arrive: '14 Apr 2026', days: 30, type: 'Direct Service', price: 1980 },
+            { line: 'COSCO', vessel: 'COSCO SHIPPING', code: 'CS6600', from: 'Mumbai (IN BOM)', to: 'Dubai (AE DXB)', depart: '16 Mar 2026', arrive: '23 Mar 2026', days: 7, type: 'Direct Service', price: 620 },
+            { line: 'ONE', vessel: 'ONE STORK', code: 'ON2200', from: 'Singapore (SG SIN)', to: 'Los Angeles (US LAX)', depart: '12 Mar 2026', arrive: '27 Mar 2026', days: 15, type: 'Direct Service', price: 3200 },
+            { line: 'Yang Ming', vessel: 'YM WARRANTY', code: 'YM5500', from: 'Shanghai (CN SHA)', to: 'Hamburg (DE HAM)', depart: '17 Mar 2026', arrive: '16 Apr 2026', days: 30, type: '1 Transhipment', price: 1850 },
+        ];
+
+        function toggleSchedules(el) {
+            const shipView = document.querySelector('.p-4:not(#schedules-section)');
+            const schView = document.getElementById('schedules-section');
+            const navDash = document.getElementById('nav-dashboard');
+            const navSch = document.getElementById('nav-schedules');
+            const isShowing = schView.style.display !== 'none';
+
+            if (isShowing) {
+                // Back to dashboard
+                schView.style.display = 'none';
+                if (shipView) shipView.style.display = 'block';
+                navDash.classList.add('active');
+                navSch.classList.remove('active');
+            } else {
+                // Show schedules
+                schView.style.display = 'block';
+                if (shipView) shipView.style.display = 'none';
+                navDash.classList.remove('active');
+                navSch.classList.add('active');
+                renderSchedules(SCHEDULE_DATA);
+            }
+        }
+
+        function quickSearch(from, to) {
+            document.getElementById('sch-origin').value = from;
+            document.getElementById('sch-dest').value = to;
+            searchSchedules();
+        }
+
+        function searchSchedules() {
+            const origin = document.getElementById('sch-origin').value.trim().toLowerCase();
+            const dest = document.getElementById('sch-dest').value.trim().toLowerCase();
+            const filtered = SCHEDULE_DATA.filter(s => {
+                const matchOrigin = !origin || s.from.toLowerCase().includes(origin);
+                const matchDest = !dest || s.to.toLowerCase().includes(dest);
+                return matchOrigin && matchDest;
+            });
+            document.getElementById('sch-results-label').innerText =
+                filtered.length ? `${filtered.length} Schedule(s) Found` : 'No Schedules Found';
+            renderSchedules(filtered);
+        }
+
+        const lineColors = { MSC: '#ef4444', 'CMA CGM': '#f59e0b', Maersk: '#3b82f6', 'Hapag-Lloyd': '#f97316', Evergreen: '#22c55e', COSCO: '#8b5cf6', ONE: '#06b6d4', 'Yang Ming': '#ec4899' };
+
+        function renderSchedules(list) {
+            const el = document.getElementById('sch-results');
+            if (!list.length) {
+                el.innerHTML = '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:40px;text-align:center;"><i class="fas fa-ship fa-2x text-white-50 mb-3 d-block"></i><span class="text-white-50">No schedules found for this route.</span></div>';
+                return;
+            }
+            el.innerHTML = list.map(s => `
+            <div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px 24px;margin-bottom:14px;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(59,130,246,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+                <div class="row align-items-center">
+                    <div class="col-md-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width:36px;height:36px;border-radius:50%;background:${lineColors[s.line] || '#3b82f6'}22;border:2px solid ${lineColors[s.line] || '#3b82f6'};display:flex;align-items:center;justify-content:center;">
+                                <i class="fas fa-ship" style="color:${lineColors[s.line] || '#3b82f6'};font-size:14px;"></i>
+                            </div>
+                            <div>
+                                <div class="text-white fw-bold" style="font-size:0.85rem;">${s.line}</div>
+                                <div class="text-white-50" style="font-size:0.72rem;">${s.vessel}</div>
+                                <span style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:6px;">${s.code}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="text-center">
+                                <div class="text-white-50" style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Departure</div>
+                                <div class="text-white fw-bold">${s.depart}</div>
+                                <div class="text-white-50 small">${s.from}</div>
+                            </div>
+                            <div style="flex:1;text-align:center;">
+                                <div style="color:${lineColors[s.line] || '#3b82f6'};font-weight:700;font-size:0.82rem;">${s.days} Days</div>
+                                <div style="height:2px;background:linear-gradient(90deg,${lineColors[s.line] || '#3b82f6'},transparent);border-radius:2px;margin:4px 0;"></div>
+                                <div class="text-white-50" style="font-size:0.7rem;">${s.type}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-white-50" style="font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;">Arrival</div>
+                                <div class="text-white fw-bold">${s.arrive}</div>
+                                <div class="text-white-50 small">${s.to}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 text-center">
+                        <div class="text-white-50" style="font-size:0.72rem;">Est. Freight</div>
+                        <div class="text-success fw-bold">$${s.price.toLocaleString()}</div>
+                        <div class="text-white-50" style="font-size:0.68rem;">per container</div>
+                    </div>
+                    <div class="col-md-2 text-end">
+                        <a href="wizard.html" class="btn btn-primary btn-sm rounded-pill px-3 fw-semibold"><i class="fas fa-arrow-right me-1"></i>Book Now</a>
+                    </div>
+                </div>
+            </div>`).join('');
+        }
+    </script>
+
 </body>
 
 </html>

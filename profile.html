@@ -1,126 +1,396 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <title>My Profile | Smart Shipping</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | Smart Shipping</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="auth-guard.js"></script>
 </head>
-<body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="index.html">
-                <i class="fas fa-ship me-2"></i>Smart Shipping
+<body class="dashboard-page">
+
+    <!-- LEFT SIDEBAR -->
+    <aside class="sidebar">
+        <div class="brand-section">
+            <a href="index.html" class="text-decoration-none">
+                <h4 class="fw-bold text-white mb-0"><i class="fas fa-ship me-2 text-primary"></i>SmartShip</h4>
             </a>
-            <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#menu">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="menu">
-                <ul class="navbar-nav ms-auto align-items-center">
-                    <li class="nav-item"><a class="nav-link" href="index.html">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="shipments.html">Shipments</a></li>
-                    <li class="nav-item"><a class="nav-link" href="wizard.html">Wizard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="process-flow.html">Process Flow</a></li>
-                    <li class="nav-item dropdown ms-lg-3">
-                         <a class="nav-link dropdown-toggle active" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle fs-5"></i>
-                         </a>
-                         <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
-                             <li><a class="dropdown-item active" href="profile.html">My Profile</a></li>
-                             <li><hr class="dropdown-divider"></li>
-                             <li><a class="dropdown-item text-danger" href="#" onclick="logout()">Logout</a></li>
-                         </ul>
-                    </li>
-                </ul>
-            </div>
+            <span class="text-xs text-white-50" id="sidebar-role-label">ENTERPRISE</span>
         </div>
-    </nav>
-
-    <div class="container py-5">
-        <div class="row justify-content-center">
-            <div class="col-lg-8">
-                <div class="glass p-5 text-white">
-                    <div class="d-flex align-items-center justify-content-between mb-5">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-4" style="width: 80px; height: 80px; font-size: 2rem;">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            <div>
-                                <h2 class="fw-bold mb-0">My Profile</h2>
-                                <p class="text-white-50 mb-0">Manage your personal and company details.</p>
-                            </div>
-                        </div>
-                        <button class="btn btn-primary" onclick="enableEdit()" id="editBtn">
-                            <i class="fas fa-edit me-2"></i> Edit Details
-                        </button>
-                    </div>
-
-                    <form id="profileForm" onsubmit="saveProfile(event)">
-                        <fieldset id="formFieldset" disabled>
-                            <div class="row g-4">
-                                <div class="col-md-6">
-                                    <label class="form-label text-white-50 small fw-bold">FULL NAME</label>
-                                    <input type="text" class="form-control bg-transparent text-white border-secondary" id="fullName" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-white-50 small fw-bold">COMPANY NAME</label>
-                                    <input type="text" class="form-control bg-transparent text-white border-secondary" id="companyName">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-white-50 small fw-bold">EMAIL ADDRESS</label>
-                                    <input type="email" class="form-control bg-transparent text-white-50 border-secondary" id="email" readonly style="cursor: not-allowed;">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-white-50 small fw-bold">CONTACT PHONE</label>
-                                    <input type="text" class="form-control bg-transparent text-white border-secondary" id="phone">
-                                </div>
-                                <div class="col-md-12">
-                                    <label class="form-label text-white-50 small fw-bold">LOCATION / ADDRESS</label>
-                                    <textarea class="form-control bg-transparent text-white border-secondary" id="location" rows="2"></textarea>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-white-50 small fw-bold">USE CASE</label>
-                                    <select class="form-control bg-transparent text-white border-secondary" id="useCase">
-                                        <option value="Business" class="text-dark">Business</option>
-                                        <option value="Personal" class="text-dark">Personal</option>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-5 d-flex gap-3 d-none" id="actionButtons">
-                                <button type="submit" class="btn btn-success px-4">Save Changes</button>
-                                <button type="button" class="btn btn-outline-light px-4" onclick="cancelEdit()">Cancel</button>
-                            </div>
-                        </fieldset>
-                    </form>
+        <nav class="d-flex flex-column gap-1" id="sidebar-nav">
+            <!-- Dynamically built by JS based on role -->
+        </nav>
+        <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
+            <div class="d-flex align-items-center gap-2">
+                <div id="user-avatar"
+                    class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                    style="width:32px;height:32px;">U</div>
+                <div class="d-grid">
+                    <span id="user-name-display" class="text-white text-sm fw-bold">Loading...</span>
+                    <span id="user-role-badge" class="badge bg-secondary mt-1"
+                        style="font-size:0.65rem;width:fit-content;">--</span>
                 </div>
             </div>
         </div>
-    </div>
+    </aside>
 
-    <!-- Toast Logic included via simple script or bootstrap toast -->
-    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-      <div id="liveToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body">
-            Profile updated successfully!
-          </div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-main">
+        <header class="dashboard-header">
+            <div class="search-bar">
+                <i class="fas fa-user-circle text-muted"></i>
+                <input type="text" placeholder="Profile & Account Settings" disabled>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <button onclick="handleLogout()" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</button>
+            </div>
+        </header>
+
+        <div class="p-4">
+            <div class="mb-4">
+                <h3 class="fw-bold">My Profile</h3>
+                <p class="text-muted small">View and update your personal account information.</p>
+            </div>
+
+            <!-- Profile Card -->
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="summary-card text-center p-4">
+                        <div class="mx-auto mb-3 rounded-circle d-flex align-items-center justify-content-center text-white fw-bold fs-1"
+                            id="profile-avatar"
+                            style="width:80px;height:80px;background:linear-gradient(135deg,#6366f1,#8b5cf6);">U</div>
+                        <h5 class="fw-bold text-white mb-1" id="profile-name">Loading...</h5>
+                        <span class="badge bg-primary" id="profile-role-badge">--</span>
+                        <p class="text-white-50 small mt-2 mb-0" id="profile-member-since">Member since --</p>
+
+                        <!-- Company-specific verification badge -->
+                        <div id="company-status-block" class="mt-3 d-none">
+                            <span id="company-status-badge" class="badge fs-6 px-3 py-2">Pending</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-8">
+                    <div class="summary-card p-4">
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-4">Account Information</h6>
+
+                        <!-- Display Mode -->
+                        <div id="view-mode">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="text-white-50 small">Full Name</label>
+                                    <p class="text-white fw-bold mb-0" id="disp-name">--</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-white-50 small">Email Address</label>
+                                    <p class="text-white fw-bold mb-0" id="disp-email">--</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-white-50 small">Phone Number</label>
+                                    <p class="text-white fw-bold mb-0" id="disp-phone">--</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-white-50 small">Role</label>
+                                    <p class="text-white fw-bold mb-0 text-capitalize" id="disp-role">--</p>
+                                </div>
+                                <!-- Company Only Fields -->
+                                <div id="company-fields" class="d-none col-12">
+                                    <hr class="border-secondary">
+                                    <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Company Information</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="text-white-50 small">Company Name</label>
+                                            <p class="text-white fw-bold mb-0" id="disp-company-name">--</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="text-white-50 small">Verification Status</label>
+                                            <p class="mb-0" id="disp-company-status">--</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="text-white-50 small">Total Deliveries</label>
+                                            <p class="text-white fw-bold mb-0" id="disp-total-deliveries">--</p>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="text-white-50 small">Rating</label>
+                                            <p class="text-warning fw-bold mb-0" id="disp-rating">--</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary mt-4 px-4" onclick="enableEdit()"><i
+                                    class="fas fa-edit me-2"></i>Edit Profile</button>
+                        </div>
+
+                        <!-- Edit Mode -->
+                        <div id="edit-mode" class="d-none">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="text-white-50 small">Full Name</label>
+                                    <input type="text" class="form-control bg-dark text-white border-secondary"
+                                        id="edit-name">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-white-50 small">Phone Number</label>
+                                    <input type="text" class="form-control bg-dark text-white border-secondary"
+                                        id="edit-phone">
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button class="btn btn-success px-4" onclick="saveProfile()"><i
+                                        class="fas fa-save me-2"></i>Save Changes</button>
+                                <button class="btn btn-outline-secondary px-4" onclick="cancelEdit()">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
+        </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="profile.js"></script>
+        <!-- Documents & Compliance (Company Only) -->
+        <div id="company-documents-section" class="row mt-4 d-none">
+            <div class="col-12">
+                <div class="card bg-dark border-secondary">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-4">Documents & Compliance</h5>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-4 bg-black bg-opacity-25 border border-secondary rounded h-100">
+                                    <h6 class="text-white-50 small text-uppercase mb-3">Upload Documents</h6>
+                                    <form id="docs-upload-form" onsubmit="submitDocuments(event)">
+                                        <input type="file" id="docFileInput"
+                                            class="form-control bg-dark text-white border-secondary mb-3" required
+                                            accept=".pdf,.png,.jpg">
+                                        <button type="submit" class="btn btn-primary w-100"><i
+                                                class="fas fa-upload me-2"></i>Upload for Verification</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-4 bg-black bg-opacity-25 border border-secondary rounded h-100">
+                                    <h6 class="text-white-50 small text-uppercase mb-3">Compliance Status</h6>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="bg-dark rounded-circle p-3 fs-4 text-muted border border-secondary d-flex align-items-center justify-content-center"
+                                            style="width:50px; height:50px;">
+                                            <i class="fas fa-file-contract"></i>
+                                        </div>
+                                        <div>
+                                            <p class="mb-0 fw-bold text-white">Business License / ID</p>
+                                            <small id="doc-status-text" class="text-warning">Pending Review</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="summary-card p-4 border border-danger border-opacity-25">
+                    <h6 class="text-danger fw-bold mb-2"><i class="fas fa-exclamation-triangle me-2"></i>Security
+                    </h6>
+                    <p class="text-white-50 small mb-3">Manage your session security. Logout removes your secure JWT
+                        cookie from this browser.</p>
+                    <button onclick="handleLogout()" class="btn btn-outline-danger btn-sm px-4">Logout of All
+                        Sessions</button>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+
     <script>
-        function logout() {
-            localStorage.removeItem('userId');
+        const API_URL = `http://${window.location.hostname}:3000`;
+        let currentUser = null;
+        let currentProfile = null;
+
+        const ROLE_NAVS = {
+            customer: `
+                <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
+                <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments</a>
+                <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
+                <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+                <hr class="border-secondary opacity-25 my-2">
+                <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice w-5"></i> Billing</a>
+                <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+                <a href="profile.html" class="nav-item-dash active"><i class="fas fa-cog w-5"></i> Settings</a>
+            `,
+            company: `
+                <a href="company-dashboard.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
+                <a href="shipments.html" class="nav-item-dash"><i class="fas fa-truck w-5"></i> Fleet</a>
+                <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+                <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Earnings</a>
+                <hr class="border-secondary opacity-25 my-2">
+                <a href="profile.html" class="nav-item-dash active"><i class="fas fa-cog w-5"></i> Settings</a>
+            `,
+            admin: `
+                <a href="admin-dashboard.html" class="nav-item-dash"><i class="fas fa-shield-alt w-5"></i> Overview</a>
+                <a href="shipments.html" class="nav-item-dash"><i class="fas fa-users w-5"></i> All Users</a>
+                <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Financials</a>
+                <hr class="border-secondary opacity-25 my-2">
+                <a href="profile.html" class="nav-item-dash active"><i class="fas fa-cog w-5"></i> Settings</a>
+            `
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/user/profile`, { credentials: 'include' });
+                const data = await res.json();
+
+                if (!data.success) {
+                    window.location.href = 'auth.html';
+                    return;
+                }
+
+                currentUser = data.user;
+                currentProfile = data.profile;
+
+                // Populate sidebar
+                document.getElementById('sidebar-nav').innerHTML = ROLE_NAVS[currentUser.role] || ROLE_NAVS.customer;
+                document.getElementById('sidebar-role-label').innerText = currentUser.role.toUpperCase();
+                const initial = (currentUser.name || 'U')[0].toUpperCase();
+                document.getElementById('user-avatar').innerText = initial;
+                document.getElementById('user-name-display').innerText = currentUser.name;
+                document.getElementById('user-role-badge').innerText = currentUser.role;
+
+                // Populate profile card
+                document.getElementById('profile-avatar').innerText = initial;
+                document.getElementById('profile-name').innerText = currentUser.name || '--';
+                document.getElementById('profile-role-badge').innerText = currentUser.role;
+                document.getElementById('profile-member-since').innerText = 'Member since ' + new Date(currentUser.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+
+                // Populate info fields
+                document.getElementById('disp-name').innerText = currentUser.name || '--';
+                document.getElementById('disp-email').innerText = currentUser.email || '--';
+                document.getElementById('disp-phone').innerText = currentUser.phone || 'Not set';
+                document.getElementById('disp-role').innerText = currentUser.role;
+
+                // Edit fields
+                document.getElementById('edit-name').value = currentUser.name || '';
+                document.getElementById('edit-phone').value = currentUser.phone || '';
+
+                // Company-specific fields
+                if (currentUser.role === 'company') {
+                    document.getElementById('company-fields').classList.remove('d-none');
+                    document.getElementById('company-status-block').classList.remove('d-none');
+
+                    const status = currentUser.company_status || 'pending';
+                    const statusBadge = document.getElementById('company-status-badge');
+                    const statusColors = { active: 'bg-success', pending: 'bg-warning text-dark', rejected: 'bg-danger' };
+                    statusBadge.className = `badge fs-6 px-3 py-2 ${statusColors[status] || 'bg-secondary'}`;
+                    statusBadge.innerText = status.charAt(0).toUpperCase() + status.slice(1);
+
+                    if (currentProfile) {
+                        document.getElementById('disp-company-name').innerText = currentProfile.company_name || '--';
+                        document.getElementById('disp-total-deliveries').innerText = currentProfile.total_deliveries || '0';
+                        document.getElementById('disp-rating').innerText = currentProfile.rating ? `⭐ ${parseFloat(currentProfile.rating).toFixed(1)}` : 'No ratings yet';
+
+                        // Show documents section and update status
+                        document.getElementById('company-documents-section').classList.remove('d-none');
+                        const docStatus = document.getElementById('doc-status-text');
+                        if (currentProfile.documents_url) {
+                            if (status === 'approved') {
+                                docStatus.className = 'text-success';
+                                docStatus.innerHTML = '<i class="fas fa-check-circle me-1"></i> Verified Active';
+                            } else {
+                                docStatus.className = 'text-warning';
+                                docStatus.innerHTML = '<i class="fas fa-clock me-1"></i> Received, Pending Review';
+                            }
+                        } else {
+                            docStatus.className = 'text-danger';
+                            docStatus.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Not Uploaded';
+                        }
+                    }
+                    document.getElementById('disp-company-status').innerHTML = `<span class="badge ${statusColors[status] || 'bg-secondary'}">${status}</span>`;
+                }
+
+            } catch (err) {
+                console.error(err);
+                window.location.href = 'auth.html';
+            }
+        });
+
+        function enableEdit() {
+            document.getElementById('view-mode').classList.add('d-none');
+            document.getElementById('edit-mode').classList.remove('d-none');
+        }
+
+        function cancelEdit() {
+            document.getElementById('view-mode').classList.remove('d-none');
+            document.getElementById('edit-mode').classList.add('d-none');
+        }
+
+        async function saveProfile() {
+            const name = document.getElementById('edit-name').value.trim();
+            const phone = document.getElementById('edit-phone').value.trim();
+
+            try {
+                const res = await fetch(`${API_URL}/api/user/profile`, {
+                    method: 'PUT',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // Update display
+                    document.getElementById('disp-name').innerText = name;
+                    document.getElementById('disp-phone').innerText = phone || 'Not set';
+                    document.getElementById('profile-name').innerText = name;
+                    document.getElementById('user-name-display').innerText = name;
+                    document.getElementById('profile-avatar').innerText = (name || 'U')[0].toUpperCase();
+                    document.getElementById('user-avatar').innerText = (name || 'U')[0].toUpperCase();
+                    cancelEdit();
+                    alert('Profile updated successfully!');
+                } else {
+                    alert('Failed to update profile.');
+                }
+            } catch (err) {
+                alert('Error saving profile.');
+            }
+        }
+
+        async function submitDocuments(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById('docFileInput');
+            if (!fileInput.files.length) return alert('Please select a file to upload');
+
+            const formData = new FormData();
+            formData.append('document', fileInput.files[0]);
+
+            try {
+                const res = await fetch(`${API_URL}/api/company/upload-documents`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData // No Content-Type header needed for FormData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('Documents successfully submitted for admin review!');
+                    window.location.reload();
+                } else {
+                    alert('Upload failed: ' + data.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Connection error during upload.');
+            }
+        }
+
+        async function handleLogout() {
+            await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
             window.location.href = 'auth.html';
         }
     </script>
 </body>
+
 </html>

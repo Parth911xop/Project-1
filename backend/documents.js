@@ -9,17 +9,31 @@ const createDocumentsTable = async (dbPool) => {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS documents (
                 id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
                 shipment_id INTEGER REFERENCES shipments(id),
-                type VARCHAR(50) NOT NULL, -- 'Bill of Lading', 'Commercial Invoice', 'Packing List'
-                filename VARCHAR(255) NOT NULL,
-                url VARCHAR(255), -- Mock URL
-                status VARCHAR(20) DEFAULT 'Pending', -- Pending, Verified, Rejected
+                type VARCHAR(50) NOT NULL,
+                doc_name VARCHAR(255),
+                file_url VARCHAR(255),
+                status VARCHAR(20) DEFAULT 'Submitted',
                 uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
-        console.log("✅ Table 'documents' ready");
+        
+        // --- Schema Synchronization & Migrations ---
+        // 1. Rename doc_type to type if needed
+        try { await pool.query(`ALTER TABLE documents RENAME COLUMN doc_type TO type;`); } catch(e) {}
+        
+        // 2. Add missing columns
+        try { await pool.query(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS type VARCHAR(50);`); } catch(e) {}
+        try { await pool.query(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS doc_name VARCHAR(255);`); } catch(e) {}
+        try { await pool.query(`ALTER TABLE documents ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id);`); } catch(e) {}
+        
+        // 3. Drop restrictive CHECK constraints from older versions (e.g. db-schema.sql)
+        try { await pool.query(`ALTER TABLE documents DROP CONSTRAINT IF EXISTS documents_status_check;`); } catch(e) {}
+
+        console.log("✅ Table 'documents' ready and synced");
     } catch (err) {
-        console.error("❌ Error creating 'documents' table:", err);
+        console.error("❌ Error initializing 'documents' table:", err);
     }
 };
 
@@ -35,22 +49,67 @@ router.get('/:shipmentId', async (req, res) => {
     }
 });
 
-// Mock Upload Document
-router.post('/upload', async (req, res) => {
+// Get All Documents for the Logged-in User
+router.get('/user/all', async (req, res) => {
     try {
-        const { shipmentId, type, filename } = req.body;
+        const userId = req.user.userId;
+        const result = await pool.query(`
+            SELECT d.*, s.origin_address, s.destination_address 
+            FROM documents d
+            JOIN shipments s ON d.shipment_id = s.id
+            WHERE s.customer_id = $1
+            ORDER BY d.uploaded_at DESC
+        `, [userId]);
+        res.json({ success: true, documents: result.rows });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Failed to fetch user documents' });
+    }
+});
 
-        // Mock URL generation
-        const mockUrl = `https://udocs.example.com/${shipmentId}/${filename}`;
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, `doc-${req.user?.userId || 'guest'}-${Date.now()}${path.extname(file.originalname)}`);
+    }
+});
+const upload = multer({ storage: storage });
+
+router.post('/upload', upload.single('docFile'), async (req, res) => {
+    console.log("📥 Received upload request:", req.body);
+    try {
+        const { shipmentId, type, docName } = req.body;
+        const userId = req.user?.userId;
+
+        if (!req.file) {
+            console.log("❌ No file in request");
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+        console.log("📂 File received:", req.file.filename);
+
+        const fileUrl = `/uploads/${req.file.filename}`;
+        const finalDocName = docName || req.file.originalname;
 
         const result = await pool.query(
-            'INSERT INTO documents (shipment_id, type, filename, url, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [shipmentId, type, filename, mockUrl, 'Pending']
+            'INSERT INTO documents (user_id, shipment_id, type, doc_name, file_url, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [userId, shipmentId || null, type, finalDocName, fileUrl, 'Submitted']
         );
+        console.log("✅ DB Insert successful:", result.rows[0].id);
 
         res.json({ success: true, document: result.rows[0] });
     } catch (err) {
-        console.error(err);
+        console.error("❌ Upload Endpoint Error:", err);
         res.status(500).json({ success: false, error: 'Failed to upload document' });
     }
 });

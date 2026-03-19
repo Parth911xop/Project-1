@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Partner Hub | Smart Shipping Enterprise</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --co-accent: #3b82f6;
+            --co-bg: #0c1120;
+            --sidebar-w: 220px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--co-bg);
+            color: #e2e8f0;
+            margin: 0;
+        }
+
+        /* Sidebar */
+        .co-sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--sidebar-w);
+            background: #0f1629;
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .co-brand {
+            padding: 20px 18px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .co-brand h5 {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 0;
+        }
+
+        .co-brand small {
+            color: var(--co-accent);
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .co-nav {
+            padding: 12px 10px;
+            flex: 1;
+        }
+
+        .co-nav-section {
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.25);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 14px 8px 6px;
+        }
+
+        .co-nav a {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.83rem;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.18s;
+            margin-bottom: 2px;
+        }
+
+        .co-nav a:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .co-nav a.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #93c5fd;
+            border-left: 3px solid var(--co-accent);
+        }
+
+        .co-nav a i {
+            width: 16px;
+            text-align: center;
+            font-size: 0.82rem;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--co-accent);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+
+        .nav-badge-warn {
+            background: #f59e0b !important;
+        }
+
+        /* Main */
+        .co-main {
+            margin-left: var(--sidebar-w);
+            min-height: 100vh;
+        }
+
+        .co-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            padding: 14px 24px;
+            background: rgba(12, 17, 32, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .co-header h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+        }
+
+        /* Section */
+        .co-section {
+            display: none;
+            padding: 28px 24px;
+        }
+
+        .co-section.active {
+            display: block;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .section-header h2 {
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 0;
+        }
+
+        /* KPI */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .kpi-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            padding: 18px 16px;
+        }
+
+        .kpi-card .kpi-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .kpi-card .kpi-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+
+        /* Table */
+        .co-table-wrap {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .co-table-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .co-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .co-table th {
+            padding: 11px 14px;
+            text-align: left;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.35);
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .co-table td {
+            padding: 12px 14px;
+            font-size: 0.82rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+        }
+
+        .co-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .co-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Charts */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .chart-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .chart-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            padding: 20px;
+        }
+
+        .chart-card h6 {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        /* Inputs */
+        .co-input {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 0.82rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .co-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .co-input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            background: rgba(255, 255, 255, 0.09);
+            color: #fff;
+        }
+
+        .co-input option {
+            background: #1a2035;
+        }
+
+        /* Booking request cards */
+        .booking-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .booking-card:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .booking-card.new-req {
+            border-left: 4px solid #f59e0b;
+        }
+
+        /* Badges */
+        .badge-co {
+            padding: 3px 9px;
+            border-radius: 10px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            display: inline-block;
+        }
+
+        .b-booked {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .b-accepted {
+            background: rgba(99, 102, 241, 0.2);
+            color: #c4b5fd;
+        }
+
+        .b-port {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+
+        .b-transit {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+
+        .b-delivered {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .b-declined {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        /* Action buttons */
+        .btn-co {
+            padding: 5px 12px;
+            border-radius: 7px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-accept {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .btn-accept:hover {
+            background: rgba(34, 197, 94, 0.35);
+        }
+
+        .btn-reject {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+
+        .btn-reject:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-status {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+        }
+
+        .btn-status:hover {
+            background: rgba(59, 130, 246, 0.35);
+        }
+
+        .btn-delete {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+        }
+
+        .btn-delete:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-edit {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+        }
+
+        .btn-edit:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-sec {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .btn-sec:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Notification bell */
+        .bell-wrap {
+            position: relative;
+        }
+
+        .bell-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .bell-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .notif-badge {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 800;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1.5px solid var(--co-bg);
+        }
+
+        .notif-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 300px;
+            background: #131d2e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: none;
+            overflow: hidden;
+        }
+
+        .notif-dropdown.show {
+            display: block;
+        }
+
+        .notif-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .notif-item:hover {
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .notif-item.unread {
+            border-left: 3px solid var(--co-accent);
+        }
+
+        /* Timeline tracking */
+        .tl-entry {
+            display: flex;
+            gap: 14px;
+            padding-bottom: 18px;
+            position: relative;
+        }
+
+        .tl-entry::before {
+            content: '';
+            position: absolute;
+            left: 13px;
+            top: 24px;
+            width: 2px;
+            height: calc(100% - 8px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .tl-entry:last-child::before {
+            display: none;
+        }
+
+        .tl-dot {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(59, 130, 246, 0.2);
+            border: 2px solid var(--co-accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 11px;
+            color: var(--co-accent);
+        }
+
+        /* Toast */
+        .co-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast-item {
+            background: #131d2e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px 16px;
+            min-width: 260px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.83rem;
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Modal */
+        .co-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .co-modal {
+            background: #131d2e;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 28px;
+            width: 480px;
+            max-width: 90%;
+        }
+
+        .co-modal h5 {
+            font-weight: 800;
+            font-size: 1rem;
+            color: #fff;
+            margin-bottom: 20px;
+        }
+
+        .co-modal label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.45);
+            text-transform: uppercase;
+            display: block;
+            margin-bottom: 5px;
+            margin-top: 14px;
+        }
+
+        .co-modal input,
+        .co-modal select,
+        .co-modal textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 8px;
+            padding: 9px 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+        }
+
+        .co-modal select option {
+            background: #1a2035;
+        }
+
+        /* Pending banner */
+        .pending-banner {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ═══════════════ SIDEBAR ════════════════════════════════════════ -->
+    <aside class="co-sidebar">
+        <div class="co-brand">
+            <h5><i class="fas fa-ship me-2" style="color:var(--co-accent);"></i>Partner Hub</h5>
+            <small>SMART SHIPPING</small>
+        </div>
+        <nav class="co-nav">
+            <div class="co-nav-section">Overview</div>
+            <a href="#" class="active" onclick="showSection('dashboard',this)"><i class="fas fa-th-large"></i>
+                Dashboard</a>
+
+            <div class="co-nav-section">Operations</div>
+            <a href="#" onclick="showSection('bookings',this)"><i class="fas fa-inbox"></i> Booking Requests <span
+                    class="nav-badge nav-badge-warn" id="nav-bookings">--</span></a>
+            <a href="#" onclick="showSection('shipments',this)"><i class="fas fa-boxes"></i> Shipments <span
+                    class="nav-badge" id="nav-shipments">--</span></a>
+            <a href="#" onclick="showSection('tracking',this)"><i class="fas fa-map-marked-alt"></i> Tracking
+                Updates</a>
+
+            <div class="co-nav-section">Fleet</div>
+            <a href="#" onclick="showSection('vessels',this)"><i class="fas fa-ship"></i> Vessels / Fleet</a>
+            <a href="#" onclick="showSection('schedules',this)"><i class="fas fa-calendar-alt"></i> Schedules</a>
+            <a href="#" onclick="showSection('containers',this)"><i class="fas fa-cube"></i> Containers</a>
+
+            <div class="co-nav-section">Business</div>
+            <a href="#" onclick="showSection('pricing',this)"><i class="fas fa-tags"></i> Pricing & Rates</a>
+            <a href="#" onclick="showSection('customers',this)"><i class="fas fa-users"></i> Customers <span
+                    class="nav-badge" id="nav-customers">--</span></a>
+            <a href="#" onclick="showSection('documents',this)"><i class="fas fa-file-check"></i> Documents <span
+                    class="nav-badge nav-badge-warn" id="nav-docs">--</span></a>
+            <a href="#" onclick="showSection('finance',this)"><i class="fas fa-chart-line"></i> Financial</a>
+            <a href="#" onclick="showSection('notifications',this)"><i class="fas fa-bell"></i> Notifications</a>
+
+            <div class="mt-auto pt-3 border-top border-secondary border-opacity-10" style="margin-top:20px;">
+                <a href="#" onclick="handleLogout()"><i class="fas fa-sign-out-alt text-danger"></i> <span
+                        class="text-danger">Logout</span></a>
+            </div>
+        </nav>
+    </aside>
+
+    <!-- ═══════════════ MAIN ═══════════════════════════════════════════ -->
+    <div class="co-main">
+
+        <!-- Header -->
+        <div class="co-header">
+            <h4 id="section-title"><i class="fas fa-th-large me-2 text-primary"></i> Dashboard Overview</h4>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Notification Bell -->
+                <div class="bell-wrap">
+                    <button class="bell-btn" onclick="toggleNotifs()"><i class="fas fa-bell"></i><span
+                            class="notif-badge" id="notif-count" style="display:none;">0</span></button>
+                    <div class="notif-dropdown" id="notif-dropdown">
+                        <div
+                            class="d-flex justify-content-between align-items-center px-4 py-3 border-bottom border-secondary border-opacity-20">
+                            <span class="text-white fw-bold small">Notifications</span>
+                            <button class="btn p-0 text-muted" style="font-size:0.72rem;" onclick="markAllRead()">Mark
+                                all read</button>
+                        </div>
+                        <div id="notif-list" style="max-height:280px;overflow-y:auto;"></div>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-white-50 small">Company: </span>
+                    <strong class="text-white small" id="company-name">--</strong>
+                </div>
+                <span id="company-status-badge" class="badge bg-warning text-dark">Pending</span>
+            </div>
+        </div>
+
+        <!-- Pending Alert -->
+        <div id="pending-banner" style="display:none;" class="mx-6">
+            <div class="pending-banner mx-4 mt-4">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="text-warning fw-bold mb-1"><i class="fas fa-exclamation-triangle me-2"></i>Account
+                            Pending Approval</div>
+                        <div class="text-white-50 small">Your company account is pending admin review. Submit your
+                            business documents to expedite verification.</div>
+                    </div>
+                    <div class="d-flex gap-2 align-items-center ms-3">
+                        <input type="file" id="doc-file-input" class="co-input" accept=".pdf,.jpg,.png"
+                            style="width:180px;">
+                        <button class="btn btn-warning btn-sm rounded-pill px-3 text-dark fw-bold"
+                            onclick="submitDocuments()">Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ════ 1. DASHBOARD ═══════════════════════════════════════ -->
+        <section class="co-section active" id="section-dashboard">
+            <div class="section-header">
+                <h2><i class="fas fa-th-large me-2 text-primary"></i> Company Overview</h2>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="loadDashboard()"><i
+                        class="fas fa-sync me-1"></i>Refresh</button>
+            </div>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Shipments</div>
+                    <div class="kpi-value" id="kpi-total">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Active</div>
+                    <div class="kpi-value text-info" id="kpi-active">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Delivered</div>
+                    <div class="kpi-value text-success" id="kpi-delivered">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Pending Bookings</div>
+                    <div class="kpi-value text-warning" id="kpi-pending">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Revenue (₹)</div>
+                    <div class="kpi-value text-success" id="kpi-revenue">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Vessels</div>
+                    <div class="kpi-value" id="kpi-vessels">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Exports</div>
+                    <div class="kpi-value" style="color:#60a5fa;" id="kpi-exports">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Imports</div>
+                    <div class="kpi-value" style="color:#34d399;" id="kpi-imports">--</div>
+                </div>
+            </div>
+            <div class="chart-grid">
+                <div class="chart-card">
+                    <h6>Monthly Shipments</h6><canvas id="chart-monthly" height="120"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h6>Shipment Status</h6><canvas id="chart-status" height="120"></canvas>
+                </div>
+            </div>
+            <div class="co-table-wrap">
+                <div class="co-table-header"><span class="text-white fw-bold small">Recent Bookings</span><a href="#"
+                        onclick="showSection('bookings',null)" class="text-primary small text-decoration-none">View All
+                        →</a></div>
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Customer</th>
+                                <th>Route</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Cost</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dash-recent"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 2. BOOKING REQUESTS ══════════════════════════════════ -->
+        <section class="co-section" id="section-bookings">
+            <div class="section-header">
+                <h2><i class="fas fa-inbox me-2 text-warning"></i> Booking Requests</h2>
+                <span class="text-white-50 small" id="bookings-count">-- pending</span>
+            </div>
+            <div id="bookings-grid">
+                <div class="text-white-50 text-center py-5">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading...
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 3. SHIPMENTS ═════════════════════════════════════════ -->
+        <section class="co-section" id="section-shipments">
+            <div class="section-header">
+                <h2><i class="fas fa-boxes me-2 text-info"></i> Shipment Management</h2>
+            </div>
+            <div class="co-table-wrap">
+                <div class="co-table-header">
+                    <input class="co-input" id="ship-search" placeholder="Search by ID, customer, route..."
+                        oninput="filterTable('co-shipments-body','ship-search',[0,1,2])">
+                    <select class="co-input" id="ship-status-filter" onchange="loadShipments()">
+                        <option value="">All Statuses</option>
+                        <option>Booked</option>
+                        <option>Accepted</option>
+                        <option>At Port</option>
+                        <option>In Transit</option>
+                        <option>Arrived</option>
+                        <option>Delivered</option>
+                    </select>
+                    <select class="co-input" id="co-shipment-type-filter" onchange="loadShipments()">
+                        <option value="">All Types</option>
+                        <option value="Export">Export</option>
+                        <option value="Import">Import</option>
+                    </select>
+                </div>
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Customer</th>
+                                <th>Route</th>
+                                <th>Type</th>
+                                <th>Mode</th>
+                                <th>Status</th>
+                                <th>ETA</th>
+                                <th>Cost</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="co-shipments-body">
+                            <tr>
+                                <td colspan="9" class="text-center text-white-50 py-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 4. VESSELS ═══════════════════════════════════════════ -->
+        <section class="co-section" id="section-vessels">
+            <div class="section-header">
+                <h2><i class="fas fa-ship me-2 text-primary"></i> Vessel / Fleet Management</h2>
+                <button class="btn btn-sm btn-primary rounded-pill px-3" onclick="openModal('vessel-modal')"><i
+                        class="fas fa-plus me-1"></i>Add Vessel</button>
+            </div>
+            <div class="co-table-wrap">
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>Vessel Name</th>
+                                <th>Type & Compatibility</th>
+                                <th>Slots (Used/Total)</th>
+                                <th>Location & Next Port</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vessels-body">
+                            <tr>
+                                <td colspan="7" class="text-center text-white-50 py-4">No vessels added yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 5. SCHEDULES ════════════════════════════════════════ -->
+        <section class="co-section" id="section-schedules">
+            <div class="section-header">
+                <h2><i class="fas fa-calendar-alt me-2 text-success"></i> Schedule Management</h2>
+                <button class="btn btn-sm btn-success rounded-pill px-3" onclick="openModal('schedule-modal')"><i
+                        class="fas fa-plus me-1"></i>Add Schedule</button>
+            </div>
+            <div class="co-table-wrap">
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>Vessel</th>
+                                <th>From Port</th>
+                                <th>To Port</th>
+                                <th>Departure</th>
+                                <th>ETA</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedules-body">
+                            <tr>
+                                <td colspan="7" class="text-center text-white-50 py-4">No schedules created yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 6. CONTAINERS ═══════════════════════════════════════ -->
+        <section class="co-section" id="section-containers">
+            <div class="section-header">
+                <h2><i class="fas fa-cube me-2 text-info"></i> Container Management</h2>
+            </div>
+            <div class="co-table-wrap">
+                <div class="co-table-header">
+                    <span class="text-white fw-bold small">Assign Container to Shipment</span>
+                </div>
+                <div class="p-4">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="text-white-50 small d-block mb-1">Shipment ID</label>
+                            <input class="co-input w-100" id="cont-shipment-id" placeholder="e.g. 42">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-white-50 small d-block mb-1">Container Type</label>
+                            <select class="co-input w-100" id="cont-type">
+                                <option>20ft Standard</option>
+                                <option>40ft Standard</option>
+                                <option>40ft High Cube</option>
+                                <option>Refrigerated (Reefer)</option>
+                                <option>Open Top</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="text-white-50 small d-block mb-1">Container ID</label>
+                            <input class="co-input w-100" id="cont-id" placeholder="e.g. MSCU1234567">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-primary w-100 rounded-pill" onclick="assignContainer()"><i
+                                    class="fas fa-check me-1"></i>Assign</button>
+                        </div>
+                    </div>
+                    <div id="container-log"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 7. PRICING ══════════════════════════════════════════ -->
+        <section class="co-section" id="section-pricing">
+            <div class="section-header">
+                <h2><i class="fas fa-tags me-2 text-warning"></i> Pricing & Service Rates</h2>
+                <button class="btn btn-sm btn-warning rounded-pill px-3 text-dark" onclick="openModal('price-modal')"><i
+                        class="fas fa-plus me-1"></i>Add Rate</button>
+            </div>
+            <div class="co-table-wrap">
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>From</th>
+                                <th>To</th>
+                                <th>Mode</th>
+                                <th>Rate/CBM</th>
+                                <th>Min Charge</th>
+                                <th>Transit Days</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pricing-body">
+                            <tr>
+                                <td colspan="7" class="text-center text-white-50 py-4">No pricing rates set yet.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 8. CUSTOMERS ════════════════════════════════════════ -->
+        <section class="co-section" id="section-customers">
+            <div class="section-header">
+                <h2><i class="fas fa-users me-2 text-info"></i> Customer Management <span id="customers-count"
+                        class="badge bg-info ms-2 small" style="font-size: 0.9rem; vertical-align: middle;"></span></h2>
+            </div>
+            <div class="co-table-wrap">
+                <div class="co-table-header">
+                    <input class="co-input" id="cust-search" placeholder="Search by name or email..."
+                        oninput="filterTable('customers-body','cust-search',[0,1])">
+                </div>
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Shipments</th>
+                                <th>Last Shipment</th>
+                                <th>Total Value</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customers-body">
+                            <tr>
+                                <td colspan="6" class="text-center text-white-50 py-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 9. DOCUMENTS ════════════════════════════════════════ -->
+        <section class="co-section" id="section-documents">
+            <div class="section-header">
+                <h2><i class="fas fa-file-check me-2 text-warning"></i> Document Management Center</h2>
+                <button class="btn-co btn-primary" data-bs-toggle="modal" data-bs-target="#managerDocUploadModal">
+                    <i class="fas fa-cloud-upload-alt me-2"></i>Upload Logistics Document
+                </button>
+            </div>
+
+            <!-- Documents KPI Grid -->
+            <div class="kpi-grid mb-4">
+                <div class="kpi-card" style="border-bottom: 2px solid var(--bs-info);">
+                    <div class="kpi-label">Total Documents</div>
+                    <div class="kpi-value" id="doc-kpi-total">--</div>
+                </div>
+                <div class="kpi-card" style="border-bottom: 2px solid var(--bs-warning);">
+                    <div class="kpi-label">Pending Verification</div>
+                    <div class="kpi-value text-warning" id="doc-kpi-pending">--</div>
+                </div>
+                <div class="kpi-card" style="border-bottom: 2px solid var(--bs-success);">
+                    <div class="kpi-label">Verified Documents</div>
+                    <div class="kpi-value text-success" id="doc-kpi-verified">--</div>
+                </div>
+                <div class="kpi-card" style="border-bottom: 2px solid var(--bs-danger);">
+                    <div class="kpi-label">Rejected Documents</div>
+                    <div class="kpi-value text-danger" id="doc-kpi-rejected">--</div>
+                </div>
+            </div>
+
+            <div class="co-table-wrap">
+                <div class="co-table-header d-flex flex-wrap gap-2">
+                    <input type="text" class="co-input" id="doc-search" placeholder="Search Shipment ID or Customer"
+                        style="max-width:250px;" onkeyup="loadDocuments()">
+
+                    <select class="co-input" id="doc-type-filter" onchange="loadDocuments()" style="max-width:200px;">
+                        <option value="">All Document Types</option>
+                        <option value="KYC - Identity Proof">Identity / KYC</option>
+                        <option value="Commercial Invoice">Commercial Invoice</option>
+                        <option value="Packing List">Packing List</option>
+                        <option value="Bill of Lading">Bill of Lading</option>
+                        <option value="Customs Declaration">Customs Declaration</option>
+                        <option value="Certificate of Origin">Certificate of Origin</option>
+                    </select>
+
+                    <select class="co-input" id="doc-filter" onchange="loadDocuments()" style="max-width:200px;">
+                        <option value="">All Statuses</option>
+                        <option value="Submitted">Pending Review</option>
+                        <option value="Verified">Verified</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+
+                    <button class="btn-co border border-secondary text-white-50 ms-auto" onclick="downloadAllDocs()">
+                        <i class="fas fa-file-archive me-2"></i>Download Zip
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>Shipment</th>
+                                <th>Customer & Cargo</th>
+                                <th>Document Details</th>
+                                <th>Status</th>
+                                <th>Upload Date</th>
+                                <th>Review Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="documents-body">
+                            <tr>
+                                <td colspan="6" class="text-center text-white-50 py-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 10. TRACKING ════════════════════════════════════════ -->
+        <section class="co-section" id="section-tracking">
+            <div class="section-header">
+                <h2><i class="fas fa-map-marked-alt me-2 text-primary"></i> Tracking Updates</h2>
+            </div>
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <div class="co-table-wrap p-4">
+                        <h6 class="text-white fw-bold mb-4">Add Tracking Event</h6>
+                        <div class="mb-3">
+                            <label class="text-white-50 small fw-bold d-block mb-1">SHIPMENT ID</label>
+                            <input class="co-input w-100" id="tr-shipment" placeholder="Enter shipment number">
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-white-50 small fw-bold d-block mb-1">EVENT / STATUS</label>
+                            <select class="co-input w-100" id="tr-event">
+                                <option>Container Loaded</option>
+                                <option>Vessel Departed</option>
+                                <option>In Transit</option>
+                                <option>At Origin Port</option>
+                                <option>Customs Clearance</option>
+                                <option>Arrived at Destination</option>
+                                <option>Delivered</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-white-50 small fw-bold d-block mb-1">LOCATION / PORT</label>
+                            <input class="co-input w-100" id="tr-location" placeholder="e.g. Rotterdam Port NL"
+                                list="ports-list">
+                        </div>
+                        <div class="mb-4">
+                            <label class="text-white-50 small fw-bold d-block mb-1">NOTE</label>
+                            <textarea class="co-input w-100" id="tr-notes" rows="3"
+                                placeholder="e.g. Container loaded on MV Maersk Gulsun"></textarea>
+                        </div>
+                        <button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="submitTracking()">
+                            <i class="fas fa-satellite-dish me-2"></i>Push Tracking Event
+                        </button>
+                    </div>
+                </div>
+                <div class="col-lg-7">
+                    <div class="co-table-wrap">
+                        <div class="co-table-header"><span class="text-white fw-bold small">Recent Events</span></div>
+                        <div class="p-4">
+                            <div id="tracking-timeline"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 11. FINANCIAL ═══════════════════════════════════════ -->
+        <section class="co-section" id="section-finance">
+            <div class="section-header">
+                <h2><i class="fas fa-chart-line me-2 text-success"></i> Financial Management</h2>
+            </div>
+            <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Revenue</div>
+                    <div class="kpi-value text-success" id="fin-revenue">₹--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Completed Shipments</div>
+                    <div class="kpi-value" id="fin-completed">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Avg. per Shipment</div>
+                    <div class="kpi-value text-info" id="fin-avg">₹--</div>
+                </div>
+            </div>
+            <div class="chart-3">
+                <div class="chart-card" style="grid-column:span 2;">
+                    <h6>Monthly Earnings</h6><canvas id="chart-earnings" height="140"></canvas>
+                </div>
+                <div class="chart-card">
+                    <h6>Revenue Breakdown</h6><canvas id="chart-rev-pie" height="140"></canvas>
+                </div>
+            </div>
+            <div class="co-table-wrap">
+                <div class="co-table-header"><span class="text-white fw-bold small">Recent Transactions</span></div>
+                <div class="table-responsive">
+                    <table class="co-table">
+                        <thead>
+                            <tr>
+                                <th>Shipment</th>
+                                <th>Customer</th>
+                                <th>Route</th>
+                                <th>Type</th>
+                                <th>Gross</th>
+                                <th>Net (95%)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="finance-body">
+                            <tr>
+                                <td colspan="7" class="text-center text-white-50 py-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════ 12. NOTIFICATIONS ═══════════════════════════════════ -->
+        <section class="co-section" id="section-notifications">
+            <div class="section-header">
+                <h2><i class="fas fa-bell me-2 text-warning"></i> Notifications</h2>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="loadNotifications()"><i
+                        class="fas fa-sync me-1"></i>Refresh</button>
+            </div>
+            <div id="notif-full-list">
+                <div class="text-center text-white-50 py-5">Loading notifications...</div>
+            </div>
+        </section>
+
+    </div><!-- /co-main -->
+
+    <!-- ═══════════ MODALS ════════════════════════════════════════════ -->
+    <!-- Accept Booking -->
+    <div id="accept-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('accept-modal',event)">
+        <div class="co-modal">
+            <h5><i class="fas fa-check-circle me-2 text-success"></i>Accept Booking</h5>
+            <input type="hidden" id="accept-shipment-id">
+            <label>Shipment</label><input type="text" id="accept-shipment-ref" readonly>
+            <label>Allocate Vessel <span class="text-danger">*</span></label>
+            <select id="accept-vessel-select" class="co-input w-100" onchange="onAcceptShipSelected()">
+                <option value="">-- Select Available Ship --</option>
+            </select>
+            <label>Cargo Drop Port (Target Stop)</label>
+            <select id="accept-drop-port-select" class="co-input w-100">
+                <option value="">-- Select Drop Stop --</option>
+            </select>
+            <label>Notes to Customer</label>
+            <textarea id="accept-notes" rows="2" placeholder="Confirmation notes..."></textarea>
+            <div class="row g-2 mt-3">
+                <div class="col-6">
+                    <label>Departure Date</label>
+                    <input type="date" id="accept-departure" class="co-input w-100">
+                </div>
+                <div class="col-6">
+                    <label>Arrival Date</label>
+                    <input type="date" id="accept-arrival" class="co-input w-100">
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-success flex-fill fw-bold rounded-pill" onclick="submitAccept()">Accept
+                    Booking</button>
+                <button class="btn btn-outline-secondary flex-fill rounded-pill"
+                    onclick="closeModal('accept-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vessel Modal -->
+    <div id="vessel-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('vessel-modal',event)">
+        <div class="co-modal">
+            <h5><i class="fas fa-ship me-2 text-primary"></i>Add Vessel</h5>
+            <label>Vessel Name</label><input id="v-name" placeholder="e.g. MV Maersk Gulsun">
+            <label>Type</label>
+            <select id="v-type">
+                <option>Container Ship</option>
+                <option>Bulk Carrier</option>
+                <option>Tanker</option>
+                <option>Ro-Ro</option>
+            </select>
+            <label>Capacity (TEU)</label><input id="v-capacity" type="number" placeholder="e.g. 23756">
+            <label>Current Location</label><input id="v-location" placeholder="e.g. Mumbai Port, IN" list="ports-list">
+            <label>Next Port</label><input id="v-next" placeholder="e.g. Rotterdam, NL" list="ports-list">
+            <label>Status</label>
+            <select id="v-status">
+                <option>Available</option>
+                <option>At Sea</option>
+                <option>At Port</option>
+                <option>Maintenance</option>
+            </select>
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary flex-fill fw-bold rounded-pill" onclick="addVessel()">Add Vessel</button>
+                <button class="btn btn-outline-secondary flex-fill rounded-pill"
+                    onclick="closeModal('vessel-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div id="schedule-modal" class="co-modal-backdrop" style="display:none;"
+        onclick="closeModal('schedule-modal',event)">
+        <div class="co-modal">
+            <h5><i class="fas fa-calendar-alt me-2 text-success"></i>Create Schedule</h5>
+            <label>Vessel Name</label><input id="sch-vessel" placeholder="e.g. MV Marco Polo">
+            <label>From Port</label><input id="sch-from" placeholder="e.g. Mumbai" list="ports-list">
+            <label>To Port</label><input id="sch-to" placeholder="e.g. Rotterdam" list="ports-list">
+            <label>Departure Date & Time</label><input id="sch-depart" type="datetime-local">
+            <label>Estimated Arrival</label><input id="sch-arrive" type="datetime-local">
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-success flex-fill fw-bold rounded-pill" onclick="addSchedule()">Create
+                    Schedule</button>
+                <button class="btn btn-outline-secondary flex-fill rounded-pill"
+                    onclick="closeModal('schedule-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing Modal -->
+    <div id="price-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('price-modal',event)">
+        <div class="co-modal">
+            <h5><i class="fas fa-tags me-2 text-warning"></i>Add Shipping Rate</h5>
+            <label>From</label><input id="pr-from" placeholder="e.g. Mumbai">
+            <label>To</label><input id="pr-to" placeholder="e.g. Rotterdam">
+            <label>Mode</label>
+            <select id="pr-mode">
+                <option>Ocean FCL</option>
+                <option>Ocean LCL</option>
+                <option>Air Freight</option>
+            </select>
+            <label>Rate per CBM ($)</label><input id="pr-rate" type="number" placeholder="e.g. 45">
+            <label>Minimum Charge ($)</label><input id="pr-min" type="number" placeholder="e.g. 500">
+            <label>Transit Days</label><input id="pr-days" type="number" placeholder="e.g. 22">
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-warning flex-fill fw-bold rounded-pill text-dark" onclick="addPrice()">Add
+                    Rate</button>
+                <button class="btn btn-outline-secondary flex-fill rounded-pill"
+                    onclick="closeModal('price-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shipment Details Modal -->
+    <div id="details-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('details-modal',event)">
+        <div class="co-modal" style="width: 600px;">
+            <h5 class="mb-4"><i class="fas fa-info-circle me-2 text-primary"></i>Shipment Specification</h5>
+            <div id="shipment-details-content" class="small">
+                <!-- Populated by JS -->
+            </div>
+            <div class="mt-4 pt-3 border-top border-secondary border-opacity-25 text-end">
+                <button class="btn btn-outline-secondary rounded-pill px-4"
+                    onclick="closeModal('details-modal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manager Document Upload Modal -->
+    <div class="modal fade" id="managerDocUploadModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="fas fa-file-upload me-2 text-primary"></i>Upload Logistics
+                        Document</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <form id="managerUploadForm">
+                        <div class="mb-3">
+                            <label class="form-label text-white-50 fw-bold small">Logistics Document Type</label>
+                            <select class="form-select bg-dark text-white border-secondary" id="mgrDocType">
+                                <option value="Bill of Lading">Bill of Lading (B/L)</option>
+                                <option value="Commercial Invoice">Commercial Invoice</option>
+                                <option value="Packing List">Packing List</option>
+                                <option value="Customs Declaration">Customs Declaration / Entry</option>
+                                <option value="Export Declaration">Export Declaration</option>
+                                <option value="Certificate of Origin">Certificate of Origin</option>
+                                <option value="Delivery Order">Delivery Order</option>
+                                <option value="Shipping Label">Shipping Label</option>
+                                <option value="Cargo Manifest">Cargo Manifest</option>
+                                <option value="Insurance Certificate">Insurance Certificate</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-white-50 fw-bold small">Target Shipment ID</label>
+                            <input type="number" class="form-control bg-dark text-white border-secondary"
+                                id="mgrShipmentId" placeholder="e.g. 52" required>
+                            <div class="form-text text-white-50"><i class="fas fa-info-circle"></i> Must be a valid
+                                shipment ID under your company.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-white-50 fw-bold small">Document File (PDF / Image)</label>
+                            <input type="file" class="form-control bg-dark text-white border-secondary" id="mgrDocFile"
+                                required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light rounded-pill"
+                        data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary rounded-pill fw-bold"
+                        onclick="managerUploadDocument()"><i class="fas fa-upload me-2"></i>Upload File</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Preview Modal -->
+    <div class="modal fade" id="previewModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content bg-dark border border-secondary text-white" style="height: 90vh;">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="previewTitle"><i class="fas fa-file-alt text-primary me-2"></i>Document
+                        Preview</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <iframe id="previewFrame" src=""
+                        style="width: 100%; height: 100%; border: none; background: #fff;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="co-toast" id="co-toast"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <datalist id="ports-list"></datalist>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- Route Management Modal -->
+    <div id="route-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('route-modal',event)">
+        <div class="co-modal" style="width: 580px;">
+            <h5 class="mb-4"><i class="fas fa-map-marked-alt me-2 text-primary"></i>Manage Ship Route</h5>
+            <input type="hidden" id="route-ship-id">
+            <p class="text-white-50 x-small mb-4">Define multiple port stops for <strong class="text-white"
+                    id="route-ship-name">--</strong>. This informs allocated shipments of their drop-off options.</p>
+
+            <div id="route-stops-list" class="mb-4" style="max-height: 200px; overflow-y: auto;">
+                <!-- Stops added here -->
+            </div>
+
+            <div class="p-3 bg-dark rounded-3 border border-secondary border-opacity-10 mb-4">
+                <h6 class="text-white x-small fw-bold mb-3">Add New Stop</h6>
+                <div class="row g-2">
+                    <div class="col-7">
+                        <label>Port Name</label>
+                        <input type="text" id="new-stop-port" placeholder="e.g. Singapore Port" list="ports-list"
+                            class="co-input">
+                    </div>
+                    <div class="col-5">
+                        <label>Order</label>
+                        <input type="number" id="new-stop-order" placeholder="e.g. 1" class="co-input">
+                    </div>
+                    <div class="col-6">
+                        <label>ETA (Approx)</label>
+                        <input type="date" id="new-stop-arrival" class="co-input">
+                    </div>
+                    <div class="col-6">
+                        <label>ETD (Approx)</label>
+                        <input type="date" id="new-stop-departure" class="co-input">
+                    </div>
+                </div>
+                <button class="btn btn-outline-primary btn-sm w-100 rounded-pill mt-3" onclick="addStopToUI()"><i
+                        class="fas fa-plus me-1"></i>Add Stop</button>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary flex-fill fw-bold rounded-pill" onclick="saveVesselRoute()">Save Route
+                    Configuration</button>
+                <button class="btn btn-outline-secondary flex-fill rounded-pill"
+                    onclick="closeModal('route-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="socket-client.js"></script>
+    <script src="company-dashboard.js"></script>
+</body>
+
+</html>

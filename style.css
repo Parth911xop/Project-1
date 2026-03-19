@@ -68,8 +68,28 @@ body {
   margin: 0;
   padding: 0;
 
-  /* Fix Double Scrollbar: Ensure body behaves as the main scroll container or html does, not both */
-  height: auto;
+  /* Premium Custom Scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(59, 130, 246, 0.5) transparent;
+}
+
+/* Webkit Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.6);
 }
 
 /* Background Pattern */
@@ -89,12 +109,7 @@ body::before {
 
 /* ... (Glass Utility) ... */
 
-/* Navbar Styling */
-.navbar {
-  /* ... */
-  z-index: 1000;
-  /* Ensure navbar is on top */
-}
+
 
 /* Hero Section */
 .hero-section {
@@ -103,11 +118,9 @@ body::before {
   min-height: 100vh;
   padding-top: 140px;
   overflow: hidden;
-  /* Prevent child overflow causing scrollbars */
   display: flex;
   align-items: center;
-  z-index: 1;
-  /* New stacking context */
+  /* NO z-index here — avoids creating a stacking context that traps the fixed navbar */
 }
 
 /* Animated background shapes */
@@ -190,10 +203,12 @@ body.home-page::-webkit-scrollbar {
 
 /* Navbar Styling */
 .navbar {
-  background: rgba(15, 23, 42, 0.8) !important;
+  background: rgba(15, 23, 42, 0.95) !important;
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 1rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 9999 !important;
 }
 
 .navbar-brand {
@@ -700,11 +715,12 @@ footer a:hover {
 }
 
 .glass-nav {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 1) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+  background: linear-gradient(180deg, rgba(10, 17, 35, 0.98) 0%, rgba(15, 23, 42, 0.96) 100%) !important;
   backdrop-filter: blur(20px);
-  z-index: 1090;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 9999 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
 }
 
 .mega-menu {

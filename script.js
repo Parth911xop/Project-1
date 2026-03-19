@@ -38,12 +38,21 @@ function updateAuthUI() {
   if (!authBtnContainer) return;
 
   if (userId) {
+    const userRole = localStorage.getItem('userRole');
+    let dashLink = 'shipments.html';
+
+    if (userRole === 'admin') {
+      dashLink = 'admin-dashboard.html';
+    } else if (userRole === 'company') {
+      dashLink = 'company-dashboard.html';
+    }
+
     // User is Logged In
     // Show Dashboard Button & Logout
     authBtnContainer.classList.remove('gap-2'); // Optional clean up
     authBtnContainer.innerHTML = `
         <a class="btn btn-outline-light btn-sm rounded-pill px-3 me-2" href="#" onclick="logout(event)">Log Out</a>
-        <a class="btn btn-primary btn-sm rounded-pill px-4 shadow-lg" href="shipments.html">
+        <a class="btn btn-primary btn-sm rounded-pill px-4 shadow-lg" href="${dashLink}">
             <i class="fas fa-columns me-2"></i>Dashboard
         </a>
     `;
@@ -61,6 +70,8 @@ function updateAuthUI() {
 function logout(e) {
   if (e) e.preventDefault();
   localStorage.removeItem('userId');
+  localStorage.removeItem('userRole');
+  localStorage.removeItem('companyStatus');
   window.location.replace('index.html');
 }
 

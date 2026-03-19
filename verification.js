@@ -2,7 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Get shipment ID from URL
     const params = new URLSearchParams(window.location.search);
     const id = params.get('id') || 'NEW';
-    document.getElementById('ref-id').innerText = `SS-${id}`;
+    // If it's a number, add SS-, if it's already prefixed (has a dash), show as is
+    const displayId = id.includes('-') ? id : `SS-${id}`;
+    document.getElementById('ref-id').innerText = displayId;
 
     initUploadZones();
 });

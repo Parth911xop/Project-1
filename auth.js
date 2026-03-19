@@ -27,12 +27,12 @@ async function requestOTP() {
             payload.useCase = document.getElementById('useCase').value;
             payload.location = document.getElementById('location').value;
 
-            if (!payload.fullName) {
-                return showToast("Please fill in all signup details", 'error');
+            if (!payload.fullName || !payload.useCase) {
+                return showToast("Please fill in all signup details including your role.", 'error');
             }
         }
 
-        const res = await fetch('http://localhost:3000/request-otp', {
+        const res = await fetch(`http://${window.location.hostname}:3000/request-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -118,9 +118,10 @@ async function handleFinalSubmit(e) {
     if (!otp) return showToast("Please enter the OTP", 'error');
 
     try {
-        const res = await fetch('http://localhost:3000/verify-otp', {
+        const res = await fetch(`http://${window.location.hostname}:3000/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include', // Receive and send HttpOnly cookie
             body: JSON.stringify({ identifier: identifier, otp: otp })
         });
 
@@ -128,11 +129,21 @@ async function handleFinalSubmit(e) {
 
         if (data.success) {
             showToast("Success! Redirecting...", 'success');
+
+            // Store benign display metadata (Roles are now secured via HttpOnly JWT Cookie)
             localStorage.setItem('userId', data.userId);
             localStorage.setItem('userName', data.user.name || data.user.email.split('@')[0]);
             localStorage.setItem('userEmail', data.user.email || '');
+            if (data.companyStatus) localStorage.setItem('companyStatus', data.companyStatus);
+
             setTimeout(() => {
-                window.location.href = "shipments.html";
+                if (data.role === 'admin') {
+                    window.location.href = 'admin-dashboard.html';
+                } else if (data.role === 'company') {
+                    window.location.href = 'company-dashboard.html';
+                } else {
+                    window.location.href = 'shipments.html';
+                }
             }, 1000);
         } else {
             showToast("Error: " + data.message, 'error');

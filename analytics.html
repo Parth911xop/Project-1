@@ -22,15 +22,8 @@
             <span class="text-xs text-muted">ENTERPRISE</span>
         </div>
 
-        <nav class="d-flex flex-column gap-1">
-            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
-            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments</a>
-            <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
-            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
-            <hr class="border-secondary opacity-25 my-3">
-            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice w-5"></i> Billing</a>
-            <a href="analytics.html" class="nav-item-dash active"><i class="fas fa-chart-line w-5"></i> Analytics</a>
-            <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+        <nav class="d-flex flex-column gap-1" id="dynamic-nav">
+            <!-- Injected by JS based on role -->
         </nav>
 
         <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
@@ -61,24 +54,24 @@
             <div class="row g-4 mb-4">
                 <div class="col-md-3">
                     <div class="card-enterprise p-4">
-                        <p class="text-muted small fw-bold mb-1">TOTAL SPEND</p>
-                        <h3 class="text-white fw-bold">₹45,20,000</h3>
-                        <span class="text-success small"><i class="fas fa-arrow-up"></i> 12% vs last month</span>
-                    </div>
-                </div>
-                <!-- More KPIs -->
-                <div class="col-md-3">
-                    <div class="card-enterprise p-4">
-                        <p class="text-muted small fw-bold mb-1">AVG TRANSIT TIME</p>
-                        <h3 class="text-white fw-bold">24 Days</h3>
-                        <span class="text-success small"><i class="fas fa-arrow-down"></i> 2 Days faster</span>
+                        <p class="text-muted small fw-bold mb-1" id="kpi-spend-label">TOTAL SPEND</p>
+                        <h3 class="text-white fw-bold" id="kpi-spend">Loading...</h3>
+                        <span class="text-success small" id="kpi-spend-sub"><i class="fas fa-arrow-up"></i> from your
+                            shipments</span>
                     </div>
                 </div>
                 <div class="col-md-3">
                     <div class="card-enterprise p-4">
-                        <p class="text-muted small fw-bold mb-1">CO2 EMISSIONS</p>
-                        <h3 class="text-white fw-bold">12.5 Tons</h3>
-                        <span class="text-success small"><i class="fas fa-leaf"></i> Carbon Neutral</span>
+                        <p class="text-muted small fw-bold mb-1">TOTAL SHIPMENTS</p>
+                        <h3 class="text-white fw-bold" id="kpi-total">--</h3>
+                        <span class="text-info small">All time</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card-enterprise p-4">
+                        <p class="text-muted small fw-bold mb-1">DELIVERED</p>
+                        <h3 class="text-white fw-bold" id="kpi-delivered">--</h3>
+                        <span class="text-success small"><i class="fas fa-check-circle"></i> Completed</span>
                     </div>
                 </div>
             </div>
@@ -139,12 +132,88 @@
             </div>
         </div>
     </main>
-    <script src="script.js"></script>
+    <script src="auth-guard.js"></script>
     <script>
-        // Simple User Init
-        const name = localStorage.getItem('userName') || 'User';
-        document.getElementById('user-name-display').innerText = name;
-        document.getElementById('user-avatar').innerText = name.charAt(0);
+        const API_URL = `http://${window.location.hostname}:3000`;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) { window.location.href = 'auth.html'; return; }
+
+                const name = data.user.name || 'User';
+                document.getElementById('user-name-display').innerText = name;
+                document.getElementById('user-avatar').innerText = name.charAt(0).toUpperCase();
+
+                const role = data.user.role;
+
+                // 1. Inject Dynamic Navigation
+                const nav = document.getElementById('dynamic-nav');
+                if (role === 'company') {
+                    nav.innerHTML = `
+                        <a href="company-dashboard.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
+                        <a href="vehicles.html" class="nav-item-dash"><i class="fas fa-truck w-5"></i> Fleet Management</a>
+                        <a href="earnings.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Earnings</a>
+                        <hr class="border-secondary opacity-25 my-3">
+                        <a href="analytics.html" class="nav-item-dash active"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+                        <a href="profile.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+                    `;
+                } else {
+                    nav.innerHTML = `
+                        <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
+                        <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments</a>
+                        <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
+                        <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+                        <hr class="border-secondary opacity-25 my-3">
+                        <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice w-5"></i> Billing</a>
+                        <a href="analytics.html" class="nav-item-dash active"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+                        <a href="profile.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+                    `;
+                }
+
+                // 2. Fetch appropriate stats
+                if (role === 'company') {
+                    document.getElementById('kpi-spend-label').innerText = 'TOTAL REVENUE';
+                    document.getElementById('kpi-spend-sub').innerHTML = '<i class="fas fa-arrow-up"></i> platform lifetime earnings';
+
+                    const shipRes = await fetch(`${API_URL}/api/company/active`, { credentials: 'include' });
+                    const statsRes = await fetch(`${API_URL}/api/company/stats`, { credentials: 'include' });
+
+                    const shipData = await shipRes.json();
+                    const statsData = await statsRes.json();
+
+                    if (statsData.success) {
+                        document.getElementById('kpi-total').innerText = statsData.stats.activeDeliveries || 0; // Quick swap for active
+                        document.getElementById('kpi-delivered').innerText = `${statsData.stats.onTimeRate || 0}% Rate`;
+                        document.getElementById('kpi-spend').innerText = `₹${(statsData.stats.netEarnings || 0).toLocaleString('en-IN')}`;
+                    }
+                } else {
+                    // Load real shipment stats from the API (Customer)
+                    const shipRes = await fetch(`${API_URL}/api/shipment/list`, { credentials: 'include' });
+                    const shipData = await shipRes.json();
+
+                    if (shipData.success) {
+                        const shipments = shipData.shipments || [];
+                        const total = shipments.length;
+                        const delivered = shipments.filter(s => s.status === 'Delivered').length;
+                        const totalSpend = shipments.reduce((sum, s) => sum + (parseFloat(s.estimated_cost) || 0), 0);
+
+                        document.getElementById('kpi-total').innerText = total;
+                        document.getElementById('kpi-delivered').innerText = delivered;
+                        document.getElementById('kpi-spend').innerText = total > 0 ? `₹${totalSpend.toLocaleString('en-IN')}` : '₹0';
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                window.location.href = 'auth.html';
+            }
+        });
+
+        async function handleLogout() {
+            await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+            window.location.href = 'auth.html';
+        }
     </script>
 </body>
 

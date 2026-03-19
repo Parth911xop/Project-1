@@ -1,5 +1,5 @@
 // Backend API Setup
-const API_URL = 'http://localhost:3000';
+const API_URL = `http://${window.location.hostname}:3000`;
 const userId = localStorage.getItem('userId');
 
 let currentStep = 1;

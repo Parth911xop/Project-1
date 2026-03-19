@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000';
+const API_URL = `http://${window.location.hostname}:3000`;
 const userId = localStorage.getItem('userId');
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -10,7 +10,7 @@ async function fetchDeclarations() {
     const container = document.getElementById('declarations-container');
 
     try {
-        const res = await fetch(`${API_URL}/api/customs?userId=${userId}`);
+        const res = await fetch(`${API_URL}/api/customs?userId=${userId}`, { credentials: 'include' });
         const data = await res.json();
 
         if (data.success && data.declarations.length > 0) {
@@ -76,6 +76,7 @@ async function createQuickDeclaration() {
         try {
             const res = await fetch(`${API_URL}/api/customs/create`, {
                 method: 'POST',
+                credentials: 'include',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, type: 'Import', port: 'Mumbai Port' })
             });

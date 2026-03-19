@@ -27,78 +27,52 @@ module.exports = (pool) => {
     // Initialize table
     createInvoicesTable(pool);
 
-    // Get all invoices for a user
-    router.get('/all', async (req, res) => {
-        const { userId } = req.query;
-        if (!userId) return res.status(400).json({ success: false, message: "User ID required" });
+    // Get invoices for the currently authenticated user (JWT-based)
+    router.get('/invoices', async (req, res) => {
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
         try {
-            const query = `
-                SELECT i.*, s.from_country, s.to_country 
+            const result = await pool.query(`
+                SELECT i.*, i.issued_at as created_at, 'Paid' as status, s.origin_address, s.destination_address, s.status as shipment_status
                 FROM invoices i
-                LEFT JOIN shipments s ON i.shipment_id = s.id
-                WHERE i.user_id = $1
-                ORDER BY i.created_at DESC
-            `;
-            const result = await pool.query(query, [userId]);
+                JOIN shipments s ON i.shipment_id = s.id
+                WHERE s.customer_id = $1 OR s.company_id = $1
+                ORDER BY i.issued_at DESC
+            `, [userId]);
 
-            // Calculate summary stats
-            const summary = {
-                totalDue: 0,
-                overdue: 0,
-                openCount: 0,
-                disputeCount: 0 // Placeholder
-            };
-
-            result.rows.forEach(inv => {
+            const invoices = result.rows;
+            const summary = { totalDue: 0, overdue: 0, openCount: 0, disputeCount: 0 };
+            invoices.forEach(inv => {
                 if (inv.status === 'Pending' || inv.status === 'Overdue') {
-                    summary.totalDue += parseFloat(inv.amount);
+                    summary.totalDue += parseFloat(inv.amount || 0);
                     summary.openCount++;
                 }
                 if (inv.status === 'Overdue') {
-                    summary.overdue += parseFloat(inv.amount);
+                    summary.overdue += parseFloat(inv.amount || 0);
                 }
             });
 
-            res.json({ success: true, invoices: result.rows, summary });
+            res.json({ success: true, invoices, summary });
         } catch (err) {
-            console.error(err);
-            res.status(500).json({ success: false, message: "Database error" });
+            console.error('Invoices fetch error:', err);
+            res.status(500).json({ success: false, message: 'Database error' });
         }
     });
 
-    // Create a generic invoice (Internal/Mock use)
+    // Get all invoices for a user (legacy - replaced by /invoices)
+    router.get('/all', async (req, res) => {
+        res.status(400).json({ success: false, message: "Use /api/finance/invoices instead" });
+    });
+
+    // Create a generic invoice (Mock removed, use Stripe)
     router.post('/create', async (req, res) => {
-        const { userId, shipmentId, amount, dueDate } = req.body;
-
-        try {
-            // Generate Invoice Number
-            const rand = Math.floor(1000 + Math.random() * 9000);
-            const invNum = `INV-2026-${rand}`;
-
-            await pool.query(
-                `INSERT INTO invoices (user_id, shipment_id, invoice_number, amount, due_date, status)
-                 VALUES ($1, $2, $3, $4, $5, 'Pending')`,
-                [userId, shipmentId, invNum, amount, dueDate]
-            );
-
-            res.json({ success: true, message: "Invoice created" });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ success: false, message: "Error creating invoice" });
-        }
+        res.status(400).json({ success: false, message: "Use Stripe to generate real invoices" });
     });
 
-    // Pay Invoice
+    // Pay Invoice (Mock removed, use Stripe)
     router.post('/pay', async (req, res) => {
-        const { invoiceId } = req.body;
-        try {
-            await pool.query("UPDATE invoices SET status = 'Paid' WHERE id = $1", [invoiceId]);
-            res.json({ success: true, message: "Invoice marked as paid" });
-        } catch (err) {
-            console.error(err);
-            res.status(500).json({ success: false, message: "Payment failed" });
-        }
+        res.json({ success: true, message: "Use Stripe checkout for real payments" });
     });
 
     return router;

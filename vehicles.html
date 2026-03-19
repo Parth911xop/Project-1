@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Management | Smart Shipping</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <script>const API_BASE = `http://${window.location.hostname}:3000`;</script>
+    <style>
+        .vehicle-card {
+            transition: transform .2s, box-shadow .2s;
+        }
+
+        .vehicle-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+        }
+
+        .stat-pill {
+            background: rgba(255, 255, 255, .06);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+        }
+
+        .badge-eco {
+            background: rgba(16, 185, 129, .15);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, .3);
+        }
+
+        .badge-diesel {
+            background: rgba(239, 68, 68, .1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, .25);
+        }
+
+        .badge-ship {
+            background: rgba(99, 102, 241, .15);
+            color: #818cf8;
+            border: 1px solid rgba(99, 102, 241, .3);
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 9999;
+        }
+
+        .action-cell button {
+            opacity: 0;
+            transition: opacity .15s;
+        }
+
+        tr:hover .action-cell button {
+            opacity: 1;
+        }
+    </style>
+    <script src="auth-guard.js"></script>
+</head>
+
+<body class="dashboard-page">
+
+    <!-- Toast -->
+    <div class="toast-container">
+        <div id="toast" class="toast align-items-center text-white border-0" role="alert">
+            <div class="d-flex">
+                <div class="toast-body fw-semibold" id="toast-msg">Message</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <aside class="sidebar">
+        <div class="brand-section">
+            <a href="index.html" class="text-decoration-none">
+                <h4 class="fw-bold text-white mb-0"><i class="fas fa-ship me-2 text-primary"></i>SmartShip</h4>
+            </a>
+            <span class="text-xs text-white-50">PARTNER HUB</span>
+        </div>
+        <nav class="d-flex flex-column gap-1">
+            <a href="company-dashboard.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
+            <a href="vehicles.html" class="nav-item-dash active"><i class="fas fa-truck w-5"></i> Fleet Management</a>
+            <a href="earnings.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Earnings</a>
+            <hr class="border-secondary opacity-25 my-3">
+            <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+            <a href="profile.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+        </nav>
+        <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
+            <div class="d-flex align-items-center gap-2">
+                <div id="user-avatar"
+                    class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                    style="width:32px;height:32px;">C</div>
+                <div class="d-grid">
+                    <a href="profile.html" id="user-name-display"
+                        class="text-white text-sm fw-bold text-decoration-none">Loading...</a>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <main class="dashboard-main">
+        <header class="dashboard-header justify-content-between">
+            <h5 class="fw-bold mb-0"><i class="fas fa-truck me-2 text-primary"></i>Fleet Management</h5>
+            <button onclick="handleLogout()" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</button>
+        </header>
+
+        <div class="p-4">
+            <!-- Fleet Summary Stats -->
+            <div class="row g-3 mb-4" id="fleet-stats-row">
+                <div class="col-md-3">
+                    <div class="stat-pill">
+                        <p class="text-muted small fw-bold mb-1 text-uppercase">Total Vehicles</p>
+                        <h3 class="text-white fw-bold mb-0" id="stat-total">--</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-pill">
+                        <p class="text-muted small fw-bold mb-1 text-uppercase">Active</p>
+                        <h3 class="text-success fw-bold mb-0" id="stat-active">--</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-pill">
+                        <p class="text-muted small fw-bold mb-1 text-uppercase">In Maintenance</p>
+                        <h3 class="text-warning fw-bold mb-0" id="stat-maintenance">--</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-pill">
+                        <p class="text-muted small fw-bold mb-1 text-uppercase">Eco Vehicles</p>
+                        <h3 class="text-info fw-bold mb-0" id="stat-eco">--</h3>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-4">
+                <!-- Fleet Table -->
+                <div class="col-lg-8">
+                    <div class="card bg-dark border-secondary h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-4">
+                                <h5 class="fw-bold mb-0">Active Fleet</h5>
+                                <input type="text" id="fleet-search"
+                                    class="form-control form-control-sm bg-dark border-secondary text-white"
+                                    style="max-width:200px;" placeholder="Search vehicles...">
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Vehicle</th>
+                                            <th>Type</th>
+                                            <th>Capacity</th>
+                                            <th>Reg. No.</th>
+                                            <th>Status</th>
+                                            <th class="action-cell">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="fleet-table-body">
+                                        <tr>
+                                            <td colspan="6" class="text-center text-muted py-4">
+                                                <div class="spinner-border spinner-border-sm me-2"></div>Loading
+                                                fleet...
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Add Vehicle Form -->
+                <div class="col-lg-4">
+                    <div class="card bg-dark border-secondary">
+                        <div class="card-body p-4">
+                            <h5 class="fw-bold mb-4"><i class="fas fa-plus-circle me-2 text-primary"></i>Add New Vehicle
+                            </h5>
+                            <form id="add-vehicle-form" onsubmit="addVehicle(event)">
+                                <div class="mb-3">
+                                    <label class="form-label small text-white-50">Vehicle Name</label>
+                                    <input type="text" id="v-name"
+                                        class="form-control bg-dark border-secondary text-white"
+                                        placeholder="e.g. Express Van #3" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label small text-white-50">Type</label>
+                                    <select id="v-type" class="form-select bg-dark border-secondary text-white"
+                                        required>
+                                        <option value="Electric Van">⚡ Electric Van (Low Emission)</option>
+                                        <option value="Diesel Truck">🚛 Diesel Truck</option>
+                                        <option value="Cargo Ship">🚢 Cargo Ship</option>
+                                        <option value="Air Freight">✈️ Air Freight</option>
+                                    </select>
+                                </div>
+                                <div class="row g-2 mb-3">
+                                    <div class="col-6">
+                                        <label class="form-label small text-white-50">Capacity (kg)</label>
+                                        <input type="number" id="v-capacity"
+                                            class="form-control bg-dark border-secondary text-white" placeholder="5000"
+                                            required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-white-50">Reg. Number</label>
+                                        <input type="text" id="v-reg"
+                                            class="form-control bg-dark border-secondary text-white"
+                                            placeholder="GJ01AB1234" required>
+                                    </div>
+                                </div>
+                                <button type="submit" id="add-btn" class="btn btn-primary w-100 mt-2 rounded-pill">
+                                    <i class="fas fa-plus me-2"></i>Add to Fleet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allVehicles = [];
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.textContent = msg;
+            toast.className = `toast align-items-center text-white border-0 bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'primary'}`;
+            const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+            bsToast.show();
+        }
+
+        function getTypeBadge(type) {
+            if (type.includes('Electric')) return `<span class="badge badge-eco">${type}</span>`;
+            if (type.includes('Diesel')) return `<span class="badge badge-diesel">${type}</span>`;
+            if (type.includes('Ship')) return `<span class="badge badge-ship">${type}</span>`;
+            return `<span class="badge bg-secondary">${type}</span>`;
+        }
+
+        function renderTable(vehicles) {
+            const tbody = document.getElementById('fleet-table-body');
+            if (!vehicles || vehicles.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-5"><i class="fas fa-truck fa-2x mb-3 d-block opacity-25"></i>No vehicles found. Add your first vehicle!</td></tr>';
+                return;
+            }
+            tbody.innerHTML = vehicles.map(v => `
+                <tr id="vehicle-row-${v.id}">
+                    <td class="text-white fw-semibold">${v.name}</td>
+                    <td>${getTypeBadge(v.type)}</td>
+                    <td class="text-white-50">${Number(v.capacity_kg).toLocaleString('en-IN')} kg</td>
+                    <td class="text-white-50 font-monospace small">${v.registration_number}</td>
+                    <td>
+                        <span class="badge ${v.status === 'Active' ? 'bg-success' : 'bg-warning text-dark'}">${v.status}</span>
+                    </td>
+                    <td class="action-cell">
+                        <div class="d-flex gap-1">
+                            <button onclick="toggleStatus(${v.id}, '${v.status}')" class="btn btn-sm btn-outline-secondary rounded-pill px-2" title="${v.status === 'Active' ? 'Set Maintenance' : 'Set Active'}">
+                                <i class="fas fa-${v.status === 'Active' ? 'tools' : 'check'}"></i>
+                            </button>
+                            <button onclick="deleteVehicle(${v.id})" class="btn btn-sm btn-outline-danger rounded-pill px-2" title="Remove">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function updateStats(vehicles) {
+            document.getElementById('stat-total').innerText = vehicles.length;
+            document.getElementById('stat-active').innerText = vehicles.filter(v => v.status === 'Active').length;
+            document.getElementById('stat-maintenance').innerText = vehicles.filter(v => v.status !== 'Active').length;
+            document.getElementById('stat-eco').innerText = vehicles.filter(v => v.type.includes('Electric')).length;
+        }
+
+        async function loadFleet() {
+            try {
+                const res = await fetch(`${API_BASE}/api/company/vehicles`, { credentials: 'include' });
+                const data = await res.json();
+                if (data.success) {
+                    allVehicles = data.vehicles;
+                    renderTable(allVehicles);
+                    updateStats(allVehicles);
+                } else {
+                    document.getElementById('fleet-table-body').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Failed to load fleet data.</td></tr>';
+                }
+            } catch (err) {
+                console.error(err);
+                document.getElementById('fleet-table-body').innerHTML = '<tr><td colspan="6" class="text-center text-danger py-4">Connection error.</td></tr>';
+            }
+        }
+
+        async function addVehicle(e) {
+            e.preventDefault();
+            const btn = document.getElementById('add-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Adding...';
+            const payload = {
+                name: document.getElementById('v-name').value,
+                type: document.getElementById('v-type').value,
+                capacity_kg: document.getElementById('v-capacity').value,
+                registration_number: document.getElementById('v-reg').value
+            };
+            try {
+                const res = await fetch(`${API_BASE}/api/company/add-vehicle`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Vehicle added to fleet successfully!', 'success');
+                    document.getElementById('add-vehicle-form').reset();
+                    loadFleet();
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Connection failed', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus me-2"></i>Add to Fleet';
+            }
+        }
+
+        async function deleteVehicle(vehicleId) {
+            if (!confirm('Remove this vehicle from your fleet?')) return;
+            try {
+                const res = await fetch(`${API_BASE}/api/company/delete-vehicle`, {
+                    method: 'DELETE', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vehicleId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Vehicle removed from fleet.', 'success');
+                    document.getElementById(`vehicle-row-${vehicleId}`)?.remove();
+                    allVehicles = allVehicles.filter(v => v.id !== vehicleId);
+                    updateStats(allVehicles);
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Connection failed', 'error');
+            }
+        }
+
+        async function toggleStatus(vehicleId, currentStatus) {
+            const newStatus = currentStatus === 'Active' ? 'Maintenance' : 'Active';
+            try {
+                const res = await fetch(`${API_BASE}/api/company/update-vehicle-status`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vehicleId, status: newStatus })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(`Vehicle set to ${newStatus}.`, 'success');
+                    loadFleet();
+                } else {
+                    showToast('Error: ' + data.message, 'error');
+                }
+            } catch (err) {
+                showToast('Connection failed', 'error');
+            }
+        }
+
+        document.getElementById('fleet-search').addEventListener('input', function () {
+            const q = this.value.toLowerCase();
+            const filtered = allVehicles.filter(v =>
+                v.name.toLowerCase().includes(q) ||
+                v.type.toLowerCase().includes(q) ||
+                v.registration_number.toLowerCase().includes(q)
+            );
+            renderTable(filtered);
+        });
+
+        function handleLogout() {
+            fetch(`${API_BASE}/api/auth/logout`, { method: 'POST', credentials: 'include' })
+                .finally(() => { window.location.href = 'index.html'; });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const user = await AuthGuard.verifySession();
+                if (user.role !== 'company') return window.location.href = 'auth.html';
+                document.getElementById('user-name-display').innerText = user.name || 'Company';
+                document.getElementById('user-avatar').innerText = (user.name || 'C').charAt(0).toUpperCase();
+                loadFleet();
+            } catch (e) {
+                window.location.href = 'auth.html';
+            }
+        });
+    </script>
+</body>
+
+</html>

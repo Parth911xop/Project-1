@@ -1,5 +1,4 @@
 const express = require('express');
-const router = express.Router();
 
 // Emission Factors (kg CO2 per ton-km)
 // Source: approximate industry averages
@@ -13,14 +12,13 @@ const EMISSION_FACTORS = {
 // Mock Distance Calculator (in km)
 // In a real app, this would use a port-to-port API
 const getDistance = (origin, dest) => {
-    // Simple hash-based mock distance for consistency
     const combined = origin + dest;
     let hash = 0;
     for (let i = 0; i < combined.length; i++) {
         hash = ((hash << 5) - hash) + combined.charCodeAt(i);
         hash |= 0;
     }
-    return (Math.abs(hash) % 15000) + 3000; // Return between 3000km and 18000km
+    return (Math.abs(hash) % 15000) + 3000;
 };
 
 // Calculate CO2
@@ -30,73 +28,111 @@ const calculateCO2 = (weightKg, distanceKm, mode) => {
     return Math.round(tons * distanceKm * factor);
 };
 
-// Smart Quote Engine
-router.post('/calculate', (req, res) => {
-    const { fromCountry, toCountry, weight, mode } = req.body;
+module.exports = async function (pool) {
+    const router = express.Router();
 
-    const weightNum = parseFloat(weight) || 1000;
-    const distance = getDistance(fromCountry, toCountry);
+    // Smart Quote Engine
+    router.post('/calculate', async (req, res) => {
+        const { fromCountry, toCountry, weight, mode: preferredMode } = req.body;
+        const weightNum = parseFloat(weight) || 1000;
 
-    // Base Calculations
-    const baseRatePerKm = mode === 'Air' ? 0.8 : 0.05; // $ per km
-    const baseCost = Math.round(distance * baseRatePerKm * (weightNum / 1000));
-    const baseTime = mode === 'Air' ? 3 : Math.round(distance / 500); // days
+        try {
+            // 1. Try to find a real route in our Enterprise Routing Ledger
+            const routeQuery = `
+                SELECT r.*, p_orig.name as origin_port, p_dest.name as dest_port
+                FROM routes r
+                JOIN ports p_orig ON r.origin_port_id = p_orig.id
+                JOIN ports p_dest ON r.dest_port_id = p_dest.id
+                WHERE (p_orig.name ILIKE $1 OR p_orig.city ILIKE $1 OR p_orig.country ILIKE $1 OR p_orig.state ILIKE $1)
+                  AND (p_dest.name ILIKE $2 OR p_dest.city ILIKE $2 OR p_dest.country ILIKE $2 OR p_dest.state ILIKE $2)
+                  AND r.mode = $3
+                LIMIT 1
+            `;
+            
+            const routeResult = await pool.query(routeQuery, [`%${fromCountry}%`, `%${toCountry}%`, preferredMode]);
+            
+            let finalDistance, finalBaseCost, finalTime, finalCarrier, finalMode, finalCO2;
 
-    // Generate 3 Distinct Options
-    const options = [
-        {
-            id: 'opt_best',
-            name: 'Best Value',
-            badge: 'AI Recommended',
-            carrier: 'Maersk Line',
-            mode: mode,
-            days: baseTime,
-            cost: baseCost,
-            co2: calculateCO2(weightNum, distance, mode),
-            reliability: '98%'
-        },
-        {
-            id: 'opt_fast',
-            name: 'Fastest',
-            badge: 'Fastest',
-            carrier: mode === 'Air' ? 'DHL Aviation' : 'CMA CGM Express',
-            mode: mode === 'Air' ? 'Air' : 'Ocean', // If user selected Ocean, maybe offer Air as fast option? For now stick to requested mode or upgrade
-            days: Math.max(1, Math.round(baseTime * 0.7)),
-            cost: Math.round(baseCost * 1.4),
-            co2: calculateCO2(weightNum, distance, mode) * 1.1, // Faster usually means more fuel
-            reliability: '99%'
-        },
-        {
-            id: 'opt_eco',
-            name: 'Eco-Saver',
-            badge: 'Carbon Neutral',
-            carrier: 'Hapag-Lloyd (Green)',
-            mode: mode,
-            days: Math.round(baseTime * 1.2), // Slow steaming
-            cost: Math.round(baseCost * 0.85),
-            co2: Math.round(calculateCO2(weightNum, distance, mode) * 0.8), // 20% savings
-            reliability: '95%'
+            if (routeResult.rows.length > 0) {
+                const r = routeResult.rows[0];
+                finalDistance = r.distance_km;
+                finalBaseCost = Math.round(r.base_cost_per_kg * weightNum);
+                finalTime = r.lead_time_days;
+                finalCarrier = r.carrier_name;
+                finalMode = r.mode;
+                finalCO2 = Math.round((weightNum / 1000) * r.distance_km * r.co2_per_kg);
+                console.log(`🎯 Real Route Found: ${r.origin_port} -> ${r.dest_port}`);
+            } else {
+                // FALLBACK: Use Smart Estimation if no fixed route exists
+                const distance = getDistance(fromCountry, toCountry);
+                const baseRatePerKm = preferredMode === 'Air' ? 0.8 : 0.05;
+                
+                finalDistance = distance;
+                finalBaseCost = Math.round(distance * baseRatePerKm * (weightNum / 1000));
+                finalTime = preferredMode === 'Air' ? 3 : Math.round(distance / 500);
+                finalCarrier = preferredMode === 'Air' ? 'Digital Wings' : 'Smart Ocean Line';
+                finalMode = preferredMode;
+                finalCO2 = calculateCO2(weightNum, distance, preferredMode);
+                console.log(`🤖 Route Estimation used for ${fromCountry} -> ${toCountry}`);
+            }
+
+            // Fetch companies for variety
+            const compRes = await pool.query("SELECT u.id, c.company_name as name FROM users u JOIN company_profiles c ON u.id = c.user_id WHERE u.role='company'");
+            const companies = compRes.rows;
+
+            // Generate Options
+            const options = [
+                {
+                    id: 'opt_best',
+                    badge: 'AI Preferred',
+                    carrier: finalCarrier,
+                    companyId: companies[0]?.id || null,
+                    mode: finalMode,
+                    days: finalTime,
+                    cost: finalBaseCost,
+                    co2: finalCO2,
+                    reliability: '98%'
+                },
+                {
+                    id: 'opt_fast',
+                    badge: 'Premium Fast',
+                    carrier: 'Flash Courier',
+                    companyId: companies[1]?.id || companies[0]?.id || null,
+                    mode: finalMode === 'Air' ? 'Air' : 'Ocean',
+                    days: Math.max(1, Math.round(finalTime * 0.7)),
+                    cost: Math.round(finalBaseCost * 1.45),
+                    co2: Math.round(finalCO2 * 1.15),
+                    reliability: '99%'
+                },
+                {
+                    id: 'opt_eco',
+                    badge: 'Climate Neutral',
+                    carrier: companies[2]?.name || 'EcoFreight',
+                    companyId: companies[2]?.id || companies[0]?.id || null,
+                    mode: finalMode,
+                    days: Math.round(finalTime * 1.25),
+                    cost: Math.round(finalBaseCost * 0.9),
+                    co2: Math.round(finalCO2 * 0.8),
+                    reliability: '95%'
+                }
+            ];
+
+            const carbonPricePerTon = 15;
+            options.forEach(opt => {
+                opt.carbonOffsetCost = Math.ceil((opt.co2 / 1000) * carbonPricePerTon);
+            });
+
+            res.json({
+                success: true,
+                quotes: options,
+                meta: { distance: finalDistance, source: routeResult.rows.length > 0 ? 'Enterprise Ledger' : 'Smart Engine' }
+            });
+
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ success: false, message: "Error calculating enterprise quote" });
         }
-    ];
-
-    // Carbon Offset Cost (approx $15 per ton of CO2)
-    const carbonPricePerTon = 15;
-    options.forEach(opt => {
-        opt.carbonOffsetCost = Math.ceil((opt.co2 / 1000) * carbonPricePerTon);
     });
 
-    // Simulate Network Delay
-    setTimeout(() => {
-        res.json({
-            success: true,
-            quotes: options,
-            meta: {
-                origin: fromCountry,
-                dest: toCountry,
-                distance: distance
-            }
-        });
-    }, 1500);
-});
-
-module.exports = router;
+    return router;
+};

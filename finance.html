@@ -33,7 +33,7 @@
             <hr class="border-secondary opacity-25 my-3">
             <a href="finance.html" class="nav-item-dash active"><i class="fas fa-file-invoice w-5"></i> Billing</a>
             <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
-            <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+            <a href="profile.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
 
         <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
@@ -63,17 +63,16 @@
         <div class="row g-4 mb-5">
             <div class="col-md-4">
                 <div class="card-enterprise p-4">
-                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Total Due</h6>
-                    <h2 class="text-white fw-bold mb-0">₹1,24,500</h2>
-                    <p class="text-danger small mt-2 mb-0"><i class="fas fa-exclamation-circle me-1"></i> ₹45,000
-                        Overdue</p>
+                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Total Transactions</h6>
+                    <h2 class="text-white fw-bold mb-0 summary-total-due">Loading...</h2>
+                    <p class="text-info small mt-2 mb-0"><i class="fas fa-credit-card me-1"></i> All-time</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card-enterprise p-4">
-                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Open Invoices</h6>
-                    <h2 class="text-white fw-bold mb-0">3</h2>
-                    <p class="text-white-50 small mt-2 mb-0">2 Due this week</p>
+                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Total Invoices</h6>
+                    <h2 class="text-white fw-bold mb-0 summary-invoice-count">--</h2>
+                    <p class="text-white-50 small mt-2 mb-0">All Time</p>
                 </div>
             </div>
             <div class="col-md-4">
@@ -100,45 +99,11 @@
                             <th class="text-end pe-4 py-3">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="border-top-0">
-                        <tr>
-                            <td class="ps-4 fw-bold">INV-2024-001</td>
-                            <td class="text-white-50">Oct 20, 2024</td>
-                            <td>SS-BKG-9928</td>
-                            <td class="fw-bold">₹45,000</td>
-                            <td><span
-                                    class="badge bg-danger bg-opacity-10 text-danger border border-danger">Overdue</span>
-                            </td>
-                            <td class="text-danger">Oct 27, 2024</td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-outline-light btn-sm rounded-pill">Pay Now</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="ps-4 fw-bold">INV-2024-002</td>
-                            <td class="text-white-50">Oct 25, 2024</td>
-                            <td>SS-BKG-9930</td>
-                            <td class="fw-bold">₹79,500</td>
-                            <td><span
-                                    class="badge bg-warning bg-opacity-10 text-warning border border-warning">Pending</span>
-                            </td>
-                            <td class="text-white-50">Nov 01, 2024</td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-outline-light btn-sm rounded-pill">Pay Now</button>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="ps-4 fw-bold text-white-50">INV-2024-000</td>
-                            <td class="text-white-50">Oct 10, 2024</td>
-                            <td class="text-white-50">SS-BKG-8812</td>
-                            <td class="fw-bold text-white-50">₹32,000</td>
-                            <td><span
-                                    class="badge bg-success bg-opacity-10 text-success border border-success">Paid</span>
-                            </td>
-                            <td class="text-white-50">-</td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-link text-white-50 text-decoration-none"><i
-                                        class="fas fa-download"></i> PDF</button>
+                    <tbody class="border-top-0" id="invoices-body">
+                        <!-- Dynamically populated by finance.js -->
+                        <tr id="finance-loading-row">
+                            <td colspan="7" class="text-center py-4 text-white-50">
+                                <div class="spinner-border spinner-border-sm me-2"></div>Loading invoices...
                             </td>
                         </tr>
                     </tbody>
@@ -149,8 +114,74 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
-    <script src="finance.js"></script>
+    <script src="auth-guard.js"></script>
+    <script>
+        const API_URL = `http://${window.location.hostname}:3000`;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) { window.location.href = 'auth.html'; return; }
+
+                const name = data.user.name || 'User';
+                document.getElementById('user-name-display').innerText = name;
+                document.getElementById('user-avatar').innerText = name.charAt(0).toUpperCase();
+
+                // Load invoices from API
+                loadInvoices();
+            } catch (err) {
+                window.location.href = 'auth.html';
+            }
+        });
+
+        async function loadInvoices() {
+            const tbody = document.getElementById('invoices-body');
+            try {
+                const res = await fetch(`${API_URL}/api/finance/invoices`, { credentials: 'include' });
+                const data = await res.json();
+
+                document.getElementById('finance-loading-row')?.remove();
+
+                if (!data.success || !data.invoices || data.invoices.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-white-50">No invoices found.</td></tr>';
+                    return;
+                }
+
+                let totalAmount = 0;
+                tbody.innerHTML = data.invoices.map(inv => {
+                    totalAmount += parseFloat(inv.amount || 0);
+                    const statusColors = { Completed: 'success', Pending: 'warning', Refunded: 'danger' };
+                    const color = statusColors[inv.status] || 'secondary';
+                    return `
+                        <tr>
+                            <td class="ps-4 fw-bold">${inv.invoice_number || `INV-${inv.id}`}</td>
+                            <td class="text-white-50">${new Date(inv.created_at || Date.now()).toLocaleDateString()}</td>
+                            <td>#${inv.shipment_id || '--'}</td>
+                            <td class="fw-bold">₹${parseFloat(inv.amount || 0).toLocaleString('en-IN')}</td>
+                            <td><span class="badge bg-${color} bg-opacity-10 text-${color} border border-${color}">${inv.status}</span></td>
+                            <td class="text-white-50">${inv.issued_at ? new Date(inv.issued_at).toLocaleDateString() : '--'}</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-link text-white-50 text-decoration-none"><i class="fas fa-download"></i> PDF</button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                // Update summary cards
+                document.querySelector('.summary-total-due').innerText = `₹${totalAmount.toLocaleString('en-IN')}`;
+                document.querySelector('.summary-invoice-count').innerText = data.invoices.length;
+
+            } catch (err) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-danger">Failed to load invoices.</td></tr>';
+            }
+        }
+
+        async function handleLogout() {
+            await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
+            window.location.href = 'auth.html';
+        }
+    </script>
 </body>
 
 </html>
