@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="auth-guard.js"></script>
     <style>
         :root {
@@ -663,7 +665,6 @@
             <div class="co-nav-section">Fleet</div>
             <a href="#" onclick="showSection('vessels',this)"><i class="fas fa-ship"></i> Vessels / Fleet</a>
             <a href="#" onclick="showSection('schedules',this)"><i class="fas fa-calendar-alt"></i> Schedules</a>
-            <a href="#" onclick="showSection('containers',this)"><i class="fas fa-cube"></i> Containers</a>
 
             <div class="co-nav-section">Business</div>
             <a href="#" onclick="showSection('pricing',this)"><i class="fas fa-tags"></i> Pricing & Rates</a>
@@ -779,6 +780,18 @@
                     <h6>Shipment Status</h6><canvas id="chart-status" height="120"></canvas>
                 </div>
             </div>
+
+            <!-- New Fleet Tracker Section -->
+            <div class="chart-card mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h6 class="mb-0"><i class="fas fa-satellite me-2 text-primary"></i>Live Fleet Tracker</h6>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="initDashboardMap()">
+                        <i class="fas fa-sync me-1"></i>Reset View
+                    </button>
+                </div>
+                <div id="fleet-map" style="height: 400px; border-radius: 12px; background: #0c1120; border: 1px solid rgba(255,255,255,0.06);"></div>
+            </div>
+
             <div class="co-table-wrap">
                 <div class="co-table-header"><span class="text-white fw-bold small">Recent Bookings</span><a href="#"
                         onclick="showSection('bookings',null)" class="text-primary small text-decoration-none">View All
@@ -819,6 +832,14 @@
         <section class="co-section" id="section-shipments">
             <div class="section-header">
                 <h2><i class="fas fa-boxes me-2 text-info"></i> Shipment Management</h2>
+                <div class="d-flex gap-2 ms-auto">
+                    <button class="btn-co btn-primary" data-bs-toggle="modal" data-bs-target="#directShipmentModal">
+                        <i class="fas fa-plus me-1"></i>Manual Registry
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="loadShipments()">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
             </div>
             <div class="co-table-wrap">
                 <div class="co-table-header">
@@ -921,45 +942,6 @@
                             </tr>
                         </tbody>
                     </table>
-                </div>
-            </div>
-        </section>
-
-        <!-- ════ 6. CONTAINERS ═══════════════════════════════════════ -->
-        <section class="co-section" id="section-containers">
-            <div class="section-header">
-                <h2><i class="fas fa-cube me-2 text-info"></i> Container Management</h2>
-            </div>
-            <div class="co-table-wrap">
-                <div class="co-table-header">
-                    <span class="text-white fw-bold small">Assign Container to Shipment</span>
-                </div>
-                <div class="p-4">
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-3">
-                            <label class="text-white-50 small d-block mb-1">Shipment ID</label>
-                            <input class="co-input w-100" id="cont-shipment-id" placeholder="e.g. 42">
-                        </div>
-                        <div class="col-md-3">
-                            <label class="text-white-50 small d-block mb-1">Container Type</label>
-                            <select class="co-input w-100" id="cont-type">
-                                <option>20ft Standard</option>
-                                <option>40ft Standard</option>
-                                <option>40ft High Cube</option>
-                                <option>Refrigerated (Reefer)</option>
-                                <option>Open Top</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="text-white-50 small d-block mb-1">Container ID</label>
-                            <input class="co-input w-100" id="cont-id" placeholder="e.g. MSCU1234567">
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button class="btn btn-primary w-100 rounded-pill" onclick="assignContainer()"><i
-                                    class="fas fa-check me-1"></i>Assign</button>
-                        </div>
-                    </div>
-                    <div id="container-log"></div>
                 </div>
             </div>
         </section>
@@ -1114,40 +1096,50 @@
                 <div class="col-lg-5">
                     <div class="co-table-wrap p-4">
                         <h6 class="text-white fw-bold mb-4">Add Tracking Event</h6>
+                        <h6 class="text-white fw-bold mb-4">Discovery & Tracking</h6>
                         <div class="mb-3">
-                            <label class="text-white-50 small fw-bold d-block mb-1">SHIPMENT ID</label>
-                            <input class="co-input w-100" id="tr-shipment" placeholder="Enter shipment number">
+                            <label class="text-white-50 x-small fw-bold d-block mb-1">LOOKUP BY UID / NAME</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-dark border-secondary"><i class="fas fa-user-search text-white-50"></i></span>
+                                <input class="co-input flex-grow-1" id="tr-lookup" placeholder="UID or Customer..." oninput="lookupShipmentForTracking()">
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="text-white-50 small fw-bold d-block mb-1">EVENT / STATUS</label>
-                            <select class="co-input w-100" id="tr-event">
-                                <option>Container Loaded</option>
-                                <option>Vessel Departed</option>
-                                <option>In Transit</option>
-                                <option>At Origin Port</option>
-                                <option>Customs Clearance</option>
-                                <option>Arrived at Destination</option>
-                                <option>Delivered</option>
-                            </select>
+                        <div class="row g-2 mb-4">
+                            <div class="col-6">
+                                <label class="text-white-50 x-small fw-bold d-block mb-1">SOURCE</label>
+                                <input class="co-input w-100" id="tr-source" placeholder="Route Start" oninput="lookupShipmentForTracking()" list="ports-list">
+                            </div>
+                            <div class="col-6">
+                                <label class="text-white-50 x-small fw-bold d-block mb-1">DESTINATION</label>
+                                <input class="co-input w-100" id="tr-dest" placeholder="Route End" oninput="lookupShipmentForTracking()" list="ports-list">
+                            </div>
                         </div>
-                        <div class="mb-3">
-                            <label class="text-white-50 small fw-bold d-block mb-1">LOCATION / PORT</label>
-                            <input class="co-input w-100" id="tr-location" placeholder="e.g. Rotterdam Port NL"
-                                list="ports-list">
+                        
+                        <div id="vessel-search-results" class="mb-4" style="max-height: 380px; overflow-y: auto;">
+                            <!-- Multiple Search Results Inject here -->
                         </div>
-                        <div class="mb-4">
-                            <label class="text-white-50 small fw-bold d-block mb-1">NOTE</label>
-                            <textarea class="co-input w-100" id="tr-notes" rows="3"
-                                placeholder="e.g. Container loaded on MV Maersk Gulsun"></textarea>
-                        </div>
-                        <button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="submitTracking()">
-                            <i class="fas fa-satellite-dish me-2"></i>Push Tracking Event
+                        
+                        <input type="hidden" id="tr-shipment">
+                        <button class="btn btn-primary w-100 rounded-pill fw-bold" id="push-track-btn" onclick="submitTracking()" disabled>
+                            <i class="fas fa-satellite-dish me-2"></i>Push Live Status Update
                         </button>
                     </div>
                 </div>
                 <div class="col-lg-7">
+                    <div class="co-table-wrap mb-4">
+                        <div class="co-table-header">
+                            <span class="text-white fw-bold small"><i class="fas fa-route me-2"></i>Voyage Visualization</span>
+                        </div>
+                        <div id="tracking-context-map" style="height: 320px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <div class="d-flex align-items-center justify-content-center h-100 text-white-50 small">
+                                <span><i class="fas fa-search me-2"></i>Lookup a shipment to visualize voyage</span>
+                            </div>
+                        </div>
+                    </div>
                     <div class="co-table-wrap">
-                        <div class="co-table-header"><span class="text-white fw-bold small">Recent Events</span></div>
+                        <div class="co-table-header">
+                            <span class="text-white fw-bold small"><i class="fas fa-history me-2"></i>Recent Events</span>
+                        </div>
                         <div class="p-4">
                             <div id="tracking-timeline"></div>
                         </div>
@@ -1223,37 +1215,76 @@
     </div><!-- /co-main -->
 
     <!-- ═══════════ MODALS ════════════════════════════════════════════ -->
-    <!-- Accept Booking -->
+    <!-- Accept Booking & Integrated Quoting -->
     <div id="accept-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('accept-modal',event)">
-        <div class="co-modal">
-            <h5><i class="fas fa-check-circle me-2 text-success"></i>Accept Booking</h5>
-            <input type="hidden" id="accept-shipment-id">
-            <label>Shipment</label><input type="text" id="accept-shipment-ref" readonly>
-            <label>Allocate Vessel <span class="text-danger">*</span></label>
-            <select id="accept-vessel-select" class="co-input w-100" onchange="onAcceptShipSelected()">
-                <option value="">-- Select Available Ship --</option>
-            </select>
-            <label>Cargo Drop Port (Target Stop)</label>
-            <select id="accept-drop-port-select" class="co-input w-100">
-                <option value="">-- Select Drop Stop --</option>
-            </select>
-            <label>Notes to Customer</label>
-            <textarea id="accept-notes" rows="2" placeholder="Confirmation notes..."></textarea>
-            <div class="row g-2 mt-3">
-                <div class="col-6">
-                    <label>Departure Date</label>
-                    <input type="date" id="accept-departure" class="co-input w-100">
-                </div>
-                <div class="col-6">
-                    <label>Arrival Date</label>
-                    <input type="date" id="accept-arrival" class="co-input w-100">
-                </div>
+        <div class="co-modal" style="width: 700px; max-width: 95vw;">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0"><i class="fas fa-file-invoice-dollar me-2 text-primary"></i>Accept & Quote Booking</h5>
+                <span class="badge bg-primary rounded-pill px-3 py-2" id="accept-shipment-ref">SS-47</span>
             </div>
-            <div class="d-flex gap-2 mt-4">
-                <button class="btn btn-success flex-fill fw-bold rounded-pill" onclick="submitAccept()">Accept
-                    Booking</button>
-                <button class="btn btn-outline-secondary flex-fill rounded-pill"
-                    onclick="closeModal('accept-modal')">Cancel</button>
+            <input type="hidden" id="accept-shipment-id">
+            
+            <div class="row g-4">
+                <!-- Left: Logistics -->
+                <div class="col-md-6 border-end border-secondary border-opacity-10 pe-4">
+                    <h6 class="text-white-50 x-small fw-bold mb-3 text-uppercase">Logistics Allocation</h6>
+                    <div class="mb-3">
+                        <label class="text-white x-small fw-bold">Select Vessel (*)</label>
+                        <select id="accept-vessel-select" class="co-input w-100 mt-1" onchange="onAcceptShipSelected()">
+                            <option value="">-- Select Vessel --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="text-white x-small fw-bold">Target Port / Stop</label>
+                        <select id="accept-drop-port-select" class="co-input w-100 mt-1">
+                            <option value="">-- Select Drop Port --</option>
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="text-white x-small fw-bold">Departure</label>
+                            <input type="date" id="accept-departure" class="co-input w-100 mt-1">
+                        </div>
+                        <div class="col-6">
+                            <label class="text-white x-small fw-bold">Arrival</label>
+                            <input type="date" id="accept-arrival" class="co-input w-100 mt-1">
+                        </div>
+                    </div>
+                    <h6 class="text-white-50 x-small fw-bold mb-2 mt-4 text-uppercase">Required Documents</h6>
+                    <div class="d-flex flex-wrap gap-2 mb-3" id="accept-docs-checklist">
+                        <label class="doc-chk"><input type="checkbox" value="Government ID" checked> Govt ID</label>
+                        <label class="doc-chk"><input type="checkbox" value="Commercial Invoice" checked> Invoice</label>
+                        <label class="doc-chk"><input type="checkbox" value="Packing List" checked> Packing List</label>
+                        <label class="doc-chk"><input type="checkbox" value="IEC Certificate"> IEC</label>
+                        <label class="doc-chk"><input type="checkbox" value="Vehicle RC"> Vehicle RC</label>
+                    </div>
+                </div>
+
+                <!-- Right: Pricing Quotes -->
+                <div class="col-md-6 ps-4">
+                    <h6 class="text-white-50 x-small fw-bold mb-3 text-uppercase">Service Level Quoting (Triple Bid)</h6>
+                    <div class="mb-3">
+                        <div class="p-3 bg-dark bg-opacity-25 rounded border border-light border-opacity-10">
+                            <label class="text-info x-small fw-bold">ECONOMY (Slowest/Shipment)</label>
+                            <input type="number" id="quote-economy" class="co-input w-100 mt-1" placeholder="Amount (₹)">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="p-3 bg-primary bg-opacity-10 rounded border border-primary border-opacity-10">
+                            <label class="text-primary x-small fw-bold">STANDARD (Balanced)</label>
+                            <input type="number" id="quote-standard" class="co-input w-100 mt-1" placeholder="Amount (₹)">
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <div class="p-3 bg-warning bg-opacity-10 rounded border border-warning border-opacity-10">
+                            <label class="text-warning x-small fw-bold">EXPRESS (Fastest/Air Hybrid)</label>
+                            <input type="number" id="quote-express" class="co-input w-100 mt-1" placeholder="Amount (₹)">
+                        </div>
+                    </div>
+                    <button class="btn btn-success w-100 fw-bold rounded-pill py-3" onclick="submitIntegratedAccept()">
+                        <i class="fas fa-check-double me-2"></i>Accept & Secure Booking
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1262,16 +1293,16 @@
     <div id="vessel-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('vessel-modal',event)">
         <div class="co-modal">
             <h5><i class="fas fa-ship me-2 text-primary"></i>Add Vessel</h5>
-            <label>Vessel Name</label><input id="v-name" placeholder="e.g. MV Maersk Gulsun">
-            <label>Type</label>
+            <label>Vessel Name (*)</label><input id="v-name" placeholder="e.g. MV Maersk Gulsun">
+            <label>Type (*)</label>
             <select id="v-type">
                 <option>Container Ship</option>
                 <option>Bulk Carrier</option>
                 <option>Tanker</option>
                 <option>Ro-Ro</option>
             </select>
-            <label>Capacity (TEU)</label><input id="v-capacity" type="number" placeholder="e.g. 23756">
-            <label>Current Location</label><input id="v-location" placeholder="e.g. Mumbai Port, IN" list="ports-list">
+            <label>Capacity (TEU) (*)</label><input id="v-capacity" type="number" placeholder="e.g. 23756">
+            <label>Current Location (*)</label><input id="v-location" placeholder="e.g. Mumbai Port, IN" list="ports-list">
             <label>Next Port</label><input id="v-next" placeholder="e.g. Rotterdam, NL" list="ports-list">
             <label>Status</label>
             <select id="v-status">
@@ -1293,11 +1324,17 @@
         onclick="closeModal('schedule-modal',event)">
         <div class="co-modal">
             <h5><i class="fas fa-calendar-alt me-2 text-success"></i>Create Schedule</h5>
-            <label>Vessel Name</label><input id="sch-vessel" placeholder="e.g. MV Marco Polo">
-            <label>From Port</label><input id="sch-from" placeholder="e.g. Mumbai" list="ports-list">
-            <label>To Port</label><input id="sch-to" placeholder="e.g. Rotterdam" list="ports-list">
-            <label>Departure Date & Time</label><input id="sch-depart" type="datetime-local">
-            <label>Estimated Arrival</label><input id="sch-arrive" type="datetime-local">
+            <label>Vessel Name (*)</label><input id="sch-vessel" placeholder="e.g. MV Marco Polo">
+            <label>From Port (*)</label><input id="sch-from" placeholder="Port A" list="ports-list">
+            <label>To Port (*)</label><input id="sch-to" placeholder="Port B" list="ports-list">
+            <div class="row g-2">
+                <div class="col-6">
+                    <label>Departure (*)</label> <input type="datetime-local" id="sch-depart">
+                </div>
+                <div class="col-6">
+                    <label>Arrival (*)</label> <input type="datetime-local" id="sch-arrive">
+                </div>
+            </div>
             <div class="d-flex gap-2 mt-4">
                 <button class="btn btn-success flex-fill fw-bold rounded-pill" onclick="addSchedule()">Create
                     Schedule</button>
@@ -1311,17 +1348,17 @@
     <div id="price-modal" class="co-modal-backdrop" style="display:none;" onclick="closeModal('price-modal',event)">
         <div class="co-modal">
             <h5><i class="fas fa-tags me-2 text-warning"></i>Add Shipping Rate</h5>
-            <label>From</label><input id="pr-from" placeholder="e.g. Mumbai">
-            <label>To</label><input id="pr-to" placeholder="e.g. Rotterdam">
-            <label>Mode</label>
+            <label>From (*)</label><input id="pr-from" placeholder="e.g. Mumbai">
+            <label>To (*)</label><input id="pr-to" placeholder="e.g. Rotterdam">
+            <label>Mode (*)</label>
             <select id="pr-mode">
                 <option>Ocean FCL</option>
                 <option>Ocean LCL</option>
                 <option>Air Freight</option>
             </select>
-            <label>Rate per CBM ($)</label><input id="pr-rate" type="number" placeholder="e.g. 45">
-            <label>Minimum Charge ($)</label><input id="pr-min" type="number" placeholder="e.g. 500">
-            <label>Transit Days</label><input id="pr-days" type="number" placeholder="e.g. 22">
+            <label>Rate per CBM ($) (*)</label><input id="pr-rate" type="number" placeholder="e.g. 45">
+            <label>Minimum Charge ($) (*)</label><input id="pr-min" type="number" placeholder="e.g. 500">
+            <label>Transit Days (*)</label><input id="pr-days" type="number" placeholder="e.g. 22">
             <div class="d-flex gap-2 mt-4">
                 <button class="btn btn-warning flex-fill fw-bold rounded-pill text-dark" onclick="addPrice()">Add
                     Rate</button>
@@ -1412,7 +1449,58 @@
         </div>
     </div>
 
-    <!-- Toast -->
+    <!-- Direct Shipment Modal -->
+    <div class="modal fade" id="directShipmentModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border border-secondary text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle text-primary me-2"></i>Manual Shipment Entry</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="directShipmentForm">
+                        <div class="mb-3">
+                            <label class="form-label text-white-50 fw-bold x-small">CUSTOMER NAME (MANUAL)</label>
+                            <input type="text" class="co-input w-100" id="ds-customer" placeholder="e.g. John Doe Logistics" required>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label text-white-50 fw-bold x-small">SOURCE PORT</label>
+                                <input type="text" class="co-input w-100" id="ds-from" list="ports-list" placeholder="Origin" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-white-50 fw-bold x-small">DEST PORT</label>
+                                <input type="text" class="co-input w-100" id="ds-to" list="ports-list" placeholder="Destination" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label text-white-50 fw-bold x-small">TRACKING NUMBER (WHEREPARCEL)</label>
+                            <input type="text" class="co-input w-100" id="ds-tracking" placeholder="e.g. 12345678" required>
+                            <div class="form-text text-white-50 x-small">This number will be used for hybrid tracking.</div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label text-white-50 fw-bold x-small">MODE</label>
+                                <select class="co-input w-100" id="ds-mode">
+                                    <option value="Sea">Ocean Freight</option>
+                                    <option value="Air">Air Courier</option>
+                                    <option value="Road">Road Transport</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-white-50 fw-bold x-small">CARGO TYPE</label>
+                                <input type="text" class="co-input w-100" id="ds-product" placeholder="Electronics, Furniture...">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm btn-primary rounded-pill fw-bold" onclick="submitDirectShipment()">Create & Accept</button>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="co-toast" id="co-toast"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -1429,6 +1517,8 @@
             <div id="route-stops-list" class="mb-4" style="max-height: 200px; overflow-y: auto;">
                 <!-- Stops added here -->
             </div>
+
+            <div id="route-preview-map" class="mb-4" style="height: 180px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.06); background: #0c1120;"></div>
 
             <div class="p-3 bg-dark rounded-3 border border-secondary border-opacity-10 mb-4">
                 <h6 class="text-white x-small fw-bold mb-3">Add New Stop</h6>

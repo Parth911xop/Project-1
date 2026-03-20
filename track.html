@@ -269,30 +269,109 @@
             socket.on('connect_error', (err) => console.warn('Socket error:', err.message));
         }
 
+        // ── AUTO-REFRESH (30s HEARTBEAT) ──────────────────────────────────
+        let refreshTimer = null;
+        function startLivePulse(shipmentId, prefix) {
+            if (refreshTimer) clearInterval(refreshTimer);
+            refreshTimer = setInterval(() => {
+                if (activeShipmentId === shipmentId) {
+                    console.log('🔄 Live Pulse: Syncing Real-Time Stats for #' + shipmentId);
+                    
+                    // Re-fetch tracking history to get latest WhereParcel scan
+                    fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' })
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success && data.external) {
+                                // Clear existing EXTERNAL events to avoid duplicates in view
+                                document.querySelectorAll('.event-pill [EXT]').forEach(el => el.closest('.event-pill').remove());
+                                
+                                if (data.external.events) {
+                                    data.external.events.forEach(ev => {
+                                        addEvent({
+                                            status: `<span [EXT]>[EXT]</span> ${ev.status}`,
+                                            message: ev.location,
+                                            timestamp: ev.date
+                                        });
+                                    });
+                                }
+                            }
+                        }).catch(() => {});
+                }
+            }, 30000);
+        }
+
+        let portMarkers = [];
+        let voyagePlannedPath = null;
+
         function joinShipment(shipmentId, prefix = 'SS') {
             activeShipmentId = shipmentId;
             trackingPath = [];
-            if(polyline) polyline.setLatLngs([]);
             
+            // Clear previous map objects
+            if(polyline) polyline.setLatLngs([]);
+            portMarkers.forEach(m => map.removeLayer(m));
+            portMarkers = [];
+            if(voyagePlannedPath) map.removeLayer(voyagePlannedPath);
+
             document.getElementById('tracking-title').innerText = `Tracking Shipment #${prefix}-${shipmentId}`;
             document.getElementById('live-badge').classList.remove('d-none');
             document.getElementById('event-feed').innerHTML = '<p class="text-white-50 small">Waiting for live updates...</p>';
 
             if (!map) initMap();
-
             if (socket?.connected) {
                 socket.emit('join_shipment', { shipmentId });
             }
 
-            // Fetch historical tracking logs
+            // Start the 30s refresh loop
+            startLivePulse(shipmentId, prefix);
+
+            // Initial fetch of logs + SHIPMENT DETAILS (for ports)
             fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success && data.logs?.length > 0) {
-                        data.logs.forEach(log => {
-                            updateMapPin(log.lat, log.lng, `Shipment #${prefix}-${shipmentId}`, log.status);
-                            addEvent({ ...log, timestamp: log.timestamp });
-                        });
+                    if (data.success) {
+                        const s = data.shipment;
+                        
+                        // 1. Plot Source and Destination Ports
+                        if (s && s.origin_lat && s.origin_lng) {
+                            const srcIcon = L.divIcon({ html: '<i class="fas fa-dot-circle text-warning fa-lg"></i>', className: 'port-icon', iconSize:[20,20] });
+                            const m1 = L.marker([s.origin_lat, s.origin_lng], { icon: srcIcon }).addTo(map).bindPopup(`<b>Source Port:</b><br>${s.origin_address}`);
+                            portMarkers.push(m1);
+                        }
+                        if (s && s.dest_lat && s.dest_lng) {
+                            const dstIcon = L.divIcon({ html: '<i class="fas fa-flag-checkered text-danger fa-lg"></i>', className: 'port-icon', iconSize:[20,20] });
+                            const m2 = L.marker([s.dest_lat, s.dest_lng], { icon: dstIcon }).addTo(map).bindPopup(`<b>Destination Port:</b><br>${s.destination_address}`);
+                            portMarkers.push(m2);
+                        }
+
+                        // Draw planned path (Dashed line between ports)
+                        if (s?.origin_lat && s?.dest_lat) {
+                            voyagePlannedPath = L.polyline([[s.origin_lat, s.origin_lng], [s.dest_lat, s.dest_lng]], {
+                                color: '#ffffff', weight: 1, dashArray: '10, 15', opacity: 0.3
+                            }).addTo(map);
+                        }
+
+                        // 2. Internal GPS Logs
+                        if (data.logs?.length > 0) {
+                            data.logs.forEach(log => {
+                                updateMapPin(log.lat, log.lng, `Shipment #${prefix}-${shipmentId}`, log.status);
+                                addEvent({ ...log, timestamp: log.timestamp });
+                            });
+                        }
+
+                        // 3. WhereParcel Courier Logic
+                        if (data.external && data.external.events) {
+                            data.external.events.forEach(ev => {
+                                addEvent({
+                                    status: `<span [EXT]>[EXT]</span> ${ev.status}`,
+                                    message: ev.location,
+                                    timestamp: ev.date
+                                });
+                            });
+                            if (data.external.status) {
+                                document.getElementById('tracking-title').innerText += ` (${data.external.status})`;
+                            }
+                        }
                     }
                 }).catch(() => { });
         }
@@ -318,12 +397,12 @@
 
                 const listEl = document.getElementById('shipment-list');
                 if (!shipData.success || !shipData.shipments?.length) {
-                    listEl.innerHTML = `<p class="text-white-50 small text-center">No shipments found. <a href="wizard.html" class="text-primary">Book one?</a></p>`;
+                    listEl.innerHTML = `<p class="text-white-50 small text-center">No shipments found.</p>`;
                 } else {
                     listEl.innerHTML = shipData.shipments.map(s => `
-                        <button class="shipment-btn btn btn-dark btn-sm text-start border border-secondary rounded-3 p-3 w-100"
+                        <button class="shipment-btn btn btn-dark btn-sm text-start border border-secondary rounded-3 p-3 w-100 mb-2"
                                 onclick="joinShipment(${s.id}, '${s.user_prefix || 'SS'}')">
-                            <div class="fw-bold text-white mb-1">#${s.user_prefix || 'SS'}-${s.id} ${s.mode || 'Shipment'}</div>
+                            <div class="fw-bold text-white mb-1"><i class="fas fa-ship me-1 text-primary"></i> #${s.user_prefix || 'SS'}-${s.id}</div>
                             <div class="text-white-50 x-small">${(s.origin_address || '--').substring(0, 22)} → ${(s.destination_address || '--').substring(0, 22)}</div>
                             <span class="badge bg-primary bg-opacity-25 text-primary mt-1" style="font-size:.65rem">${s.status}</span>
                         </button>

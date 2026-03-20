@@ -41,6 +41,12 @@ const createShipmentTable = async (pool) => {
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN consignee_details JSONB;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN incoterms VARCHAR(10);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN mode VARCHAR(20);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(100);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_lat NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_lng NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lat NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lng NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_name_manual VARCHAR(255);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN hs_code VARCHAR(50);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN description TEXT;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN consignee_name VARCHAR(255);`); } catch (e) { }
@@ -69,6 +75,39 @@ module.exports = (pool, createNotification, io) => {
     // Initialize table on load (or call explicitly in server.js)
     createShipmentTable(pool);
 
+    // Manager Direct Shipment Creation
+    router.post('/manager/create', async (req, res) => {
+        const {
+            trackingNumber, fromCountry, toCountry, mode, weight, productType, 
+            customerNameManual, cargoDetails, hsCode, description
+        } = req.body;
+
+        const managerId = req.user?.userId;
+        if (!managerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+        try {
+            const result = await pool.query(
+                `INSERT INTO shipments (
+                    company_id, tracking_number, origin_address, destination_address,
+                    origin_country, destination_country, mode, weight_kg, product_type,
+                    customer_name_manual, status, hs_code, description, cargo_details
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Accepted', $11, $12, $13)
+                RETURNING id`,
+                [
+                    managerId, trackingNumber, fromCountry, toCountry, fromCountry, toCountry,
+                    mode || 'Sea', weight || 0, productType || 'General Cargo',
+                    customerNameManual, hsCode, description,
+                    cargoDetails ? JSON.stringify(cargoDetails) : '{}'
+                ]
+            );
+
+            res.json({ success: true, shipmentId: result.rows[0].id, message: 'Direct shipment created and accepted' });
+        } catch (err) {
+            console.error('Manager create error:', err);
+            res.status(500).json({ success: false, message: 'Database error creating shipment' });
+        }
+    });
+
     // Create a new shipment
     router.post('/create', async (req, res) => {
         const {
@@ -90,7 +129,7 @@ module.exports = (pool, createNotification, io) => {
             return res.status(400).json({ success: false, message: "Missing required fields" });
         }
 
-        const initialStatus = 'Pending Manager Approval';
+        const initialStatus = 'Booked';
         const origin = originAddress || fromCountry || '';
         const dest = destinationAddress || toCountry || '';
         const currency = 'USD';
@@ -231,18 +270,50 @@ module.exports = (pool, createNotification, io) => {
         }
     });
 
-    // Get tracking history for a shipment
+    // Get tracking history for a shipment (Internal + External Hybrid)
     router.get('/:id/tracking', async (req, res) => {
         const { id } = req.params;
         try {
-            const result = await pool.query(
+            // 1. Fetch Internal Logs
+            const localRes = await pool.query(
                 `SELECT id, shipment_id, lat, lng, status, location_note, timestamp
                  FROM tracking_logs
                  WHERE shipment_id = $1
                  ORDER BY timestamp ASC`,
                 [id]
             );
-            res.json({ success: true, logs: result.rows });
+
+            // 2. Fetch Shipment Details (Ports + Coords)
+            const shipRes = await pool.query(
+                `SELECT tracking_number, mode, origin_address, destination_address, 
+                        origin_lat, origin_lng, dest_lat, dest_lng 
+                 FROM shipments WHERE id = $1`, [id]);
+            
+            let shipInfo = shipRes.rows[0];
+            
+            // Fallback for visual demonstration if ports are blank
+            if (shipInfo && !shipInfo.origin_lat) {
+                if (shipInfo.origin_address?.toLowerCase().includes('india')) { shipInfo.origin_lat = 18.94; shipInfo.origin_lng = 72.83; }
+                else { shipInfo.origin_lat = 1.35; shipInfo.origin_lng = 103.81; } // Singapore
+            }
+            if (shipInfo && !shipInfo.dest_lat) {
+                if (shipInfo.destination_address?.toLowerCase().includes('china')) { shipInfo.dest_lat = 31.23; shipInfo.dest_lng = 121.47; }
+                else if (shipInfo.destination_address?.toLowerCase().includes('dubai')) { shipInfo.dest_lat = 25.20; shipInfo.dest_lng = 55.27; }
+                else { shipInfo.dest_lat = 51.50; shipInfo.dest_lng = -0.12; } // London
+            }
+
+            let externalData = null;
+            if (shipInfo && shipInfo.tracking_number) {
+                const { getExternalTracking } = require('./services/whereParcel');
+                externalData = await getExternalTracking(shipInfo.tracking_number);
+            }
+
+            res.json({ 
+                success: true, 
+                shipment: shipInfo || null,
+                logs: localRes.rows,
+                external: externalData || null 
+            });
         } catch (err) {
             console.error('Tracking history error:', err);
             res.status(500).json({ success: false, message: 'Database error' });
@@ -329,6 +400,34 @@ module.exports = (pool, createNotification, io) => {
         } catch (err) {
             console.error(err);
             res.status(500).json({ success: false, message: "Database error fetching history" });
+        }
+    });
+
+    // Update shipment details (HS Code, Consignee, Description)
+    router.patch('/:id/update-details', async (req, res) => {
+        const shipmentId = parseInt(req.params.id);
+        const { hsCode, consigneeName, description, consigneeContact, cargoValue, trackingNumber } = req.body;
+        const userId = req.user?.userId;
+        
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+        try {
+            await pool.query(`
+                UPDATE shipments 
+                SET hs_code = COALESCE($1, hs_code),
+                    consignee_name = COALESCE($2, consignee_name),
+                    description = COALESCE($3, description),
+                    consignee_contact = COALESCE($4, consignee_contact),
+                    cargo_value = COALESCE($5, cargo_value),
+                    tracking_number = COALESCE($6, tracking_number),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $7`,
+                [hsCode, consigneeName, description, consigneeContact, cargoValue, trackingNumber, shipmentId]
+            );
+            res.json({ success: true, message: 'Shipment details updated' });
+        } catch (err) {
+            console.error('Update details error:', err);
+            res.status(500).json({ success: false, message: 'Database error' });
         }
     });
 

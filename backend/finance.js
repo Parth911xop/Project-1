@@ -34,11 +34,11 @@ module.exports = (pool) => {
 
         try {
             const result = await pool.query(`
-                SELECT i.*, i.issued_at as created_at, 'Paid' as status, s.origin_address, s.destination_address, s.status as shipment_status
+                SELECT i.*, i.created_at as created_at, i.status, s.origin_address, s.destination_address, s.status as shipment_status
                 FROM invoices i
                 JOIN shipments s ON i.shipment_id = s.id
-                WHERE s.customer_id = $1 OR s.company_id = $1
-                ORDER BY i.issued_at DESC
+                WHERE i.user_id = $1
+                ORDER BY i.created_at DESC
             `, [userId]);
 
             const invoices = result.rows;

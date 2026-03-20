@@ -109,7 +109,12 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
      * This unlocks document upload and payment for the user.
      */
     app.post('/api/v3/manager/allocate-ship', ...companyAuth, async (req, res) => {
-        const { shipmentId, shipId, departureDate, arrivalDate, cargoDropPort, notes } = req.body;
+        let { shipmentId, shipId, departureDate, arrivalDate, cargoDropPort, notes, docs, quotes } = req.body;
+        
+        // Ensure empty strings don't break TIMESTAMP columns
+        departureDate = departureDate || null;
+        arrivalDate = arrivalDate || null;
+        cargoDropPort = cargoDropPort || null;
         const managerId = uid(req);
 
         if (!shipmentId || !shipId) {
@@ -683,11 +688,174 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             }
 
             res.json({ success: true, message: `Ship marked at ${stop.port_name}` });
+            res.json({ success: true, message: `Ship marked at ${stop.port_name}` });
         } catch (e) {
             console.error('Mark stop error:', e);
             res.status(500).json({ success: false, message: 'Update failed' });
         }
     });
 
-    console.log('✅ V3 Workflow routes loaded (Ship Allocation, Route Management, Tracking, Receipts)');
+    // ═══════════════════════════════════════════════════════════
+    // MODULE 2: Manager — Booking Requests (Pending Manager Approval)
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * GET /api/v3/manager/booking-requests
+     * Returns all shipments with status "Pending Manager Approval"
+     */
+    app.get('/api/v3/manager/booking-requests', ...companyAuth, async (req, res) => {
+        const managerId = uid(req);
+        try {
+            const result = await pool.query(
+                `SELECT * FROM shipments WHERE status = 'Pending Manager Approval' ORDER BY created_at DESC`
+            );
+            res.json({ success: true, shipments: result.rows });
+        } catch (e) {
+            res.status(500).json({ success: false, message: 'Failed to fetch booking requests' });
+        }
+    });
+
+    /**
+     * GET /api/v3/manager/ship/:id/route
+     * Returns stops for a given ship
+     */
+    app.get('/api/v3/manager/ship/:id/route', ...companyAuth, async (req, res) => {
+        const shipId = parseInt(req.params.id);
+        try {
+            const stopsRes = await pool.query(
+                `SELECT id, port_name, stop_order, lat, lng, estimated_arrival, estimated_departure 
+                 FROM ship_route_stops WHERE ship_id = $1 
+                 ORDER BY stop_order ASC`,
+                [shipId]
+            );
+            res.json({ success: true, shipId, stops: stopsRes.rows });
+        } catch (e) {
+            res.status(500).json({ success: false, message: 'Failed to fetch voyage path' });
+        }
+    });
+
+    /**
+     * POST /api/v3/manager/shipment/:id/integrated-accept
+     * Atomic: Allocates Vessel + Adds 3 Quote Options + Sets Required Docs + Notifies User
+     */
+    app.post('/api/v3/manager/shipment/:id/integrated-accept', ...companyAuth, async (req, res) => {
+        const sid = parseInt(req.params.id);
+        const managerId = uid(req);
+        let { shipId, cargoDropPort, departureDate, arrivalDate, docs, quotes } = req.body;
+
+        // Robustify empty inputs for SQL compatibility
+        departureDate = departureDate || null;
+        arrivalDate = arrivalDate || null;
+        cargoDropPort = cargoDropPort || null;
+
+        console.log(`📡 Processing Integrated Accept for Shipment #${sid} (Manager: ${managerId})`);
+        try {
+            await pool.query('BEGIN');
+
+            const rShip = await pool.query(`SELECT name, type FROM vehicles WHERE id = $1`, [shipId]);
+            if (rShip.rows.length === 0) throw new Error('Vessel not found');
+            const ship = rShip.rows[0];
+
+            // 1. Core Allocation update
+            await pool.query(`
+                UPDATE shipments SET 
+                    status = 'Ship Allocated',
+                    allocated_ship_id = $1,
+                    company_id = $2,
+                    vehicle_type = $3,
+                    cargo_drop_port = $4,
+                    estimated_departure = $5,
+                    estimated_arrival = $6,
+                    requested_documents = $7,
+                    allocated_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $8
+            `, [shipId, managerId, ship.name || ship.type, cargoDropPort, departureDate, arrivalDate, JSON.stringify(docs), sid]);
+
+            // 2. Clear then Insert the 3 Quote Options
+            await pool.query(`DELETE FROM shipment_quote_options WHERE shipment_id = $1`, [sid]);
+            for (const q of quotes) {
+                await pool.query(`
+                    INSERT INTO shipment_quote_options (shipment_id, option_name, price, vessel_id, transit_time)
+                    VALUES ($1, $2, $3, $4, $5)
+                `, [sid, q.name, q.price, shipId, q.transitTime || 'Standard']);
+            }
+
+            // 3. Notify & Broadcast with Deep Link for Step-by-Step Fulfillment
+            const userR = await pool.query(`SELECT customer_id FROM shipments WHERE id = $1`, [sid]);
+            const custId = userR.rows[0]?.customer_id || userR.rows[0]?.user_id;
+            if (custId) {
+                const link = `shipments.html?complete=${sid}`;
+                await notify(custId, 'Action Required: Choose Service Level', 
+                    `Your booking #${sid} is accepted. Please select your service (Economy/Standard/Express) and upload documents to lock in your price.`, 
+                    'warning', link);
+                
+                if (io) {
+                    io.to(`shipment:${sid}`).emit('shipment:status_update', {
+                        shipmentId: sid,
+                        status: 'Ship Allocated',
+                        message: 'Your shipment has been accepted by manager. Please select service level.'
+                    });
+                }
+            }
+
+            await pool.query('COMMIT');
+            res.json({ success: true, message: 'Shipment accepted with integrated quotes.' });
+        } catch (e) {
+            await pool.query('ROLLBACK');
+            console.error('❌ Integrated Accept Error:', e.message);
+            res.status(500).json({ success: false, message: 'Failed to process integrated acceptance: ' + e.message });
+        }
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // MODULE 3: User — Quoting & Fulfilment Wizard Handlers
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * GET /api/v3/shipment/:id/quotes
+     * Returns the 3 service options + required docs for the user
+     */
+    app.get('/api/v3/shipment/:id/quotes', anyAuth, async (req, res) => {
+        const sid = parseInt(req.params.id);
+        try {
+            const rQ = await pool.query(`SELECT * FROM shipment_quote_options WHERE shipment_id = $1`, [sid]);
+            const rS = await pool.query(`SELECT requested_documents, selected_quote_id FROM shipments WHERE id = $1`, [sid]);
+            
+            if (rS.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
+            
+            res.json({ 
+                success: true, 
+                quotes: rQ.rows, 
+                docs: rS.rows[0].requested_documents || [],
+                selectedId: rS.rows[0].selected_quote_id
+            });
+        } catch (e) {
+            console.error('Fetch quotes error:', e.message);
+            res.status(500).json({ success: false });
+        }
+    });
+
+    /**
+     * POST /api/v3/shipment/:id/select-quote
+     * User picks their service level
+     */
+    app.post('/api/v3/shipment/:id/select-quote', anyAuth, async (req, res) => {
+        const sid = parseInt(req.params.id);
+        const { quoteId } = req.body;
+        try {
+            const rQ = await pool.query(`SELECT price FROM shipment_quote_options WHERE id = $1 AND shipment_id = $2`, [quoteId, sid]);
+            if (rQ.rows.length === 0) throw new Error('Invalid quote selection');
+            
+            await pool.query(
+                `UPDATE shipments SET selected_quote_id = $1, estimated_cost = $2, updated_at = NOW() WHERE id = $3`, 
+                [quoteId, rQ.rows[0].price, sid]
+            );
+            res.json({ success: true, message: 'Service level selected' });
+        } catch (e) {
+            res.status(500).json({ success: false, message: e.message });
+        }
+    });
+
+    console.log('✅ V3 Workflow routes loaded (Ship Allocation, Route Management, Tracking, Receipts, Vessel Route, Integrated Accept)');
 };

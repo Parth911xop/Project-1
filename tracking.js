@@ -6,37 +6,100 @@ document.addEventListener("DOMContentLoaded", () => {
     initDashboard();
 });
 
+let trackingMap = null;
+let shipMarker = null;
+let pathLine = null;
+
 async function initDashboard() {
-    // Check for ID in URL
     const params = new URLSearchParams(window.location.search);
     const shipmentId = params.get('id');
+    initMap();
 
+    // 1. Join Shipment Room for Live Updates
+    if (shipmentId && typeof io !== 'undefined') {
+        const socket = io(API_URL);
+        socket.emit('join_shipment', shipmentId);
+        
+        socket.on('tracking_event', (e) => {
+            console.log("⚓ Live Tracking Pulse:", e);
+            if (e.lat && e.lng) {
+                updateMap({ 
+                    livePosition: { lat: e.lat, lng: e.lng }, 
+                    shipName: e.vessel || 'Vessel', 
+                    status: e.status || 'In Transit',
+                    bearing: e.bearing // Integrated bearing for rotation
+                });
+                
+                // Update metrics labels live
+                if (e.bearing) setSafeText('metric-course', `${Math.round(e.bearing)}°`);
+                setSafeText('metric-speed', e.message?.includes('22 knots') ? '22 kn' : '18 kn');
+                setSafeText('last-updated', 'Live Pulse');
+            }
+        });
+    }
+
+    // 2. Fetch full voyage path (Professionally Accurate)
+    if (shipmentId) fetchVesselRoute(shipmentId);
+
+    // Initial Load
     if (shipmentId) {
-        // Fetch specific shipment
         await loadShipmentData(shipmentId);
     } else if (userId) {
-        // Fetch latest shipment for this user
         await loadLatestShipment();
     } else {
-        // Show fallback/demo
         populateUI(getMockData());
     }
 
-    // 4. Update "Last Updated" text live
     setInterval(() => {
         const el = document.getElementById('last-updated');
-        if (el) el.innerText = "Just now";
+        if (el && el.innerText !== 'Live Pulse') el.innerText = "Just now";
+        if (shipmentId) loadShipmentData(shipmentId);
     }, 60000);
+}
+
+let VOYAGE_STOPS = [];
+async function fetchVesselRoute(sid) {
+    try {
+        const res = await fetch(`${API_URL}/api/v3/shipment/${sid}/vessel-route`, { credentials: 'include' });
+        const d = await res.json();
+        if (d.success) {
+            VOYAGE_STOPS = d.stops;
+            // Immediate map update if possible
+            if (trackingMap) drawVoyagePath(VOYAGE_STOPS);
+        }
+    } catch(e) {}
+}
+
+function drawVoyagePath(stops) {
+    if (!trackingMap || stops.length < 2) return;
+    const points = stops.map(s => [s.lat, s.lng]);
+    
+    if (pathLine) trackingMap.removeLayer(pathLine);
+    pathLine = L.polyline(points, {
+        color: '#6366f1', weight: 4, opacity: 0.5, dashArray: '8, 12',
+        lineJoin: 'round'
+    }).addTo(trackingMap);
+
+    // Zoom to fit path if first load
+    trackingMap.fitBounds(pathLine.getBounds(), { padding: [50, 50] });
+}
+
+function initMap() {
+    const mapEl = document.getElementById('map');
+    if (!mapEl) return;
+    trackingMap = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© CARTO'
+    }).addTo(trackingMap);
 }
 
 async function loadShipmentData(id) {
     try {
-        // Fetch from high-fidelity V3 workflow tracking endpoint
         const res = await fetch(`${API_URL}/api/v3/tracking/live/${id}`, { credentials: 'include' });
         const d = await res.json();
-
         if (d.success) {
             populateUI(d.tracking);
+            updateMap(d.tracking);
         } else {
             if (window.showToast) showToast(d.message || 'Shipment not found', 'error');
             populateUI(getMockData());
@@ -44,6 +107,55 @@ async function loadShipmentData(id) {
     } catch (err) {
         console.error("Tracking API Error:", err);
         populateUI(getMockData());
+    }
+}
+
+function updateMap(data) {
+    const pos = [data.livePosition.lat, data.livePosition.lng];
+    const bearing = data.bearing || 0;
+
+    // Vessel Marker with Rotation (Advanced AIS)
+    if (!shipMarker) {
+        const icon = L.divIcon({
+            html: `
+                <div style="transform: rotate(${bearing}deg); transition: transform 0.5s ease; text-align:center;">
+                    <i class="fas fa-ship fa-2x text-primary" style="filter: drop-shadow(0 0 10px rgba(79, 70, 229, 0.8));"></i>
+                    <div class="vessel-heading-arrow" style="width:2px; height:20px; background:#4f46e5; margin: -5px auto 0; opacity:0.6;"></div>
+                </div>`,
+            className: 'vessel-live-icon', 
+            iconSize: [40, 40],
+            iconAnchor: [20, 20]
+        });
+        shipMarker = L.marker(pos, { icon }).addTo(trackingMap);
+        trackingMap.setView(pos, 6);
+    } else {
+        shipMarker.setLatLng(pos);
+        // Update rotation live
+        const iconEl = shipMarker.getElement()?.querySelector('div');
+        if (iconEl) iconEl.style.transform = `rotate(${bearing}deg)`;
+    }
+    shipMarker.bindPopup(`<b>${data.shipName}</b><br>${data.status}`).openPopup();
+
+    // Route Polyline
+    if (data.routeStops && data.routeStops.length > 1) {
+        const points = data.routeStops
+            .sort((a, b) => a.stop_order - b.stop_order)
+            .filter(st => st.lat && st.lng)
+            .map(st => [st.lat, st.lng]);
+
+        if (pathLine) trackingMap.removeLayer(pathLine);
+        pathLine = L.polyline(points, {
+            color: '#6366f1', weight: 3, opacity: 0.6, dashArray: '5, 10'
+        }).addTo(trackingMap);
+
+        // Add small markers for each port
+        data.routeStops.forEach(st => {
+            if (st.lat && st.lng) {
+                L.circleMarker([st.lat, st.lng], {
+                    radius: 4, color: '#fff', weight: 1, fillOpacity: 0.8
+                }).addTo(trackingMap).bindPopup(`<b>Port: ${st.port_name}</b>`);
+            }
+        });
     }
 }
 
@@ -74,7 +186,7 @@ function getMockData() {
         shipName: "Smart Vessel 01",
         currentPort: "Singapore, SG",
         distanceLeft: "2,100 nm",
-        livePosition: { lat: 10.0, lng: 80.0 }, 
+        livePosition: { lat: 10.0, lng: 80.0 },
         routeStops: []
     };
 }
@@ -105,7 +217,7 @@ function populateUI(data) {
                 const isArrived = (data.currentPort === stop.port_name);
                 const isPast = (stop.stop_order < (data.routeStops.find(s => s.port_name === data.currentPort)?.stop_order || 0));
                 const statusClass = isPast ? 'completed' : (isArrived ? 'active' : 'pending');
-                
+
                 return `
                     <div class="timeline-item ${statusClass}">
                         <div class="timeline-dot"></div>
@@ -123,11 +235,28 @@ function populateUI(data) {
                 `;
             }).join('');
         } else {
-            // Default baseline timeline
+            // Default baseline timeline (Simple & Professional)
             list.innerHTML = `
-                <div class="timeline-item completed"><div class="timeline-dot"></div><div class="glass-panel p-3"><h6 class="mb-0 text-white">Booking Confirmed</h6></div></div>
-                <div class="timeline-item active"><div class="timeline-dot"></div><div class="glass-panel p-3"><h6 class="mb-0 text-accent">In Transit</h6><small class="text-white-50">${data.currentPort || 'On Sea'}</small></div></div>
-                <div class="timeline-item pending"><div class="timeline-dot"></div><div class="glass-panel p-3"><h6 class="mb-0 text-muted">Awaiting Arrival</h6></div></div>
+                <div class="timeline-item ${data.status === 'Pending Approval' ? 'active' : 'completed'}">
+                    <div class="timeline-dot"></div>
+                    <div class="glass-panel p-3"><h6 class="mb-1 text-white">Booking Request</h6><small class="text-white-50">Under Review</small></div>
+                </div>
+                <div class="timeline-item ${data.status === 'Ship Allocated' ? 'active' : (data.status.includes('Transit') || data.status === 'Delivered' || data.status === 'Cargo Loaded' ? 'completed' : 'pending')}">
+                    <div class="timeline-dot"></div>
+                    <div class="glass-panel p-3"><h6 class="mb-1">Ship Allocation</h6><small class="text-white-50">${data.shipName || 'Pending Assignment'}</small></div>
+                </div>
+                <div class="timeline-item ${data.status === 'Cargo Loaded' ? 'active' : (data.status === 'In Transit' || data.status === 'Delivered' ? 'completed' : 'pending')}">
+                    <div class="timeline-dot"></div>
+                    <div class="glass-panel p-3"><h6 class="mb-1">Cargo Loaded</h6></div>
+                </div>
+                <div class="timeline-item ${data.status === 'In Transit' ? 'active' : (data.status === 'Delivered' ? 'completed' : 'pending')}">
+                    <div class="timeline-dot"></div>
+                    <div class="glass-panel p-3"><h6 class="mb-1">In Transit</h6><small class="text-white-50">${data.currentPort || 'At Sea'}</small></div>
+                </div>
+                <div class="timeline-item ${data.status === 'Delivered' ? 'active' : 'pending'}">
+                    <div class="timeline-dot"></div>
+                    <div class="glass-panel p-3"><h6 class="mb-1">Delivered</h6></div>
+                </div>
             `;
         }
     }

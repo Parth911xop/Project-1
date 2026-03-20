@@ -101,6 +101,22 @@ router.post('/upload', upload.single('docFile'), async (req, res) => {
         const fileUrl = `/uploads/${req.file.filename}`;
         const finalDocName = docName || req.file.originalname;
 
+        // --- WORKFLOW ENFORCEMENT ---
+        // Prevent upload only if shipment hasn't been handled by a manager yet
+        if (shipmentId) {
+            const shipCheck = await pool.query(`SELECT status FROM shipments WHERE id = $1`, [shipmentId]);
+            const currentStatus = shipCheck.rows[0]?.status;
+            
+            // Allow uploads for Ship Allocated, Cargo Ready, etc.
+            // Only block for initial pending states
+            if (currentStatus === 'Pending Approval' || currentStatus === 'Pending Manager Approval') {
+                return res.status(403).json({ 
+                    success: false, 
+                    error: 'Upload Restricted: Awaiting Manager Approval and Ship Allocation.' 
+                });
+            }
+        }
+
         const result = await pool.query(
             'INSERT INTO documents (user_id, shipment_id, type, doc_name, file_url, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
             [userId, shipmentId || null, type, finalDocName, fileUrl, 'Submitted']

@@ -9,9 +9,9 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         try {
             const [totalR, activeR, deliveredR, pendingR] = await Promise.all([
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1`, [id]),
-                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1 AND status IN ('Accepted','At Port','In Transit','Customs')`, [id]),
+                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1 AND status IN ('Ship Allocated','Cargo Ready','Cargo Loaded','In Transit','At Port','Accepted')`, [id]),
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1 AND status='Delivered'`, [id]),
-                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE status='Booked' AND company_id IS NULL`, [])
+                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE status='Pending Manager Approval'`, [])
             ]);
 
             const revenueR = await pool.query(
@@ -50,12 +50,13 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         try {
             const r = await pool.query(`
                 SELECT s.*, u.name as customer_name, u.email as customer_email,
-                       UPPER(LEFT(u.email, 2)) as user_prefix
+                       UPPER(LEFT(u.email, 2)) as user_prefix,
+                       s.type as cargo_type
                 FROM shipments s 
                 LEFT JOIN users u ON s.customer_id = u.id
-                WHERE s.status='Booked' AND (s.company_id IS NULL OR s.company_id = $1)
+                WHERE s.status='Pending Manager Approval'
                 ORDER BY s.created_at DESC
-            `, [id]);
+            `);
             res.json({ success: true, shipments: r.rows });
         } catch (e) {
             res.status(500).json({ success: false, message: 'Failed to fetch requests' });
@@ -68,14 +69,41 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         try {
             const r = await pool.query(`
                 SELECT s.*, u.name as customer_name, u.email as customer_email,
-                       UPPER(LEFT(u.email, 2)) as user_prefix
+                       UPPER(LEFT(u.email, 2)) as user_prefix,
+                       COALESCE(s.origin_lat, 
+                           CASE 
+                               WHEN LOWER(s.origin_address) LIKE '%india%' THEN 18.94
+                               ELSE 1.35 
+                           END
+                       ) as origin_lat,
+                       COALESCE(s.origin_lng,
+                           CASE 
+                               WHEN LOWER(s.origin_address) LIKE '%india%' THEN 72.83
+                               ELSE 103.81
+                           END
+                       ) as origin_lng,
+                       COALESCE(s.dest_lat,
+                           CASE 
+                               WHEN LOWER(s.destination_address) LIKE '%china%' THEN 31.23
+                               WHEN LOWER(s.destination_address) LIKE '%dubai%' THEN 25.20
+                               ELSE 51.50
+                           END
+                       ) as dest_lat,
+                       COALESCE(s.dest_lng,
+                           CASE 
+                               WHEN LOWER(s.destination_address) LIKE '%china%' THEN 121.47
+                               WHEN LOWER(s.destination_address) LIKE '%dubai%' THEN 55.27
+                               ELSE -0.12
+                           END
+                       ) as dest_lng
                 FROM shipments s 
                 LEFT JOIN users u ON s.customer_id = u.id
-                WHERE s.company_id=$1 AND s.status != 'Booked' AND s.status != 'Declined'
+                WHERE s.company_id=$1 AND s.status NOT IN ('Pending Manager Approval', 'Declined')
                 ORDER BY s.created_at DESC
             `, [id]);
             res.json({ success: true, shipments: r.rows });
         } catch (e) {
+            console.error('Fetch all-shipments error:', e);
             res.status(500).json({ success: false, message: 'Failed to fetch shipments' });
         }
     });
@@ -123,9 +151,9 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         const { name, type, capacity, location, next, status } = req.body;
         try {
             await pool.query(
-                `INSERT INTO vehicles (company_id, name, type, capacity, location, next_stop, status) 
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                [id, name, type, capacity, location, next || '', status || 'Available']
+                `INSERT INTO vehicles (company_id, name, type, capacity_kg, current_port, status) 
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [id, name, type, parseFloat(capacity) || 1000, location || 'Idle', status || 'Active']
             );
             res.json({ success: true, message: 'Vessel added to fleet' });
         } catch (e) {

@@ -18,11 +18,12 @@ async function fixConstraints() {
             'Booked', 'Accepted', 'At Port', 'In Transit', 'Arrived', 'Delivered',
             'Cancelled', 'Declined', 'Customs', 'Out for Delivery', 'Container Allocated',
             'Container Loaded', 'Vessel Departed', 'At Origin Port', 'Customs Clearance',
-            'Arrived at Destination', 'Processing', 'Document Uploaded', 'Verified'
+            'Arrived at Destination', 'Processing', 'Document Uploaded', 'Verified',
+            'Pending Manager Approval', 'Ship Allocated', 'Cargo Ready', 'Cargo Loaded'
         ];
         const statusList = shipmentStatuses.map(s => `'${s}'`).join(', ');
         await pool.query(`ALTER TABLE shipments ADD CONSTRAINT shipments_status_check CHECK (status IN (${statusList}));`);
-        console.log("✅ Updated 'shipments' status checklist with 19 states.");
+        console.log(`✅ Updated 'shipments' status checklist with ${shipmentStatuses.length} states.`);
 
         // 2. Vehicles Table status constraint
         await pool.query(`ALTER TABLE vehicles DROP CONSTRAINT IF EXISTS vehicles_status_check;`);

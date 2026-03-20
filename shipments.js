@@ -604,7 +604,7 @@ async function initPanelMap(shipmentId) {
     } catch (e) {}
 }
 
-function openCompleteShipmentModal(id) {
+async function openCompleteShipmentModal(id) {
     let modalEl = document.getElementById('completeShipmentModal');
     if (!modalEl) {
         modalEl = document.createElement('div');
@@ -619,31 +619,40 @@ function openCompleteShipmentModal(id) {
                 </div>
                 <div class="modal-body pb-4">
                     <!-- Step Progress -->
-                    <div class="d-flex justify-content-between mb-4 mt-2 px-5 position-relative">
-                        <div style="position:absolute; top:12px; left:15%; right:15%; height:2px; background:rgba(255,255,255,0.1); z-index:0;"></div>
-                        <div id="step-dot-1" class="step-dot active">1<br><small>Details</small></div>
-                        <div id="step-dot-2" class="step-dot">2<br><small>Documents</small></div>
-                        <div id="step-dot-3" class="step-dot">3<br><small>Payment</small></div>
+                    <div class="d-flex justify-content-between mb-4 mt-2 px-4 position-relative">
+                        <div style="position:absolute; top:12px; left:10%; right:10%; height:2px; background:rgba(255,255,255,0.1); z-index:0;"></div>
+                        <div id="step-dot-0" class="step-dot active">1<br><small>Service</small></div>
+                        <div id="step-dot-1" class="step-dot">2<br><small>Details</small></div>
+                        <div id="step-dot-2" class="step-dot">3<br><small>Docs</small></div>
+                        <div id="step-dot-3" class="step-dot">4<br><small>Payment</small></div>
                     </div>
 
-                    <!-- Step 1: Filling Details -->
-                    <div id="comp-step-1">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">1. Shipment & Consignee Information</h6>
+                    <!-- Step 0: Service Selection -->
+                    <div id="comp-step-0">
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">1. Select Service & Lock Price</h6>
+                        <div id="quote-options-container" class="row g-3">
+                            <!-- Premium Service Cards generated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Step 1: Consignee Info -->
+                    <div id="comp-step-1" style="display:none;">
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">2. Shipment & Consignee Information</h6>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="small text-white-50 mb-1">HS Code *</label>
-                                <input type="text" id="comp-hs-code" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. 8703">
+                                <input type="text" id="comp-hs-code" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                             <div class="col-md-6">
                                 <label class="small text-white-50 mb-1">Consignee Name *</label>
                                 <input type="text" id="comp-consignee" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                             <div class="col-md-12">
-                                <label class="small text-white-50 mb-1">Goods Description *</label>
+                                <label class="small text-white-50 mb-1">Description *</label>
                                 <textarea id="comp-desc" class="form-control form-control-sm bg-dark text-white border-secondary" rows="2"></textarea>
                             </div>
                             <div class="col-md-6">
-                                <label class="small text-white-50 mb-1">Consignee Contact *</label>
+                                <label class="small text-white-50 mb-1">Contact *</label>
                                 <input type="text" id="comp-contact" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                             <div class="col-md-6">
@@ -651,64 +660,33 @@ function openCompleteShipmentModal(id) {
                                 <input type="number" id="comp-value" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                         </div>
-                        <div class="mt-4 text-end">
+                        <div class="mt-4 d-flex justify-content-between">
+                            <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(0)"><i class="fas fa-arrow-left me-2"></i> Service</button>
                             <button class="btn btn-primary px-4 rounded-pill" onclick="goToStep(2)">Next: Documents <i class="fas fa-arrow-right ms-2"></i></button>
                         </div>
                     </div>
 
                     <!-- Step 2: Documents -->
                     <div id="comp-step-2" style="display:none;">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">2. Upload Mandatory Documents</h6>
-                        <div class="row g-3">
-                             <div class="col-md-6">
-                                <label class="small text-white-50 mb-1">Government ID *</label>
-                                <input type="file" id="comp-kyc" class="form-control form-control-sm bg-dark text-white border-secondary">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="small text-white-50 mb-1">Commercial Invoice *</label>
-                                <input type="file" id="comp-invoice" class="form-control form-control-sm bg-dark text-white border-secondary">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="small text-white-50 mb-1">Packing List *</label>
-                                <input type="file" id="comp-packing" class="form-control form-control-sm bg-dark text-white border-secondary">
-                            </div>
-                             <div class="col-md-6">
-                                <label class="small text-white-50 mb-1">IEC / GST Certificate *</label>
-                                <input type="file" id="comp-iec" class="form-control form-control-sm bg-dark text-white border-secondary">
-                            </div>
-                        </div>
-                        <div id="comp-vehicle-docs" style="display:none;">
-                             <div class="row g-3 mt-1">
-                                <div class="col-md-4">
-                                    <label class="small text-white-50 mb-1">Vehicle RC *</label>
-                                    <input type="file" id="comp-rc" class="form-control form-control-sm bg-dark text-white border-secondary">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="small text-white-50 mb-1">Insurance Policy *</label>
-                                    <input type="file" id="comp-insurance" class="form-control form-control-sm bg-dark text-white border-secondary">
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="small text-white-50 mb-1">Inspection *</label>
-                                    <input type="file" id="comp-inspection" class="form-control form-control-sm bg-dark text-white border-secondary">
-                                </div>
-                             </div>
+                        <div id="comp-step-2-body">
+                            <!-- Dynamic checklist -->
                         </div>
                         <div class="mt-4 d-flex justify-content-between">
                             <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(1)"><i class="fas fa-arrow-left me-2"></i> Back</button>
-                            <button class="btn btn-primary px-4 rounded-pill" id="uploadAllBtn">Upload & Continue <i class="fas fa-cloud-upload-alt ms-2"></i></button>
+                            <button class="btn btn-primary px-4 rounded-pill fw-bold" id="uploadAllBtn">Verify & Proceed <i class="fas fa-arrow-right ms-2"></i></button>
                         </div>
                     </div>
 
                     <!-- Step 3: Payment -->
                     <div id="comp-step-3" style="display:none;">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">3. Final Review & Payment</h6>
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">4. Final Review & Payment</h6>
                         <div class="bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary mb-4">
                              <div class="d-flex justify-content-between mb-2">
                                 <span class="text-white-50">Base Freight Cost:</span>
                                 <span id="comp-amt-base" class="fw-bold fs-5">₹0</span>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
-                                <span class="text-white-50">Taxes & Platform Fees (8%):</span>
+                                <span class="text-white-50">Taxes & Fees (8%):</span>
                                 <span id="comp-amt-tax" class="text-warning fw-bold">₹0</span>
                             </div>
                             <hr class="border-secondary border-opacity-25">
@@ -739,10 +717,17 @@ function openCompleteShipmentModal(id) {
         document.body.appendChild(modalEl);
     }
 
-    const s = window.ALL_SHIPMENTS.find(x => x.id == id);
+    // Refresh the specific shipment data for persistence
+    let s = window.ALL_SHIPMENTS.find(x => x.id == id);
+    try {
+        const freshRes = await fetch(`${API_URL}/api/shipment/${id}`, { credentials: 'include' });
+        const freshData = await freshRes.json();
+        if (freshData.success) s = freshData.shipment;
+    } catch (e) { console.warn("Failed to fetch fresh shipment data"); }
+
     if (!s) return;
 
-    goToStep(1);
+    goToStep(0); // Start at Service Selection
     document.getElementById('comp-hs-code').value = s.hs_code || '';
     document.getElementById('comp-consignee').value = s.consignee_name || '';
     document.getElementById('comp-desc').value = s.description || '';
@@ -766,21 +751,110 @@ function openCompleteShipmentModal(id) {
 
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
+
+    // ═══════════════════════════════════════════════════════════
+    // V3: Load Service Options (Triple Quote) & Docs
+    // ═══════════════════════════════════════════════════════════
+    const container = document.getElementById('quote-options-container');
+    if (container) {
+        container.innerHTML = '<div class="col-12 text-center py-4 text-white-50"><span class="spinner-border spinner-border-sm me-2"></span> Loading service options...</div>';
+        
+        fetch(`${API_URL}/api/v3/shipment/${id}/quotes`, { credentials: 'include' })
+            .then(r => r.json())
+            .then(async data => {
+                if (data.success && data.quotes.length > 0) {
+                    container.innerHTML = data.quotes.map(q => {
+                        const icon = q.option_name === 'Economy' ? 'feather' : q.option_name === 'Express' ? 'bolt' : 'anchor';
+                        const color = q.option_name === 'Economy' ? 'info' : q.option_name === 'Express' ? 'warning' : 'primary';
+                        const isSelected = q.id === data.selectedId;
+                        return `
+                        <div class="col-md-4">
+                            <div class="p-3 border rounded text-center h-100 ${isSelected ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary bg-dark bg-opacity-25'}" 
+                                 style="transition: all 0.2s ease;">
+                                <i class="fas fa-${icon} text-${color} mb-2 fs-3"></i>
+                                <div class="fw-bold text-white small">${q.option_name}</div>
+                                <div class="text-white-50 x-small mb-2">${q.transit_time || 'Direct'}</div>
+                                <div class="text-success fw-bold mb-3">₹${Number(q.price).toLocaleString()}</div>
+                                <button class="btn ${isSelected ? 'btn-primary' : 'btn-outline-primary'} btn-sm w-100 rounded-pill x-small fw-bold" onclick="selectShipService('${id}', ${q.id}, ${q.price})">
+                                    ${isSelected ? 'Selected' : 'Book Now'}
+                                </button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    
+                    // Update Step 2 with Manager's Doc Checklist + Persistence
+                    const docBody = document.getElementById('comp-step-2-body');
+                    const exRes = await fetch(`${API_URL}/api/documents/${id}`, { credentials: 'include' });
+                    const exDocs = (await exRes.json()).documents || [];
+
+                    if (docBody && data.docs.length > 0) {
+                        docBody.innerHTML = `<h6 class="text-primary small fw-bold text-uppercase mb-3">2. Compliance Handshake (${data.docs.length} Required)</h6>` + 
+                        data.docs.map(d => {
+                            const found = exDocs.find(x => x.type === d);
+                            return `
+                            <div class="mb-3 p-3 bg-dark bg-opacity-25 rounded border border-secondary border-opacity-25">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="small text-white fw-bold mb-0">${d} ${found ? '<span class="text-success ms-2"><i class="fas fa-check-circle"></i> Verified</span>' : '*'}</label>
+                                    ${found ? `<a href="${API_URL}${found.file_url}" target="_blank" class="x-small text-info"><i class="fas fa-eye me-1"></i>View</a>` : ''}
+                                </div>
+                                <input type="file" class="form-control form-control-sm bg-dark text-white border-secondary ship-doc-input" data-type="${d}">
+                            </div>`;
+                        }).join('');
+                    }
+                } else {
+                    container.innerHTML = `<div class="col-12 text-center py-5 text-warning small">Rates are still being finalized. Please check back soon.</div>`;
+                }
+            })
+            .catch(err => {
+                container.innerHTML = '<div class="col-12 text-center py-4 text-danger small">Failed to load logistics options.</div>';
+            });
+    }
+}
+
+async function selectShipService(shipmentId, quoteId, price) {
+    console.log(`📌 Selecting Quote #${quoteId} for Shipment #${shipmentId}`);
+    try {
+        const res = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/select-quote`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quoteId })
+        });
+        const d = await res.json();
+        if (d.success) {
+            // Update prices for the review step
+            const cost = Number(price);
+            document.getElementById('comp-amt-base').innerText = `₹${cost.toLocaleString()}`;
+            document.getElementById('comp-amt-tax').innerText = `₹${(cost * 0.08).toLocaleString()}`;
+            document.getElementById('comp-amt-total').innerText = `₹${(cost * 1.08).toLocaleString()}`;
+            
+            goToStep(1); // Service -> Details
+        } else {
+            alert('Selection Failed: ' + (d.message || 'Server error'));
+        }
+    } catch (e) { 
+        alert('Network Error during selection');
+        console.error('Selection Failed', e); 
+    }
 }
 
 function goToStep(n) {
-    document.getElementById('comp-step-1').style.display = n === 1 ? 'block' : 'none';
-    document.getElementById('comp-step-2').style.display = n === 2 ? 'block' : 'none';
-    document.getElementById('comp-step-3').style.display = n === 3 ? 'block' : 'none';
-
+    for (let i = 0; i <= 3; i++) {
+        const step = document.getElementById(`comp-step-${i}`);
+        if (step) step.style.display = i === n ? 'block' : 'none';
+    }
     document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active'));
-    for (let i = 1; i <= n; i++) {
-        document.getElementById(`step-dot-${i}`).classList.add('active');
+    for (let i = 0; i <= n; i++) {
+        const dot = document.getElementById(`step-dot-${i}`);
+        if (dot) dot.classList.add('active');
     }
 }
 
 async function uploadAllShipmentDocs(shipmentId) {
-    // 1. First Save the "Other Details" from Step 1
+    const btn = document.getElementById('uploadAllBtn');
+    const originalText = btn.innerHTML;
+    
+    // 1. Save Details
     const details = {
         hsCode: document.getElementById('comp-hs-code').value,
         consigneeName: document.getElementById('comp-consignee').value,
@@ -789,16 +863,8 @@ async function uploadAllShipmentDocs(shipmentId) {
         cargoValue: document.getElementById('comp-value').value
     };
 
-    if (!details.hsCode || !details.consigneeName) {
-        alert("Please provide Consignee name and HS code in Step 1.");
-        goToStep(1);
-        return;
-    }
-
-    const btn = document.getElementById('uploadAllBtn');
-    const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Updating Details...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Finalizing Details...';
 
     try {
         await fetch(`${API_URL}/api/shipment/${shipmentId}/update-details`, {
@@ -807,53 +873,41 @@ async function uploadAllShipmentDocs(shipmentId) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(details)
         });
-    } catch (e) { console.warn("Detail update failed, proceeding to docs anyway"); }
+    } catch (e) { console.warn("Details sync failed"); }
 
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Uploading Docs...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Sealing Documents...';
 
-    const s = window.ALL_SHIPMENTS.find(x => x.id == shipmentId);
-    const isVehicle = (s.product_type || '').toLowerCase().includes('car') || (s.product_type || '').toLowerCase().includes('vehi');
-
-    const docs = [
-        { id: 'comp-kyc', type: 'Government ID' },
-        { id: 'comp-invoice', type: 'Commercial Invoice' },
-        { id: 'comp-packing', type: 'Packing List' },
-        { id: 'comp-iec', type: 'IEC Certificate' }
-    ];
-    if (isVehicle) {
-        docs.push({ id: 'comp-rc', type: 'Vehicle RC' });
-        docs.push({ id: 'comp-insurance', type: 'Insurance Policy' });
-        docs.push({ id: 'comp-inspection', type: 'Pre-shipment Inspection' });
-    }
-
+    // 2. Dynamic Uploads
+    const fileInputs = document.querySelectorAll('.ship-doc-input');
     try {
         let successCount = 0;
-        for (const doc of docs) {
-            const input = document.getElementById(doc.id);
+        for (const input of fileInputs) {
             if (input.files.length > 0) {
+                const docType = input.getAttribute('data-type');
+                const file = input.files[0];
+                
                 const formData = new FormData();
-                formData.append('docFile', input.files[0]);
-                formData.append('type', doc.type);
+                formData.append('docFile', file);
+                formData.append('type', docType);
                 formData.append('shipmentId', shipmentId);
-                formData.append('docName', input.files[0].name);
+                formData.append('docName', file.name);
 
                 const res = await fetch(`${API_URL}/api/documents/upload`, {
                     method: 'POST',
                     credentials: 'include',
                     body: formData
                 });
-                if ((await res.json()).success) successCount++;
+                const d = await res.json();
+                if (d.success) successCount++;
             }
         }
-        if (successCount > 0) {
-            // Smooth transition to Payment Step without intrusive alerts
-            goToStep(3);
-        } else {
-            // If they already uploaded or just want to see payment
-            goToStep(3);
-        }
+        
+        // Finalize: Success or no new uploads, proceed to Payment
+        console.log(`Uploaded ${successCount} new files.`);
+        goToStep(3); // Go to Payment
     } catch (e) {
-        alert('Upload failed. Please try again.');
+        console.error('Upload Process Error:', e);
+        alert('Compliance Check Failed: ' + e.message);
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -957,3 +1011,18 @@ function timeAgo(secondsAgo) {
     if (secondsAgo < 86400) return `${Math.floor(secondsAgo / 3600)} hours ago`;
     return `${Math.floor(secondsAgo / 86400)} days ago`;
 }
+
+// ── DEEP LINK HANDLER ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get('complete');
+    if (sid) {
+        console.log(`📡 Deep link detected: Opening wizard for Shipment #${sid}`);
+        // Give time for dashboard data to load
+        setTimeout(() => {
+            if (typeof openCompleteShipmentModal === 'function') {
+                openCompleteShipmentModal(sid);
+            }
+        }, 1500);
+    }
+});

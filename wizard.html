@@ -28,10 +28,10 @@
   </nav>
 
   <div class="container-fluid px-4 pb-5">
-    <div class="row g-4">
+    <div class="row justify-content-center">
 
-      <!-- LEFT COLUMN: SMART FORM -->
-      <div class="col-lg-7">
+      <!-- MAIN FORM -->
+      <div class="col-lg-8">
         <div class="booking-form-card">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
@@ -248,95 +248,18 @@
               </div>
             </div>
           </div>
-          <div class="mb-4">
-            <h5 class="text-white fw-bold mb-3 small text-uppercase text-muted">AI Optimization Goal</h5>
-            <div class="d-flex flex-column gap-2">
-              <div class="ai-pref-item active">
-                <div class="d-flex align-items-center gap-3">
-                  <div class="bg-primary bg-opacity-25 p-2 rounded text-primary"><i class="fas fa-balance-scale"></i>
-                  </div>
-                  <div>
-                    <span class="d-block text-white fw-bold small">Balanced (Recommended)</span>
-                    <span class="d-block text-white-50 x-small">Optimizes for cost and speed equally</span>
-                  </div>
-                </div>
-                <i class="fas fa-check-circle check"></i>
-              </div>
-              <div class="ai-pref-item">
-                <div class="d-flex align-items-center gap-3">
-                  <div class="bg-success bg-opacity-25 p-2 rounded text-success"><i class="fas fa-dollar-sign"></i>
-                  </div>
-                  <div>
-                    <span class="d-block text-white fw-bold small">Lowest Cost</span>
-                    <span class="d-block text-white-50 x-small">Maximize savings, flexible transit time</span>
-                  </div>
-                </div>
-                <i class="fas fa-check-circle check"></i>
-              </div>
-            </div>
-          </div>
-
           <!-- Action -->
-          <button class="btn-ai-quote py-3" onclick="getAIQuote()">
-            Get AI-Powered Quote <i class="fas fa-arrow-right ms-2"></i>
-          </button>
-          <p class="text-center text-muted x-small mt-2">Real-time rates from 500+ verified carriers</p>
-
-        </div>
-      </div>
-
-      <!-- RIGHT COLUMN: LIVE RESULTS (Hidden initially) -->
-      <div class="col-lg-5 d-none animate-fade-in" id="live-results-panel">
-
-        <!-- 1. Route Visual -->
-        <div class="result-card p-0 overflow-hidden mb-3">
-          <div class="map-mini">
-            <div class="map-route-line"></div>
-            <!-- Overlay Data -->
-            <div class="position-absolute bottom-0 start-0 m-3 text-white">
-              <span class="badge bg-dark border border-secondary shadow-sm">
-                <i class="fas fa-stopwatch me-1 text-warning"></i> 26 Days
-              </span>
-              <span class="badge bg-dark border border-secondary shadow-sm ms-2">
-                <i class="fas fa-ruler me-1 text-info"></i> 12,450 km
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. Pricing Options -->
-        <div class="d-flex flex-column gap-3">
-
-          <!-- 2. Pricing Options Container -->
-          <div id="results-container" class="d-flex flex-column gap-3">
-            <!-- Populated by wizard.js -->
-          </div>
-
-          <!-- 3. Capacity & Insight -->
-          <div class="ai-insight mt-2">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="fw-bold small text-white">Space Availability</span>
-              <span class="badge bg-danger">Filling Fast</span>
-            </div>
-            <div class="capacity-bar">
-              <div class="capacity-fill" style="width: 72%;"></div>
-            </div>
-            <p class="x-small mb-3 text-white-50">72% of capacity booked for this week.</p>
-
-            <hr class="border-secondary opacity-25">
-
-            <div class="d-flex gap-2">
-              <i class="fas fa-lightbulb text-warning mt-1"></i>
-              <p class="mb-0 x-small text-white-50">
-                <strong class="text-white">AI Insight:</strong> Routing via Singapore saves 8% ($110) vs direct route
-                with
-                only +1 transit day.
-              </p>
-            </div>
+          <div class="mt-4">
+            <button class="btn-ai-quote py-3 w-100" onclick="submitQuickRequest()">
+              Submit Booking Request <i class="fas fa-paper-plane ms-2"></i>
+            </button>
+            <p class="text-center text-muted x-small mt-2">Your request will be sent to our manager for ship allocation
+              and pricing.</p>
           </div>
 
         </div>
       </div>
+
     </div>
 
     <!-- Final Details & Document Modal -->

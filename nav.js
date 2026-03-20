@@ -301,12 +301,12 @@
             } catch (e) { }
         };
 
-        // Initial fetch and poll
+        // Initial fetch and faster poll for real-time smoothness
         setTimeout(() => {
             if (document.getElementById('notif-bell')) {
                 window.fetchNotifications();
-                setInterval(window.fetchNotifications, 30000); // Pool every 30s
+                setInterval(window.fetchNotifications, 12000); // 12s for snappier feedback
             }
-        }, 1000);
+        }, 800);
     });
 })();

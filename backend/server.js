@@ -85,69 +85,84 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Declare pool globally so routes can use it
 let pool;
 
-// Helper to resolve DB Host using Google DNS
-const resolveDbConfig = async () => {
+// --- DATABASE CONFIGURATION ---
+const getDbConfig = () => {
     const dbUrlStr = process.env.DATABASE_URL;
     if (!dbUrlStr) {
         throw new Error("DATABASE_URL is missing!");
     }
 
     const dbUrl = new URL(dbUrlStr);
-    const hostname = dbUrl.hostname;
-
-    console.log(`🔍 Resolving DB host: ${hostname} using native DNS...`);
-
-    return new Promise((resolve, reject) => {
-        // Use dns.lookup which uses the OS's native getaddrinfo (works with VPNs/Proxies)
-        dns.lookup(hostname, (err, address, family) => {
-            if (err) {
-                return reject(err);
-            }
-            if (!address) {
-                return reject(new Error("No IP address found for DB host"));
-            }
-
-            console.log(`✅ Resolved ${hostname} to ${address}`);
-
-            const config = {
-                user: dbUrl.username,
-                password: dbUrl.password,
-                host: address, // Use resolved IP
-                port: dbUrl.port || 5432,
-                database: dbUrl.pathname.split('/')[1], // remove leading slash
-                ssl: {
-                    rejectUnauthorized: false,
-                    servername: hostname // Crucial for Neon SNI
-                }
-            };
-            resolve(config);
-        });
-    });
+    return {
+        connectionString: dbUrlStr,
+        ssl: {
+            rejectUnauthorized: false,
+            servername: dbUrl.hostname // Requisite for Neon/SNI
+        }
+    };
 };
 
-// Create Users Table if not exists
-const createUsersTable = async () => {
-    const query = `
-    CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE,
-        phone VARCHAR(50),
-        name VARCHAR(255),
-        otp_code VARCHAR(10),
-        role VARCHAR(20) DEFAULT 'customer',
-        company_status VARCHAR(20) DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );`;
+// --- DATABASE MIGRATIONS (V1, V2, V3) ---
+const runMigrations = async () => {
     try {
-        await pool.query(query);
-        // Ensure new columns exist if table was created in an older version of the app
-        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255);`);
-        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'customer';`);
-        await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS company_status VARCHAR(20) DEFAULT 'pending';`);
+        console.log("🛠️ Starting Enterprise Multi-Stage Migrations...");
+        
+        // 1. Core Users Table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) UNIQUE,
+                phone VARCHAR(50),
+                name VARCHAR(255),
+                otp_code VARCHAR(10),
+                role VARCHAR(20) DEFAULT 'customer',
+                company_status VARCHAR(20) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'customer';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS company_status VARCHAR(20) DEFAULT 'pending';
+        `);
+         // 2. Core Shipments Table (Must exist before admin/support tables)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shipments (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                customer_id INTEGER REFERENCES users(id),
+                type VARCHAR(50),
+                from_country VARCHAR(100),
+                to_country VARCHAR(100),
+                status VARCHAR(50) DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES users(id);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES users(id);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(100);
+        `);
 
-        console.log("✅ Table 'users' ready and schema updated");
+        // 3. Company Profiles & Other Legacy Tables
+        await createCompanyProfilesTable();
+        await createAdminTables();
+        
+        // 4. V3 Advanced Logistics Migration (from physical SQL file)
+        const migrationPath = path.join(__dirname, 'migrations', 'v3_logistics_upgrade.sql');
+        if (require('fs').existsSync(migrationPath)) {
+            const v3Sql = require('fs').readFileSync(migrationPath, 'utf8');
+            await pool.query(v3Sql);
+            console.log("✅ Logistics V3 Migration Applied Successfully");
+        }
+
+        // 4. V4 Integrated Pricing & Documents
+        const v4Path = path.join(__dirname, 'migrations', 'v4_integrated_pricing.sql');
+        if (require('fs').existsSync(v4Path)) {
+            const v4Sql = require('fs').readFileSync(v4Path, 'utf8');
+            await pool.query(v4Sql);
+            console.log("💎 Logistics V4 Migration Applied Successfully");
+        }
+
+        console.log("🚀 All Data Schemas are Synced and Healthy");
     } catch (err) {
-        console.error("❌ Error creating/updating 'users' table:", err);
+        console.error("❌ Migration Failed:", err.message);
     }
 };
 
@@ -368,10 +383,18 @@ const createAdminTables = async () => {
                 title VARCHAR(255) NOT NULL,
                 message TEXT NOT NULL,
                 type VARCHAR(50) DEFAULT 'info',
+                link TEXT DEFAULT '',
                 is_read BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
+        // Optimization: Native Indexing for ultra-fast retrieval
+        await pool.query("CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);");
+        await pool.query("CREATE INDEX IF NOT EXISTS idx_shipments_customer_id ON shipments(customer_id);");
+        await pool.query("CREATE INDEX IF NOT EXISTS idx_shipments_status ON shipments(status);");
+
+        // Migration: Ensure 'link' column exists if table was created older
+        await pool.query("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link TEXT DEFAULT '';");
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS system_settings (
@@ -1073,17 +1096,15 @@ app.use(express.static(path.join(__dirname, '../')));
 const startServer = async () => {
     try {
         // 1. Initialize Database
-        const dbConfig = await resolveDbConfig();
+        const dbConfig = getDbConfig();
         pool = new Pool(dbConfig);
 
         // Test connection
         await pool.query('SELECT NOW()');
-        console.log("✅ Database Connected Successfully via Resolved IP");
+        console.log("✅ Database Connected Successfully"); // Updated log message
 
-        // 2. Run Migrations/Setup
-        await createUsersTable();
-        await createCompanyProfilesTable();
-        await createAdminTables(); // Ensure tables are created before routes that depend on them
+        // 2. Run Unified Migration Engine (Covers Users, Companies, Admin, V3)
+        await runMigrations();
 
         // Initialize all specialized functional routes
         await setupNotificationRoutes();
@@ -1197,64 +1218,81 @@ const startServer = async () => {
          */
         setInterval(async () => {
             try {
-                // Find ships that are 'Active' or have 'In Transit' shipments
+                // Find ships currently at sea
                 const res = await pool.query(`
-                    SELECT DISTINCT v.id, v.name, v.current_lat, v.current_lng, v.current_port
+                    SELECT DISTINCT v.id, v.name, v.current_lat, v.current_lng, v.current_port, v.type
                     FROM vehicles v
                     JOIN shipments s ON s.allocated_ship_id = v.id
                     WHERE s.status = 'In Transit' AND v.status = 'Active'
                 `);
 
-                for (const ship of res.rows) {
+                for (let i = 0; i < res.rows.length; i++) {
+                    const ship = res.rows[i];
                     const lat = parseFloat(ship.current_lat || 0);
                     const lng = parseFloat(ship.current_lng || 0);
 
-                    // Get next stop for this ship
+                    // Get the voyage path (stops)
                     const stopsRes = await pool.query(
                         `SELECT * FROM ship_route_stops WHERE ship_id = $1 ORDER BY stop_order ASC`,
                         [ship.id]
                     );
                     
-                    if (stopsRes.rows.length < 2) continue;
+                    if (stopsRes.rows.length === 0) continue;
 
-                    // Find which stop we are currently near, and move to next
+                    // Locate "Current" stop and "Next" stop
                     let nextStop = null;
                     for (const stop of stopsRes.rows) {
                         if (stop.port_name !== ship.current_port) {
-                            // Simple logic: pick first stop that isn't current
                             nextStop = stop;
                             break;
                         }
                     }
 
                     if (nextStop && nextStop.lat && nextStop.lng) {
-                        // Move 5% towards next stop (simulating travel)
                         const targetLat = parseFloat(nextStop.lat);
                         const targetLng = parseFloat(nextStop.lng);
-                        
-                        const newLat = lat + (targetLat - lat) * 0.05;
-                        const newLng = lng + (targetLng - lng) * 0.05;
 
-                        // Update DB
+                        // Calculate Bearing (Course)
+                        const y = Math.sin((targetLng - lng) * Math.PI / 180) * Math.cos(targetLat * Math.PI / 180);
+                        const x = Math.cos(lat * Math.PI / 180) * Math.sin(targetLat * Math.PI / 180) -
+                                  Math.sin(lat * Math.PI / 180) * Math.cos(targetLat * Math.PI / 180) * Math.cos((targetLng - lng) * Math.PI / 180);
+                        const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+
+                        // Move based on typical speed (Vessel specific logic)
+                        const speedFactor = ship.type === 'Container Ship' ? 0.08 : 0.05; // Simulation speed
+                        const newLat = lat + (targetLat - lat) * speedFactor;
+                        const newLng = lng + (targetLng - lng) * speedFactor;
+
+                        // Check if ship "arrived" (within 2km/0.02 deg)
+                        let updatedPort = ship.current_port;
+                        if (Math.abs(newLat - targetLat) < 0.02 && Math.abs(newLng - targetLng) < 0.02) {
+                            updatedPort = nextStop.port_name;
+                        }
+
+                        // Update Database with Course/Position
                         await pool.query(
-                            `UPDATE vehicles SET current_lat = $1, current_lng = $2, updated_at = NOW() WHERE id = $3`,
-                            [newLat, newLng, ship.id]
+                            `UPDATE vehicles SET current_lat = $1, current_lng = $2, current_port = $3, updated_at = NOW() WHERE id = $4`,
+                            [newLat, newLng, updatedPort, ship.id]
                         );
 
-                        // Broadcast to all shipments on this ship
-                        const shipId = ship.id;
-                        const sR = await pool.query(`SELECT id FROM shipments WHERE allocated_ship_id = $1`, [shipId]);
+                        // Real-time broadcast to relevant tracking rooms
+                        const sR = await pool.query(`SELECT id FROM shipments WHERE allocated_ship_id = $1`, [ship.id]);
                         sR.rows.forEach(s => {
                             io.to(`shipment:${s.id}`).emit('tracking_event', {
-                                shipmentId: s.id, lat: newLat, lng: newLng,
-                                status: 'In Transit', message: `Vessel "${ship.name}" moving towards ${nextStop.port_name}`,
+                                shipmentId: s.id, 
+                                lat: newLat, 
+                                lng: newLng,
+                                bearing: bearing,
+                                status: 'In Transit',
+                                vessel: ship.name,
+                                message: `Vessel "${ship.name}" holding course ${Math.round(bearing)}° at 22 knots`,
                                 timestamp: new Date()
                             });
                         });
                     }
                 }
-            } catch (e) { console.error('AIS Engine Error:', e.message); }
-        }, 300000); // 5 minutes
+            } catch (e) { console.error('AIS Intelligence Registry Error:', e.message); }
+        }, 300000); // Pulse every 5 mins
 
         // 5. Start Server — with EADDRINUSE retry to handle node --watch restarts
         const PORT = process.env.PORT || 3000;
@@ -1269,9 +1307,12 @@ const startServer = async () => {
             }
         });
 
-        httpServer.listen(PORT, () => {
+        httpServer.listen(PORT, async () => {
             console.log(`🚀 Server + Socket.io running on port ${PORT}`);
             console.log(`Serving static files from: ${path.join(__dirname, '../')}`);
+            
+            // Auto Migration on Boot
+            await runMigrations();
         });
 
     } catch (err) {

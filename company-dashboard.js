@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.fetchNotifications = loadNotifications;
         window.fetchShipments = loadDashboard;
 
+        loadDashboard();
+        loadNotifications();
+        initDashboardMap(); // New Map View
+
         // fetch fresh profile for approval status
         const profileR = await fetch(`${API}/api/user/profile`, { credentials: 'include' }).catch(() => ({ ok: false }));
         const profileD = profileR.ok ? await profileR.json() : {};
@@ -84,8 +88,8 @@ function showSection(name, el) {
     const titles = {
         dashboard: '📊 Company Overview', bookings: '📥 Booking Requests',
         shipments: '📦 Shipment Management', vessels: '🚢 Vessel / Fleet',
-        schedules: '📅 Schedule Management', containers: '📦 Container Management',
-        pricing: '💰 Pricing & Rates', customers: '👤 Customer Management',
+        schedules: '📅 Schedule Management', pricing: '🏷️ Pricing & Rates',
+        customers: '👤 Customer Management',
         documents: '📄 Document Handling', tracking: '🗺️ Tracking Updates',
         finance: '💹 Financial Management', notifications: '🔔 Notifications'
     };
@@ -400,9 +404,10 @@ function renderShipments(list) {
                 <div class="d-flex gap-1">
                     <button class="btn btn-sm btn-dark border-secondary text-white-50" title="View Details" onclick="openDetailsModal(${s.id})"><i class="fas fa-eye"></i></button>
                     <select class="co-input" id="status-sel-${s.id}" style="width:130px;padding:4px 8px;font-size:0.75rem;">
-                        <option value="">Change Status</option>
-                        <option>Booked</option><option>Accepted</option><option>At Port</option>
-                        <option>In Transit</option><option>Arrived</option><option>Delivered</option>
+                        <option value="">Update Case</option>
+                        <option>Cargo Loaded</option>
+                        <option>In Transit</option>
+                        <option>Delivered</option>
                     </select>
                     <button class="btn-co btn-status" onclick="updateShipmentStatus(${s.id})"><i class="fas fa-save"></i></button>
                 </div>
@@ -608,6 +613,39 @@ function renderRouteStops() {
             </div>
         </div>
     `).join('');
+
+    // Update Modal Map Preview
+    updateRouteModalMap();
+}
+
+let routeModalMap = null;
+function updateRouteModalMap() {
+    const container = document.getElementById('route-preview-map');
+    if (!container) return;
+
+    if (!routeModalMap) {
+        routeModalMap = L.map('route-preview-map').setView([20, 78], 4);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(routeModalMap);
+    } else {
+        routeModalMap.invalidateSize();
+    }
+
+    // Draw Polylines and Markers
+    const points = CURRENT_ROUTE_STOPS
+        .sort((a, b) => a.stop_order - b.stop_order)
+        .filter(s => s.lat && s.lng)
+        .map(s => [s.lat, s.lng]);
+
+    // Clear existing
+    routeModalMap.eachLayer(l => { if (l instanceof L.Polyline || l instanceof L.CircleMarker) routeModalMap.removeLayer(l); });
+
+    if (points.length > 0) {
+        L.polyline(points, { color: '#3b82f6', weight: 4, opacity: 0.6 }).addTo(routeModalMap);
+        points.forEach((p, i) => {
+            L.circleMarker(p, { radius: 5, color: '#fff' }).addTo(routeModalMap).bindPopup(`Stop ${i + 1}`);
+        });
+        routeModalMap.fitBounds(points, { padding: [20, 20] });
+    }
 }
 
 function addStopToUI() {
@@ -672,7 +710,10 @@ async function addVessel() {
         capacity: val('v-capacity'), location: val('v-location'),
         next: val('v-next'), status: val('v-status')
     };
-    if (!vessel.name) { toast('Enter vessel name', 'error'); return; }
+    if (!vessel.name || !vessel.type || !vessel.capacity || !vessel.location) { 
+        toast('Please fill all mandatory vessel fields (*)', 'error'); 
+        return; 
+    }
     const r = await fetch(`${API}/api/company/vessels`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -680,7 +721,15 @@ async function addVessel() {
     });
     const d = await r.json();
     toast(d.message, d.success ? 'success' : 'error');
-    if (d.success) { closeModal('vessel-modal'); loadVessels(); }
+    if (d.success) { 
+        closeModal('vessel-modal'); 
+        loadVessels(); 
+        // INTEGRATED FLOW: Redirect to Schedules
+        setTimeout(() => {
+            showSection('schedules');
+            toast('Vessel added! Now create a journey schedule for it.', 'info');
+        }, 800);
+    }
 }
 
 async function deleteVessel(vid) {
@@ -714,7 +763,10 @@ async function loadSchedules() {
 
 async function addSchedule() {
     const schedule = { vessel: val('sch-vessel'), from: val('sch-from'), to: val('sch-to'), depart: val('sch-depart'), arrive: val('sch-arrive') };
-    if (!schedule.vessel || !schedule.from || !schedule.to) { toast('Fill vessel/ports', 'error'); return; }
+    if (!schedule.vessel || !schedule.from || !schedule.to || !schedule.depart || !schedule.arrive) { 
+        toast('All schedule fields are mandatory (*)', 'error'); 
+        return; 
+    }
     const r = await fetch(`${API}/api/company/schedules`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -722,7 +774,15 @@ async function addSchedule() {
     });
     const d = await r.json();
     toast(d.message, d.success ? 'success' : 'error');
-    if (d.success) { closeModal('schedule-modal'); loadSchedules(); }
+    if (d.success) { 
+        closeModal('schedule-modal'); 
+        loadSchedules(); 
+        // INTEGRATED FLOW: Redirect to Pricing
+        setTimeout(() => {
+            showSection('rates');
+            toast('Schedule set! Define rates for this route.', 'info');
+        }, 800);
+    }
 }
 
 async function deleteSchedule(sid) {
@@ -787,7 +847,10 @@ async function loadPricing() {
 
 async function addPrice() {
     const rate = { from: val('pr-from'), to: val('pr-to'), mode: val('pr-mode'), rate: val('pr-rate'), min: val('pr-min'), days: val('pr-days') };
-    if (!rate.from || !rate.to) { toast('Fill origin and destination', 'error'); return; }
+    if (!rate.from || !rate.to || !rate.mode || !rate.rate || !rate.min || !rate.days) { 
+        toast('All pricing fields are mandatory (*)', 'error'); 
+        return; 
+    }
     const r = await fetch(`${API}/api/company/pricing`, {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -795,7 +858,12 @@ async function addPrice() {
     });
     const d = await r.json();
     toast(d.message, d.success ? 'success' : 'error');
-    if (d.success) { closeModal('price-modal'); loadPricing(); }
+    if (d.success) { 
+        closeModal('price-modal'); 
+        loadPricing(); 
+        // INTEGRATED FLOW COMPLETED
+        toast('Pricing active! You can now accept marketplace bookings with these rates.', 'success');
+    }
 }
 
 async function deletePrice(pid) {
@@ -1023,24 +1091,233 @@ async function loadTrackingLogs() {
     } catch (e) { el.innerHTML = '<p class="text-danger small">Failed to load events.</p>'; }
 }
 
-async function submitTracking() {
-    const shipmentId = val('tr-shipment');
-    const status = val('tr-event');
-    const location = val('tr-location');
-    const notes = val('tr-notes');
-    if (!shipmentId) { toast('Enter a shipment ID', 'error'); return; }
+function lookupShipmentForTracking() {
+    const q = val('tr-lookup').toLowerCase();
+    const src = val('tr-source').toLowerCase();
+    const dst = val('tr-dest').toLowerCase();
+    const resultsArea = document.getElementById('vessel-search-results');
+    if (!resultsArea) return;
+
+    if (!q && !src && !dst) { resultsArea.innerHTML = ''; return; }
+
+    const matches = ALL_SHIPMENTS.filter(s => {
+        const idMatch = !q || String(s.id).includes(q) || (s.customer_name || '').toLowerCase().includes(q);
+        const routeMatch = (!src || (s.origin_address || '').toLowerCase().includes(src)) && 
+                          (!dst || (s.destination_address || '').toLowerCase().includes(dst));
+        return idMatch && routeMatch;
+    });
+
+    if (matches.length > 0) {
+        resultsArea.innerHTML = matches.map(s => `
+            <div class="booking-card mb-2 p-3 border border-secondary border-opacity-10" id="search-res-${s.id}" style="cursor:pointer;" onclick="selectShipmentForTracking(${s.id})">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="text-white small fw-bold">${esc(s.customer_name)}</div>
+                        <div class="text-white-50 x-small">${s.origin_address} → ${s.destination_address}</div>
+                    </div>
+                    <span class="badge bg-primary x-small">${s.user_prefix || 'SH'}-${s.id}</span>
+                </div>
+            </div>
+        `).join('');
+    } else {
+        resultsArea.innerHTML = `<div class="text-white-50 x-small text-center py-3">No matching shipments found for this route.</div>`;
+    }
+}
+
+async function selectShipmentForTracking(id) {
+    const s = ALL_SHIPMENTS.find(x => x.id === id);
+    if (!s) return;
+
+    // Highlight selected card
+    document.querySelectorAll('#vessel-search-results .booking-card').forEach(el => el.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10'));
+    const selectedEl = document.getElementById(`search-res-${id}`);
+    if (selectedEl) selectedEl.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+
+    setVal('tr-shipment', s.id);
+    document.getElementById('push-track-btn').disabled = false;
+    
+    // 3. Pre-fill Search Context (UI Cleanup)
+    document.getElementById('tr-source').value = s.origin_address || s.from_country || '';
+    document.getElementById('tr-dest').value = s.destination_address || s.to_country || '';
+
+    // 1. Update Map Context
+    updateTrackingContextMap(s);
+
+    // 2. Fetch and Render Recent Events (Internal + External)
+    const timeline = document.getElementById('tracking-timeline');
+    if (timeline) {
+        timeline.innerHTML = '<div class="text-white-50 small text-center py-4"><div class="spinner-border spinner-border-sm me-2"></div>Loading History...</div>';
+        try {
+            const res = await fetch(`${API}/api/shipment/${id}/tracking`, { credentials: 'include' });
+            const data = await res.json();
+            
+            if (data.success) {
+                let eventsHtml = '';
+
+                // Combine Local Logs and External Parcel Data
+                const allEvents = [...(data.logs || [])];
+                
+                if (data.external && data.external.events) {
+                    data.external.events.forEach(ev => {
+                        allEvents.push({
+                            stage: `[COURIER] ${ev.status}`,
+                            description: ev.location,
+                            updated_at: ev.date
+                        });
+                    });
+                }
+
+                // Sort by time
+                allEvents.sort((a,b) => new Date(b.updated_at || b.timestamp) - new Date(a.updated_at || a.timestamp));
+
+                if (allEvents.length === 0) {
+                    eventsHtml = '<p class="text-white-50 small text-center py-4">No tracking history found.</p>';
+                } else {
+                    eventsHtml = allEvents.map(l => `
+                        <div class="tl-entry">
+                            <div class="tl-dot bg-dark border-secondary"><i class="fas fa-map-marker-alt" style="font-size:10px;"></i></div>
+                            <div>
+                                <div class="text-white small fw-bold">${esc(l.stage || l.status || 'Update')}</div>
+                                <div class="text-white-50 x-small">${esc(l.description || l.location_note || '—')}</div>
+                                <div class="text-muted mt-1" style="font-size:10px;">${fmtD(l.updated_at || l.timestamp)}</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                timeline.innerHTML = eventsHtml;
+            }
+        } catch (e) {
+            timeline.innerHTML = '<p class="text-danger small text-center">Failed to load real-time events.</p>';
+        }
+    }
+}
+
+async function submitIntegratedAccept() {
+    const sid = val('accept-shipment-id');
+    const shipId = val('accept-vessel-select');
+    const dropPort = val('accept-drop-port-select');
+    const dep = val('accept-departure');
+    const arr = val('accept-arrival');
+    
+    // Quotes (Point 4)
+    const q1 = val('quote-economy'), q2 = val('quote-standard'), q3 = val('quote-express');
+    
+    // Docs (Point 3)
+    const docs = Array.from(document.querySelectorAll('#accept-docs-checklist input:checked')).map(i => i.value);
+
+    if (!shipId || !q2) { toast('Assign a vessel and at least Standard Price', 'error'); return; }
+
     try {
-        const r = await fetch(`${API}/api/company/tracking/update`, {
+        const r = await fetch(`${API}/api/v3/manager/shipment/${sid}/integrated-accept`, {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ shipmentId, status, location, notes })
+            body: JSON.stringify({
+                shipId, 
+                cargoDropPort: dropPort,
+                departureDate: dep,
+                arrivalDate: arr,
+                docs,
+                quotes: [
+                    { name: 'Economy', price: q1 || (q2*0.8), transitTime: 'Slow/Ocean' },
+                    { name: 'Standard', price: q2, transitTime: 'Direct Sea' },
+                    { name: 'Express', price: q3 || (q2*1.4), transitTime: 'Fast/Priority' }
+                ]
+            })
         });
         const d = await r.json();
         toast(d.message, d.success ? 'success' : 'error');
         if (d.success) {
-            setVal('tr-shipment', ''); setVal('tr-location', ''); setVal('tr-notes', '');
-            loadTrackingLogs();
+            closeModal('accept-modal');
+            loadPendingRequests();
         }
+    } catch (e) { toast('Server Error', 'error'); }
+}
+
+let contextMapInstance = null;
+async function updateTrackingContextMap(s) {
+    const el = document.getElementById('tracking-context-map');
+    if (!el) return;
+    if (!contextMapInstance) {
+        contextMapInstance = L.map('tracking-context-map').setView([20, 78], 3);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(contextMapInstance);
+    } else {
+        contextMapInstance.eachLayer(l => { if (l instanceof L.Marker || l instanceof L.Polyline) contextMapInstance.removeLayer(l); });
+    }
+
+    const points = [];
+    const addPt = (lat, lng, iconHtml, label) => {
+        if (!lat || !lng) return;
+        const icon = L.divIcon({ html: `<div class="map-pnt-icon">${iconHtml}</div>`, className: 'custom-map-icon', iconSize: [30, 30], iconAnchor: [15, 15] });
+        L.marker([lat, lng], { icon }).addTo(contextMapInstance).bindPopup(`<b>${label}</b>`);
+        points.push([lat, lng]);
+    };
+
+    // 1. Plot Ports (Origin/Dest)
+    addPt(s.origin_lat, s.origin_lng, '<i class="fas fa-home text-success"></i>', 'Origin: ' + (s.origin_address || 'Source'));
+    addPt(s.dest_lat, s.dest_lng, '<i class="fas fa-flag-checkered text-danger"></i>', 'Destination: ' + (s.destination_address || 'Dest'));
+
+    const plannedPoints = [[s.origin_lat, s.origin_lng], [s.dest_lat, s.dest_lng]];
+    const actualPoints = [];
+
+    // 2. Multi-Stops (Vessel Plan)
+    if (s.allocated_ship_id) {
+        try {
+            const r = await fetch(`${API}/api/v3/manager/ship/${s.allocated_ship_id}/route`, { credentials: 'include' });
+            const d = await r.json();
+            if (d.success && d.stops) {
+                const routeStops = d.stops.sort((a,b) => a.stop_order - b.stop_order);
+                routeStops.forEach(st => {
+                    addPt(st.lat, st.lng, '<i class="fas fa-anchor text-info"></i>', 'Stop: ' + st.port_name);
+                    plannedPoints.splice(plannedPoints.length-1, 0, [st.lat, st.lng]); // Insert between O and D
+                });
+            }
+        } catch (e) {}
+    }
+
+    // 3. Historical Tracking Logs (Actual Trail)
+    try {
+        const r2 = await fetch(`${API}/api/shipment/${s.id}/tracking`, { credentials: 'include' });
+        const d2 = await r2.json();
+        if (d2.success && d2.logs) {
+            d2.logs.forEach(l => {
+                const iconHtml = '<i class="fas fa-ship text-primary" style="font-size:12px;"></i>';
+                const icon = L.divIcon({ html: `<div class="map-pnt-icon">${iconHtml}</div>`, className: 'custom-map-icon', iconSize:[26,26] });
+                L.marker([l.lat, l.lng], { icon }).addTo(contextMapInstance).bindPopup(`<b>Ping: ${l.status}</b>`);
+                actualPoints.push([l.lat, l.lng]);
+            });
+        }
+    } catch(e) {}
+
+    // Draw Planned Path (Dashed)
+    if (plannedPoints.filter(p => p[0]).length > 1) {
+        L.polyline(plannedPoints.filter(p => p[0]), { color: '#ffffff', weight: 1, dashArray: '10, 15', opacity: 0.3 }).addTo(contextMapInstance);
+    }
+    // Draw Actual Path (Solid Blue)
+    if (actualPoints.length > 0) {
+        const trail = L.polyline(actualPoints, { color: '#3b82f6', weight: 3, opacity: 0.8 }).addTo(contextMapInstance);
+        contextMapInstance.fitBounds(trail.getBounds(), { padding: [50, 50] });
+    } else if (plannedPoints.filter(p => p[0]).length > 1) {
+        contextMapInstance.fitBounds(L.polyline(plannedPoints.filter(p => p[0])).getBounds(), { padding: [50, 50] });
+    }
+}
+async function submitTracking() {
+    const shipmentId = val('tr-shipment');
+    if (!shipmentId) { toast('Select a shipment first', 'error'); return; }
+    
+    // Auto-detect best status for "Push"
+    const s = ALL_SHIPMENTS.find(x => x.id == shipmentId);
+    const status = (s && s.status === 'In Transit') ? 'Vessel Voyaging' : 'At Sea (Location Pulse)';
+    const location = s ? (s.current_port || 'AIS Interpolated') : 'AIS Live';
+
+    try {
+        const r = await fetch(`${API}/api/company/tracking/update`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shipmentId, status, location, notes: 'Automated Position Broadcast' })
+        });
+        const d = await r.json();
+        toast(d.success ? 'Live Pulse Pushed' : d.message, d.success ? 'success' : 'error');
+        if (d.success) loadTrackingLogs();
     } catch (e) { toast('Server error', 'error'); }
 }
 
@@ -1264,3 +1541,119 @@ function stBadge(s) {
     const cls = map[s] || 'b-accepted';
     return `<span class="badge-co ${cls}">${esc(s)}</span>`;
 }
+// ── FLEET TRACKING MAP (MANAGER VIEW) ──────────────────────────────
+let fleetMap = null;
+let fleetMarkers = {};
+let routeLines = [];
+
+async function initDashboardMap() {
+    const mapEl = document.getElementById('fleet-map');
+    if (!mapEl) return;
+
+    if (!fleetMap) {
+        fleetMap = L.map('fleet-map').setView([15, 75], 3);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© CARTO'
+        }).addTo(fleetMap);
+    } else {
+        fleetMap.invalidateSize();
+    }
+
+    // Clear previous
+    Object.values(fleetMarkers).forEach(m => fleetMap.removeLayer(m));
+    routeLines.forEach(l => fleetMap.removeLayer(l));
+    fleetMarkers = {};
+    routeLines = [];
+
+    try {
+        const res = await fetch(`${API}/api/v3/manager/ships/available`, { credentials: 'include' });
+        const data = await res.json();
+
+        if (data.success) {
+            for (const s of data.ships) {
+                // 1. Draw Vessel Marker
+                if (s.current_lat && s.current_lng) {
+                    const icon = L.divIcon({
+                        html: `<i class="fas fa-ship fa-lg" style="color:#3b82f6; text-shadow: 0 0 8px #3b82f6;"></i>`,
+                        className: 'vessel-marker', iconSize: [20, 20]
+                    });
+                    const m = L.marker([s.current_lat, s.current_lng], { icon })
+                        .addTo(fleetMap)
+                        .bindPopup(`<b>${esc(s.name)}</b><br>${esc(s.status)}<br>Port: ${esc(s.current_port || 'At Sea')}`);
+                    fleetMarkers[s.id] = m;
+                }
+
+                // 2. Load and Draw Route Polylines
+                const rRes = await fetch(`${API}/api/v3/manager/ship/${s.id}/route`, { credentials: 'include' });
+                const rData = await rRes.json();
+                if (rData.success && rData.stops.length > 1) {
+                    const points = rData.stops
+                        .sort((a, b) => a.stop_order - b.stop_order)
+                        .filter(st => st.lat && st.lng)
+                        .map(st => [st.lat, st.lng]);
+
+                    if (points.length > 1) {
+                        const line = L.polyline(points, {
+                            color: '#3b82f6', weight: 2, opacity: 0.4, dashArray: '5, 10'
+                        }).addTo(fleetMap);
+                        routeLines.push(line);
+
+                        // Draw Port Dots
+                        rData.stops.forEach(st => {
+                            if (st.lat && st.lng) {
+                                L.circleMarker([st.lat, st.lng], {
+                                    radius: 3, color: '#fff', weight: 1, fillOpacity: 0.7
+                                }).addTo(fleetMap).bindPopup(`Stop: ${esc(st.port_name)}`);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+    } catch (e) { console.error('Fleet Map Error:', e); }
+}
+
+async function submitDirectShipment() {
+    const cargo = {
+        customerNameManual: val('ds-customer'),
+        fromCountry: val('ds-from'),
+        toCountry: val('ds-to'),
+        trackingNumber: val('ds-tracking'),
+        mode: val('ds-mode'),
+        productType: val('ds-product')
+    };
+
+    if (!cargo.customerNameManual || !cargo.fromCountry || !cargo.toCountry || !cargo.trackingNumber) {
+        toast('Fill all mandatory fields (*)', 'error'); return;
+    }
+
+    try {
+        const r = await fetch(`${API}/api/shipment/manager/create`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cargo)
+        });
+        const d = await r.json();
+        toast(d.message, d.success ? 'success' : 'error');
+        if (d.success) {
+            const mEl = document.getElementById('directShipmentModal');
+            const modal = bootstrap.Modal.getInstance(mEl) || new bootstrap.Modal(mEl);
+            modal.hide();
+            loadShipments();
+            document.getElementById('directShipmentForm').reset();
+        }
+    } catch (e) { toast('Error creating shipment', 'error'); }
+}
+
+// ── AUTO-REFRESH (30s HEARTBEAT) ──────────────────────────────────
+setInterval(() => {
+    // If tracking section is active, refresh the selected shipment tracking
+    const activeSection = document.querySelector('.co-section.active');
+    if (activeSection && activeSection.id === 'section-tracking') {
+        const selectedId = val('tr-shipment');
+        if (selectedId) {
+            console.log('🔄 Live Pulse: Refreshing Shipment #' + selectedId);
+            selectShipmentForTracking(parseInt(selectedId));
+        }
+    }
+}, 30000); 
