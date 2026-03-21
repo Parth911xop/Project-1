@@ -67,6 +67,80 @@
                 transform: scale(1.4)
             }
         }
+
+        /* Multi-Stop Timeline Styles */
+        .timeline-item {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .timeline-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+            margin-top: 4px;
+            position: relative;
+        }
+
+        .timeline-item.completed .timeline-dot {
+            background: #10b981;
+            border-color: #059669;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        }
+
+        .timeline-item.active .timeline-dot {
+            background: #6366f1;
+            border-color: #4f46e5;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .timeline-item.pending .timeline-dot {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .timeline-item .glass-panel {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .timeline-item.active .glass-panel {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.4);
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
+        }
+
+        .timeline-item .glass-panel:hover {
+            border-color: rgba(99, 102, 241, 0.5);
+            background: rgba(99, 102, 241, 0.08);
+        }
+
+        /* Drop Port Highlight */
+        .timeline-item.border-warning .glass-panel {
+            border-left: 3px solid #f59e0b;
+        }
+
+        /* Route Polyline Animation */
+        @keyframes dash {
+            0% {
+                stroke-dashoffset: 0;
+            }
+            100% {
+                stroke-dashoffset: -100;
+            }
+        }
+
+        .leaflet-pane-overlay path {
+            animation: dash 20s linear infinite;
+        }
     </style>
 </head>
 

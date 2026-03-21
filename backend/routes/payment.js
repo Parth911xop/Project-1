@@ -58,12 +58,23 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
         const shipment = shipRes.rows[0];
 
         // V3 Workflow: Payment gated behind ship allocation
-        const payableStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending', 'Booked'];
+        const payableStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending'];
         if (!payableStatuses.includes(shipment.status)) {
             const msg = shipment.status === 'Pending Manager Approval'
                 ? 'Payment locked: A manager must allocate a ship before payment.'
                 : `Payment not available for shipments with status "${shipment.status}".`;
             return res.status(400).json({ success: false, message: msg });
+        }
+
+        const docsRes = await pool.query(
+            "SELECT COUNT(*)::int AS count FROM documents WHERE shipment_id = $1",
+            [shipment.id]
+        );
+        if ((docsRes.rows[0]?.count || 0) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Upload required shipment documents before starting payment.'
+            });
         }
 
         const cost = parseFloat(shipment.estimated_cost);

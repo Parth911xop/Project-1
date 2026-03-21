@@ -235,6 +235,24 @@ module.exports = (pool, createNotification, io) => {
     router.get('/:id/tracking', async (req, res) => {
         const { id } = req.params;
         try {
+            const userId = req.user?.userId;
+            const role = req.user?.role;
+            if (!userId || !role) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+            let accessQuery = `SELECT id FROM shipments WHERE id = $1`;
+            const accessParams = [id];
+            if (role === 'customer') {
+                accessQuery += ` AND customer_id = $2`;
+                accessParams.push(userId);
+            } else if (role === 'company') {
+                accessQuery += ` AND company_id = $2`;
+                accessParams.push(userId);
+            }
+            const accessRes = await pool.query(accessQuery, accessParams);
+            if (accessRes.rows.length === 0) {
+                return res.status(404).json({ success: false, message: 'Shipment not found' });
+            }
+
             const result = await pool.query(
                 `SELECT id, shipment_id, lat, lng, status, location_note, timestamp
                  FROM tracking_logs
@@ -253,7 +271,21 @@ module.exports = (pool, createNotification, io) => {
     router.get('/:id', async (req, res) => {
         const { id } = req.params;
         try {
-            const result = await pool.query('SELECT * FROM shipments WHERE id = $1', [id]);
+            const userId = req.user?.userId;
+            const role = req.user?.role;
+            if (!userId || !role) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+            let query = 'SELECT * FROM shipments WHERE id = $1';
+            const params = [id];
+            if (role === 'customer') {
+                query += ' AND customer_id = $2';
+                params.push(userId);
+            } else if (role === 'company') {
+                query += ' AND company_id = $2';
+                params.push(userId);
+            }
+
+            const result = await pool.query(query, params);
             if (result.rows.length === 0) {
                 return res.status(404).json({ success: false, message: "Shipment not found" });
             }
@@ -267,32 +299,72 @@ module.exports = (pool, createNotification, io) => {
     // Update shipment status
     router.post('/update-status', async (req, res) => {
         const { shipmentId, status } = req.body;
+        const userId = req.user?.userId;
+        const userRole = req.user?.role;
 
         if (!shipmentId || !status) {
             return res.status(400).json({ success: false, message: "Shipment ID and Status are required" });
         }
 
         try {
-            await pool.query('UPDATE shipments SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [status, shipmentId]);
+            if (!userId || !['company', 'admin'].includes(userRole)) {
+                return res.status(403).json({ success: false, message: 'Only manager/admin can update shipment status.' });
+            }
+
+            const sid = parseInt(String(shipmentId).includes('-') ? String(shipmentId).split('-').pop() : shipmentId, 10);
+            if (isNaN(sid)) {
+                return res.status(400).json({ success: false, message: 'Invalid Shipment ID' });
+            }
+
+            const allowedStatuses = ['Confirmed', 'Cargo Loaded', 'In Transit', 'Delivered'];
+            if (!allowedStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid status. Allowed values: ${allowedStatuses.join(', ')}`
+                });
+            }
+
+            let updateResult;
+            if (userRole === 'company') {
+                updateResult = await pool.query(
+                    `UPDATE shipments
+                     SET status = $1, updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $2 AND company_id = $3
+                     RETURNING id`,
+                    [status, sid, userId]
+                );
+            } else {
+                updateResult = await pool.query(
+                    `UPDATE shipments
+                     SET status = $1, updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $2
+                     RETURNING id`,
+                    [status, sid]
+                );
+            }
+
+            if (updateResult.rowCount === 0) {
+                return res.status(404).json({ success: false, message: 'Shipment not found or unauthorized' });
+            }
             
             // Fetch prefix
             const shipRes = await pool.query(`
                 SELECT s.customer_id, UPPER(LEFT(u.email, 2)) as prefix 
                 FROM shipments s 
                 JOIN users u ON s.customer_id = u.id 
-                WHERE s.id = $1`, [shipmentId]);
+                WHERE s.id = $1`, [sid]);
             const prefix = shipRes.rows[0]?.prefix || 'SS';
 
             // Broadcast real-time event to rooms
             if (io) {
-                io.to(`shipment:${shipmentId}`).emit('shipment:status_update', { shipmentId, status, user_prefix: prefix });
+                io.to(`shipment:${sid}`).emit('shipment:status_update', { shipmentId: sid, status, user_prefix: prefix });
             }
 
             // Log event
             await pool.query(
                 `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
                  VALUES ($1, $2, $3, $4)`,
-                [shipmentId, status, `Status changed to ${status}`, req.user?.userId]
+                [sid, status, `Status changed to ${status}`, userId]
             );
 
             // Notify Customer
@@ -301,7 +373,7 @@ module.exports = (pool, createNotification, io) => {
                     shipRes.rows[0].customer_id,
                     'SHIPMENT_UPDATE',
                     'Shipment Status Updated',
-                    `Your shipment #${prefix}-${shipmentId} is now ${status}.`,
+                    `Your shipment #${prefix}-${sid} is now ${status}.`,
                     `/shipments.html`
                 );
             }

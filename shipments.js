@@ -135,7 +135,7 @@ function renderTable(shipments) {
 const STEPS = [
     { key: 'booked', label: 'Booking Request', icon: 'fa-file-invoice' },
     { key: 'allocated', label: 'Ship Allocated', icon: 'fa-ship' },
-    { key: 'port', label: 'Cargo at Port', icon: 'fa-warehouse' },
+    { key: 'loaded', label: 'Cargo Loaded', icon: 'fa-warehouse' },
     { key: 'transit', label: 'In Transit', icon: 'fa-anchor' },
     { key: 'done', label: 'Delivered', icon: 'fa-home' },
 ];
@@ -144,8 +144,8 @@ function getStep(status) {
     const s = (status || '').toLowerCase();
     if (s.includes('deliver')) return 5;
     if (s.includes('transit')) return 4;
-    if (s.includes('port') || s.includes('ready') || s.includes('paid')) return 3;
-    if (s.includes('ship allocated')) return 2;
+    if (s.includes('cargo loaded') || s.includes('ready') || s.includes('confirm')) return 3;
+    if (s.includes('ship allocated') || s.includes('documents pending') || s.includes('payment pending')) return 2;
     if (s.includes('pending manager approval')) return 1;
     return 1;
 }
@@ -178,10 +178,13 @@ function renderStatusPill(status) {
     let cls = 'booked', label = status || 'Booked';
 
     if (s.includes('deliver')) { cls = 'delivered'; label = 'Delivered'; }
-    else if (s.includes('arriv') || s.includes('clear') || s.includes('out for delivery')) { cls = 'arrived'; label = status; }
+    else if (s.includes('confirm')) { cls = 'arrived'; label = 'Confirmed by Manager'; }
+    else if (s.includes('cargo loaded')) { cls = 'arrived'; label = 'Cargo Loaded'; }
     else if (s.includes('transit')) { cls = 'transit'; label = 'In Transit'; }
     else if (s.includes('ship allocated')) { cls = 'port'; label = 'Ship Allocated – Awaiting Documents & Payment'; }
-    else if (s.includes('pending manager approval')) { cls = 'delayed'; label = 'Pending Manager Approval'; }
+    else if (s.includes('documents pending')) { cls = 'booked'; label = 'Documents Pending'; }
+    else if (s.includes('payment pending')) { cls = 'booked'; label = 'Payment Pending'; }
+    else if (s.includes('pending manager approval')) { cls = 'delayed'; label = 'Pending Approval'; }
     else if (s.includes('accept')) { cls = 'port'; label = 'Accepted'; }
     else if (s.includes('port')) { cls = 'port'; label = 'At Port'; }
     else if (s.includes('paid')) { cls = 'booked'; label = 'Paid'; }
@@ -512,7 +515,7 @@ async function openPanel(id) {
 
     // Check status
     const isPending = s.status === 'Pending Manager Approval';
-    const isAllocated = s.status === 'Ship Allocated';
+    const canCompleteFlow = ['Ship Allocated', 'Documents Pending', 'Payment Pending'].includes(s.status);
 
     if (isPending) {
         gatedArea.innerHTML = `
@@ -525,7 +528,7 @@ async function openPanel(id) {
                     </div>
                 </div>
             </div>`;
-    } else if (isAllocated) {
+    } else if (canCompleteFlow) {
         gatedArea.innerHTML = `
             <div class="p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 mb-4">
                 <div class="text-white small fw-bold mb-2"><i class="fas fa-ship me-2"></i>Ship Allocated!</div>
@@ -542,7 +545,7 @@ async function openPanel(id) {
     // Live Map Mini in Panel
     const mapWrap = document.getElementById('panel-map-wrap');
     if (mapWrap) {
-        if (isAllocated || s.status.includes('Transit') || s.status.includes('Accepted')) {
+        if (canCompleteFlow || s.status.includes('Transit') || s.status.includes('Cargo Loaded') || s.status.includes('Confirmed')) {
             mapWrap.style.display = 'block';
             setTimeout(() => initPanelMap(s.id), 300);
         } else {
@@ -702,6 +705,14 @@ function openCompleteShipmentModal(id) {
                     <!-- Step 3: Payment -->
                     <div id="comp-step-3" style="display:none;">
                         <h6 class="text-primary small fw-bold text-uppercase mb-3">3. Final Review & Payment</h6>
+                        
+                        <!-- ⚠️ Payment Gating Check -->
+                        <div id="payment-locked-notice" class="alert alert-warning border-warning bg-warning bg-opacity-10 mb-4" style="display:none;">
+                            <i class="fas fa-lock me-2"></i>
+                            <strong>Payment Locked</strong><br>
+                            <small>A manager must allocate a ship first. Once your booking is approved and a vessel is assigned, payment will be enabled.</small>
+                        </div>
+                        
                         <div class="bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary mb-4">
                              <div class="d-flex justify-content-between mb-2">
                                 <span class="text-white-50">Base Freight Cost:</span>
@@ -719,7 +730,14 @@ function openCompleteShipmentModal(id) {
                         </div>
                         <div class="mt-4 d-flex justify-content-between">
                             <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(2)"><i class="fas fa-arrow-left me-2"></i> Back</button>
-                            <button class="btn btn-success px-5 rounded-pill fw-bold" id="payProceedBtn">Pay Now <i class="fas fa-credit-card ms-2"></i></button>
+                            <div class="d-flex gap-2">
+                                <!-- Receipt Download Button (shown when already paid) -->
+                                <button id="downloadReceiptBtn" class="btn btn-outline-info px-4 rounded-pill" style="display:none;" title="Download payment receipt">
+                                    <i class="fas fa-download me-2"></i> Receipt
+                                </button>
+                                <!-- Payment Button (gated) -->
+                                <button class="btn btn-success px-5 rounded-pill fw-bold" id="payProceedBtn">Pay Now <i class="fas fa-credit-card ms-2"></i></button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -762,7 +780,36 @@ function openCompleteShipmentModal(id) {
     document.getElementById('comp-amt-total').innerText = `₹${total.toLocaleString()}`;
 
     document.getElementById('uploadAllBtn').onclick = () => uploadAllShipmentDocs(id);
-    document.getElementById('payProceedBtn').onclick = () => processBookingPayment(id);
+    
+    // ⚠️ PAYMENT GATING: Check shipment status
+    const payBtn = document.getElementById('payProceedBtn');
+    const receiptBtn = document.getElementById('downloadReceiptBtn');
+    const paymentLockedNotice = document.getElementById('payment-locked-notice');
+    
+    const allowedPaymentStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending'];
+    const isPaymentAllowed = allowedPaymentStatuses.includes(s.status);
+    const isAlreadyPaid = s.status === 'Cargo Ready' || s.status === 'Confirmed' || s.status === 'Cargo Loaded' || s.status === 'In Transit' || s.status === 'Delivered';
+    
+    if (isAlreadyPaid) {
+        payBtn.style.display = 'none';
+        receiptBtn.style.display = 'inline-block';
+        receiptBtn.onclick = () => downloadReceipt(id, s.user_prefix || 'SS');
+        paymentLockedNotice.style.display = 'none';
+    } else if (!isPaymentAllowed) {
+        payBtn.disabled = true;
+        payBtn.style.opacity = '0.5';
+        payBtn.style.cursor = 'not-allowed';
+        paymentLockedNotice.style.display = 'block';
+        receiptBtn.style.display = 'none';
+    } else {
+        payBtn.disabled = false;
+        payBtn.style.opacity = '1';
+        payBtn.style.cursor = 'pointer';
+        paymentLockedNotice.style.display = 'none';
+        receiptBtn.style.display = 'none';
+    }
+    
+    payBtn.onclick = () => processBookingPayment(id);
 
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
@@ -780,6 +827,17 @@ function goToStep(n) {
 }
 
 async function uploadAllShipmentDocs(shipmentId) {
+    try {
+        const gateRes = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/can-upload`, { credentials: 'include' });
+        const gateData = await gateRes.json();
+        if (!gateData.success || !gateData.canUpload) {
+            alert(gateData.message || 'Document upload is locked until ship allocation.');
+            return;
+        }
+    } catch (e) {
+        // Server-side route still enforces this rule.
+    }
+
     // 1. First Save the "Other Details" from Step 1
     const details = {
         hsCode: document.getElementById('comp-hs-code').value,
@@ -875,7 +933,7 @@ async function processBookingPayment(shipmentId) {
             // Fetch and show receipt
             await showReceipt(shipmentId);
         } else {
-            alert('Payment failed.');
+            alert(data.message || 'Payment failed.');
         }
     } catch (e) {
         alert('Network error.');

@@ -401,8 +401,10 @@ function renderShipments(list) {
                     <button class="btn btn-sm btn-dark border-secondary text-white-50" title="View Details" onclick="openDetailsModal(${s.id})"><i class="fas fa-eye"></i></button>
                     <select class="co-input" id="status-sel-${s.id}" style="width:130px;padding:4px 8px;font-size:0.75rem;">
                         <option value="">Change Status</option>
-                        <option>Booked</option><option>Accepted</option><option>At Port</option>
-                        <option>In Transit</option><option>Arrived</option><option>Delivered</option>
+                        <option>Confirmed</option>
+                        <option>Cargo Loaded</option>
+                        <option>In Transit</option>
+                        <option>Delivered</option>
                     </select>
                     <button class="btn-co btn-status" onclick="updateShipmentStatus(${s.id})"><i class="fas fa-save"></i></button>
                 </div>
@@ -752,13 +754,6 @@ function assignContainer() {
             <span class="text-white-50 small">${c.ts.toLocaleTimeString()}</span>
         </div>`).join('');
     toast(`Container ${contId} assigned to ${shipId}`, 'success');
-
-    // Update status on server
-    fetch(`${API}/api/company/shipments/${shipId}/status`, {
-        method: 'PATCH', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Container Allocated' })
-    }).catch(() => { });
 
     setVal('cont-shipment-id', '');
     setVal('cont-id', '');
@@ -1259,7 +1254,10 @@ function stBadge(s) {
         'Booked': 'b-booked', 'booked': 'b-booked', 'Accepted': 'b-accepted', 'At Port': 'b-port',
         'In Transit': 'b-transit', 'Delivered': 'b-delivered', 'delivered': 'b-delivered',
         'Declined': 'b-declined', 'Rejected': 'b-declined', 'Verified': 'b-delivered', 'Submitted': 'b-booked',
-        'Available': 'b-accepted', 'At Sea': 'b-transit', 'Maintenance': 'b-declined', 'Scheduled': 'b-port'
+        'Available': 'b-accepted', 'At Sea': 'b-transit', 'Maintenance': 'b-declined', 'Scheduled': 'b-port',
+        'Pending Manager Approval': 'b-booked', 'Ship Allocated': 'b-port', 'Documents Pending': 'b-booked',
+        'Payment Pending': 'b-booked', 'Cargo Ready': 'b-accepted', 'Confirmed': 'b-accepted',
+        'Cargo Loaded': 'b-port'
     };
     const cls = map[s] || 'b-accepted';
     return `<span class="badge-co ${cls}">${esc(s)}</span>`;

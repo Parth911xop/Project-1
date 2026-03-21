@@ -222,20 +222,44 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
         const { id } = req.params;
         try {
             const sid = parseInt(String(id).includes('-') ? String(id).split('-').pop() : id);
-            const r = await pool.query(`SELECT status, allocated_ship_id FROM shipments WHERE id = $1`, [sid]);
+            const r = await pool.query(
+                `SELECT status, allocated_ship_id, customer_id, company_id FROM shipments WHERE id = $1`,
+                [sid]
+            );
             if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Not found' });
 
-            const status = r.rows[0].status;
-            const unlocked = ['Ship Allocated', 'Documents Pending', 'Payment Pending', 'Cargo Ready',
-                'Accepted', 'In Transit', 'Customs', 'Delivered', 'Out for Delivery'].includes(status);
+            const requesterId = uid(req);
+            const requesterRole = req.user?.role;
+            const shipment = r.rows[0];
+            if (requesterRole === 'customer' && Number(shipment.customer_id) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
+            if (requesterRole === 'company' && Number(shipment.company_id || 0) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
+
+            const status = shipment.status;
+            const hasAllocation = !!shipment.allocated_ship_id;
+            const uploadUnlockedStatuses = [
+                'Ship Allocated',
+                'Documents Pending',
+                'Payment Pending',
+                'Cargo Ready',
+                'Confirmed',
+                'Cargo Loaded',
+                'In Transit',
+                'Delivered'
+            ];
+            const canUpload = hasAllocation && uploadUnlockedStatuses.includes(status);
+            const canPay = hasAllocation && ['Ship Allocated', 'Documents Pending', 'Payment Pending'].includes(status);
 
             res.json({
                 success: true,
-                canUpload: unlocked,
-                canPay: unlocked,
+                canUpload,
+                canPay,
                 status,
-                shipAllocated: !!r.rows[0].allocated_ship_id,
-                message: unlocked ? 'Documents and payment are enabled.' : 'Waiting for manager to allocate a ship.'
+                shipAllocated: hasAllocation,
+                message: canUpload ? 'Documents are enabled.' : 'Waiting for manager to allocate a ship.'
             });
         } catch (e) {
             res.status(500).json({ success: false, message: 'Check failed' });
@@ -250,11 +274,25 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
         const { id } = req.params;
         try {
             const sid = parseInt(String(id).includes('-') ? String(id).split('-').pop() : id);
-            const r = await pool.query(`SELECT status FROM shipments WHERE id = $1`, [sid]);
+            const r = await pool.query(
+                `SELECT status, allocated_ship_id, customer_id, company_id FROM shipments WHERE id = $1`,
+                [sid]
+            );
             if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Not found' });
 
-            const status = r.rows[0].status;
-            const canPay = ['Ship Allocated', 'Documents Pending', 'Payment Pending'].includes(status);
+            const requesterId = uid(req);
+            const requesterRole = req.user?.role;
+            const shipment = r.rows[0];
+            if (requesterRole === 'customer' && Number(shipment.customer_id) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
+            if (requesterRole === 'company' && Number(shipment.company_id || 0) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
+
+            const status = shipment.status;
+            const canPay = !!shipment.allocated_ship_id
+                && ['Ship Allocated', 'Documents Pending', 'Payment Pending'].includes(status);
 
             res.json({
                 success: true,
@@ -304,6 +342,14 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             }
 
             const data = r.rows[0];
+            const requesterId = uid(req);
+            const requesterRole = req.user?.role;
+            if (requesterRole === 'customer' && Number(data.customer_id) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
+            if (requesterRole === 'company' && Number(data.company_id || 0) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
 
             const receipt = {
                 bookingId: `${data.user_prefix || 'SS'}-BKG-${sid}`,
@@ -449,6 +495,14 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             }
 
             const data = r.rows[0];
+            const requesterId = uid(req);
+            const requesterRole = req.user?.role;
+            if (requesterRole === 'customer' && Number(data.customer_id) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
+            if (requesterRole === 'company' && Number(data.company_id || 0) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
 
             // Get route stops
             const stopsR = await pool.query(
@@ -474,7 +528,17 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             }
 
             // Calculate progress
-            const statusOrder = ['Pending Manager Approval', 'Ship Allocated', 'Booked', 'Accepted', 'In Transit', 'Customs', 'Out for Delivery', 'Delivered'];
+            const statusOrder = [
+                'Pending Manager Approval',
+                'Ship Allocated',
+                'Documents Pending',
+                'Payment Pending',
+                'Cargo Ready',
+                'Confirmed',
+                'Cargo Loaded',
+                'In Transit',
+                'Delivered'
+            ];
             const currentIdx = statusOrder.indexOf(data.status);
             const progress = Math.max(0, Math.min(100, Math.round((currentIdx / (statusOrder.length - 1)) * 100)));
 
@@ -596,7 +660,7 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE customer_id = $1`, [userId]),
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE customer_id = $1 AND status = 'Pending Manager Approval'`, [userId]),
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE customer_id = $1 AND status = 'Ship Allocated'`, [userId]),
-                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE customer_id = $1 AND status IN ('In Transit', 'Accepted', 'At Port')`, [userId]),
+                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE customer_id = $1 AND status IN ('Confirmed', 'Cargo Loaded', 'In Transit')`, [userId]),
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE customer_id = $1 AND status = 'Delivered'`, [userId])
             ]);
 
@@ -622,6 +686,50 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
     app.post('/api/v3/shipment/:id/payment-complete', ...anyAuth, async (req, res) => {
         const sid = parseInt(req.params.id);
         try {
+            const shipR = await pool.query(
+                `SELECT id, customer_id, company_id, status, allocated_ship_id
+                 FROM shipments
+                 WHERE id = $1`,
+                [sid]
+            );
+            if (shipR.rows.length === 0) {
+                return res.status(404).json({ success: false, message: 'Shipment not found' });
+            }
+
+            const shipment = shipR.rows[0];
+            const requesterId = uid(req);
+            const requesterRole = req.user?.role;
+
+            // Only customer-owner or admin can complete payment action.
+            if (requesterRole === 'customer' && Number(shipment.customer_id) !== Number(requesterId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized shipment access' });
+            }
+            if (requesterRole === 'company') {
+                return res.status(403).json({ success: false, message: 'Company managers cannot complete customer payment' });
+            }
+
+            const payableStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending'];
+            if (!shipment.allocated_ship_id || !payableStatuses.includes(shipment.status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: shipment.status === 'Pending Manager Approval'
+                        ? 'Payment is locked until a manager allocates a ship.'
+                        : `Payment is not available for status "${shipment.status}".`
+                });
+            }
+
+            // Simple sequencing guard: at least one document should be uploaded before payment completes.
+            const docCheck = await pool.query(
+                `SELECT COUNT(*)::int AS count FROM documents WHERE shipment_id = $1`,
+                [sid]
+            );
+            if ((docCheck.rows[0]?.count || 0) <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Upload required shipment documents before completing payment.'
+                });
+            }
+
             await pool.query(
                 `UPDATE shipments SET status = 'Cargo Ready', updated_at = NOW() WHERE id = $1`,
                 [sid]
@@ -632,10 +740,9 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             );
 
             // Notify manager
-            const shipR = await pool.query(`SELECT company_id FROM shipments WHERE id = $1`, [sid]);
-            if (shipR.rows[0]?.company_id) {
+            if (shipment.company_id) {
                 await notify(
-                    shipR.rows[0].company_id,
+                    shipment.company_id,
                     'Payment Received — Cargo Ready',
                     `Payment for shipment #${sid} has been completed. Cargo is ready for loading.`,
                     'success'

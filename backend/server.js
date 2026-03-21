@@ -85,8 +85,21 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Declare pool globally so routes can use it
 let pool;
 
-// Helper to resolve DB Host using Google DNS
-const resolveDbConfig = async () => {
+const buildDbConfig = (dbUrl, host, hostname) => ({
+    user: dbUrl.username,
+    password: dbUrl.password,
+    host,
+    port: dbUrl.port || 5432,
+    database: dbUrl.pathname.split('/')[1], // remove leading slash
+    connectionTimeoutMillis: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '5000', 10),
+    ssl: {
+        rejectUnauthorized: false,
+        servername: hostname // Crucial for Neon SNI
+    }
+});
+
+// Resolve DB host and return connection candidates, preferring IPv4.
+const resolveDbConfigs = async () => {
     const dbUrlStr = process.env.DATABASE_URL;
     if (!dbUrlStr) {
         throw new Error("DATABASE_URL is missing!");
@@ -97,32 +110,60 @@ const resolveDbConfig = async () => {
 
     console.log(`🔍 Resolving DB host: ${hostname} using native DNS...`);
 
-    return new Promise((resolve, reject) => {
-        // Use dns.lookup which uses the OS's native getaddrinfo (works with VPNs/Proxies)
-        dns.lookup(hostname, (err, address, family) => {
-            if (err) {
-                return reject(err);
-            }
-            if (!address) {
-                return reject(new Error("No IP address found for DB host"));
-            }
+    const seenHosts = new Set();
+    const candidates = [];
+    const addCandidate = (host, label) => {
+        if (!host || seenHosts.has(host)) return;
+        seenHosts.add(host);
+        candidates.push({ label, config: buildDbConfig(dbUrl, host, hostname) });
+    };
 
-            console.log(`✅ Resolved ${hostname} to ${address}`);
+    try {
+        // Prefer IPv4 first in environments where IPv6 connectivity is flaky.
+        const addresses = await dns.promises.lookup(hostname, { all: true, verbatim: false });
+        const ipv4 = addresses.filter(entry => entry.family === 4);
+        const ipv6 = addresses.filter(entry => entry.family === 6);
 
-            const config = {
-                user: dbUrl.username,
-                password: dbUrl.password,
-                host: address, // Use resolved IP
-                port: dbUrl.port || 5432,
-                database: dbUrl.pathname.split('/')[1], // remove leading slash
-                ssl: {
-                    rejectUnauthorized: false,
-                    servername: hostname // Crucial for Neon SNI
-                }
-            };
-            resolve(config);
-        });
-    });
+        ipv4.forEach(entry => addCandidate(entry.address, `IPv4 ${entry.address}`));
+        addCandidate(hostname, `hostname ${hostname}`);
+        ipv6.forEach(entry => addCandidate(entry.address, `IPv6 ${entry.address}`));
+
+        if (candidates.length) {
+            console.log(`✅ Resolved ${hostname} to ${addresses.map(entry => `${entry.address} (IPv${entry.family})`).join(', ')}`);
+        }
+    } catch (err) {
+        console.warn(`⚠️ DNS lookup failed for ${hostname}: ${err.message}. Falling back to hostname connection.`);
+        addCandidate(hostname, `hostname ${hostname}`);
+    }
+
+    if (!candidates.length) {
+        throw new Error("No DB connection candidates available");
+    }
+
+    return candidates;
+};
+
+const connectToDatabase = async () => {
+    const candidates = await resolveDbConfigs();
+    let lastError = null;
+
+    for (const candidate of candidates) {
+        const testPool = new Pool(candidate.config);
+        try {
+            console.log(`🔌 Attempting DB connection via ${candidate.label}...`);
+            await testPool.query('SELECT NOW()');
+            console.log(`✅ Database connected via ${candidate.label}`);
+            return testPool;
+        } catch (err) {
+            lastError = err;
+            console.warn(`⚠️ DB connection failed via ${candidate.label}: ${err.code || err.message}`);
+            try {
+                await testPool.end();
+            } catch (_) { }
+        }
+    }
+
+    throw lastError || new Error('Unable to connect to database');
 };
 
 // Create Users Table if not exists
@@ -1073,12 +1114,7 @@ app.use(express.static(path.join(__dirname, '../')));
 const startServer = async () => {
     try {
         // 1. Initialize Database
-        const dbConfig = await resolveDbConfig();
-        pool = new Pool(dbConfig);
-
-        // Test connection
-        await pool.query('SELECT NOW()');
-        console.log("✅ Database Connected Successfully via Resolved IP");
+        pool = await connectToDatabase();
 
         // 2. Run Migrations/Setup
         await createUsersTable();

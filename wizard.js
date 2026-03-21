@@ -522,7 +522,7 @@ async function submitBookingWithDocs() {
     const data = await res.json();
 
     if (data.success) {
-      alert(`✅ Booking Request Submitted!\n\nYour shipment #${data.bookingReference || data.shipmentId} is now "Pending Manager Approval".\n\nYou will be notified once a ship is allocated.`);
+      alert(`✅ Booking Request Submitted!\n\nYour shipment #${data.bookingReference || data.shipmentId} is now "Pending Approval".\n\nYou will be notified once a ship is allocated.`);
       window.location.href = 'shipments.html';
     } else {
       alert('Booking failed: ' + (data.message || 'Unknown error'));

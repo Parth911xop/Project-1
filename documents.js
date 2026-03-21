@@ -1,9 +1,16 @@
 const API_URL = `http://${window.location.hostname}:3000`;
-// In a real app, we'd fetch docs for a specific shipment or all user shipments.
-// For demo, we default to Shipment 32 or fetch all if supported.
 const defaultShipmentId = 32;
+let CURRENT_SHIPMENT = null;
+let USER_ROLE = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Get user role for permission checks
+    try {
+        const authRes = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+        const authData = await authRes.json();
+        if (authData.success) USER_ROLE = authData.user?.role;
+    } catch (e) { console.error('Auth check failed'); }
+    
     fetchDocuments();
 });
 
@@ -98,6 +105,39 @@ async function uploadDocument() {
     if (!fileInput.files.length) {
         alert("Please select a file");
         return;
+    }
+
+    // ⚠️ CHECK SHIPMENT STATUS - GATE BASED ON WORKFLOW
+    try {
+        const shipRes = await fetch(`${API_URL}/api/shipment/${shipmentId}`, { credentials: 'include' });
+        const shipData = await shipRes.json();
+        
+        if (shipData.success && shipData.shipment) {
+            const shipment = shipData.shipment;
+            
+            // Only allow document upload if shipment is "Ship Allocated" or later
+            const allowedStatuses = [
+                'Ship Allocated',
+                'Documents Pending',
+                'Payment Pending',
+                'Cargo Ready',
+                'Confirmed',
+                'Cargo Loaded',
+                'In Transit',
+                'Delivered'
+            ];
+            
+            if (!allowedStatuses.includes(shipment.status)) {
+                const msg = shipment.status === 'Pending Manager Approval'
+                    ? '⚠️ Documents locked: A manager must allocate a ship first. Once allocated, document upload will be enabled.'
+                    : `⚠️ Document upload not available for status: "${shipment.status}"`;
+                    
+                alert(msg);
+                return;
+            }
+        }
+    } catch (err) {
+        console.warn('Could not verify shipment status, proceeding...');
     }
 
     const formData = new FormData();
