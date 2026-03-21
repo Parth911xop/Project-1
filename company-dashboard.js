@@ -1238,6 +1238,7 @@ async function updateTrackingContextMap(s) {
     const el = document.getElementById('tracking-context-map');
     if (!el) return;
     if (!contextMapInstance) {
+        L.Icon.Default.imagePath = 'dist/images/';
         contextMapInstance = L.map('tracking-context-map').setView([20, 78], 3);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(contextMapInstance);
     } else {
@@ -1551,6 +1552,7 @@ async function initDashboardMap() {
     if (!mapEl) return;
 
     if (!fleetMap) {
+        L.Icon.Default.imagePath = 'dist/images/';
         fleetMap = L.map('fleet-map').setView([15, 75], 3);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '© CARTO'

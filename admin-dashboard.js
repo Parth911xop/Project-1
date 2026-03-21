@@ -982,6 +982,9 @@ async function initRouteMap() {
     // Small delay to ensure container is visible before Leaflet calculates size
     setTimeout(async () => {
         if (!adminMap) {
+            // Set local image path for markers
+            L.Icon.Default.imagePath = 'dist/images/';
+
             adminMap = L.map('route-map').setView([20, 10], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; CARTO'

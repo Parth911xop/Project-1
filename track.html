@@ -8,8 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <!-- Leaflet.js -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- Leaflet.js (Local) -->
+    <link rel="stylesheet" href="dist/leaflet.css">
     <link rel="stylesheet" href="dashboard.css">
     <script src="auth-guard.js"></script>
     <style>
@@ -126,8 +126,16 @@
                 <!-- LEFT: Shipment List -->
                 <div class="col-lg-3">
                     <div class="summary-card p-3 h-100">
+                        <div class="mb-4">
+                            <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Search Shipment</h6>
+                            <div class="input-group input-group-sm mb-3">
+                                <input type="text" id="shipment-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Enter Shipment ID">
+                                <button class="btn btn-primary" onclick="searchByShipmentId()"><i class="fas fa-search"></i></button>
+                            </div>
+                        </div>
+
                         <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Your Shipments</h6>
-                        <div id="shipment-list" class="d-flex flex-column gap-2">
+                        <div id="shipment-list" class="d-flex flex-column gap-2" style="max-height: 500px; overflow-y: auto;">
                             <div class="text-white-50 small text-center py-3">
                                 <div class="spinner-border spinner-border-sm me-2"></div>Loading...
                             </div>
@@ -160,7 +168,7 @@
         </div>
     </main>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
         const API_URL = `http://${window.location.hostname}:3000`;
@@ -170,6 +178,10 @@
         // Initialize Leaflet map
         function initMap(lat = 20.5937, lng = 78.9629) {
             if (map) return;
+
+            // Ensure markers use local dist/images/
+            L.Icon.Default.imagePath = 'dist/images/';
+
             map = L.map('map').setView([lat, lng], 3);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
                 attribution: '© OpenStreetMap contributors © CARTO',
@@ -271,27 +283,74 @@
 
         // ── AUTO-REFRESH (30s HEARTBEAT) ──────────────────────────────────
         let refreshTimer = null;
+        let vesselUpdateTimer = null;
+
+        function searchByShipmentId() {
+            const inputVal = document.getElementById('shipment-search-input').value.trim();
+            if(!inputVal) return;
+            // The user may enter just the number or the full ref like SS-15
+            const numericId = inputVal.includes('-') ? inputVal.split('-').pop() : inputVal;
+            joinShipment(numericId, 'ID');
+        }
+
+        async function fetchLiveVesselData(shipmentId) {
+            try {
+                const res = await fetch(`${API_URL}/api/shipment/${shipmentId}/live-vessel`, { credentials: 'include' });
+                const data = await res.json();
+                
+                if (data.success && data.live) {
+                    const { lat, lng, vessel_name, speed, course } = data.live;
+                    updateMapPin(lat, lng, vessel_name || `Shipment #${shipmentId}`, `Speed: ${speed} kn | Course: ${course}°`);
+                    addEvent({
+                        status: 'Vessel Pulse',
+                        message: `${vessel_name} - Moving at ${speed} knots`,
+                        lat, lng,
+                        timestamp: new Date()
+                    });
+                } else {
+                    console.warn('VesselFinder API failed or no MMSI, using internal fallback...');
+                    useFallbackMovement(shipmentId);
+                }
+            } catch (err) {
+                console.error("Vessel tracking error:", err);
+                useFallbackMovement(shipmentId);
+            }
+        }
+
+        function useFallbackMovement(shipmentId) {
+            fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.logs?.length > 0) {
+                        const lastLog = data.logs[data.logs.length - 1];
+                        updateMapPin(lastLog.lat, lastLog.lng, `Shipment #${shipmentId}`, `Last known: ${lastLog.status}`);
+                    }
+                });
+        }
+
         function startLivePulse(shipmentId, prefix) {
             if (refreshTimer) clearInterval(refreshTimer);
+            if (vesselUpdateTimer) clearInterval(vesselUpdateTimer);
+
+            // Fetch live VesselFinder data every 10 seconds
+            fetchLiveVesselData(shipmentId);
+            vesselUpdateTimer = setInterval(() => {
+                fetchLiveVesselData(shipmentId);
+            }, 10000); 
+
+            // Standard status update every 30s
             refreshTimer = setInterval(() => {
                 if (activeShipmentId === shipmentId) {
                     console.log('🔄 Live Pulse: Syncing Real-Time Stats for #' + shipmentId);
                     
-                    // Re-fetch tracking history to get latest WhereParcel scan
                     fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' })
                         .then(r => r.json())
                         .then(data => {
                             if (data.success && data.external) {
-                                // Clear existing EXTERNAL events to avoid duplicates in view
                                 document.querySelectorAll('.event-pill [EXT]').forEach(el => el.closest('.event-pill').remove());
-                                
                                 if (data.external.events) {
                                     data.external.events.forEach(ev => {
-                                        addEvent({
-                                            status: `<span [EXT]>[EXT]</span> ${ev.status}`,
-                                            message: ev.location,
-                                            timestamp: ev.date
-                                        });
+                                        addEvent({ status: `<span [EXT]>[EXT]</span> ${ev.status}`, message: ev.location, timestamp: ev.date });
                                     });
                                 }
                             }
@@ -309,46 +368,49 @@
             
             // Clear previous map objects
             if(polyline) polyline.setLatLngs([]);
+            if(marker) map.removeLayer(marker);
+            marker = null;
             portMarkers.forEach(m => map.removeLayer(m));
             portMarkers = [];
             if(voyagePlannedPath) map.removeLayer(voyagePlannedPath);
 
             document.getElementById('tracking-title').innerText = `Tracking Shipment #${prefix}-${shipmentId}`;
             document.getElementById('live-badge').classList.remove('d-none');
-            document.getElementById('event-feed').innerHTML = '<p class="text-white-50 small">Waiting for live updates...</p>';
+            document.getElementById('event-feed').innerHTML = '<p class="text-white-50 small">Connecting to satellite sensors...</p>';
 
             if (!map) initMap();
             if (socket?.connected) {
                 socket.emit('join_shipment', { shipmentId });
             }
 
-            // Start the 30s refresh loop
+            // Start live tracking loop
             startLivePulse(shipmentId, prefix);
 
             // Initial fetch of logs + SHIPMENT DETAILS (for ports)
             fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) {
+                    if (data.success && data.shipment) {
                         const s = data.shipment;
                         
                         // 1. Plot Source and Destination Ports
-                        if (s && s.origin_lat && s.origin_lng) {
-                            const srcIcon = L.divIcon({ html: '<i class="fas fa-dot-circle text-warning fa-lg"></i>', className: 'port-icon', iconSize:[20,20] });
-                            const m1 = L.marker([s.origin_lat, s.origin_lng], { icon: srcIcon }).addTo(map).bindPopup(`<b>Source Port:</b><br>${s.origin_address}`);
+                        if (s.origin_lat && s.origin_lng) {
+                            const srcIcon = L.divIcon({ html: '<i class="fas fa-anchor text-warning fa-lg"></i>', className: 'port-icon', iconSize:[24,24] });
+                            const m1 = L.marker([s.origin_lat, s.origin_lng], { icon: srcIcon }).addTo(map).bindPopup(`<b>Origin:</b><br>${s.origin_address}`);
                             portMarkers.push(m1);
                         }
-                        if (s && s.dest_lat && s.dest_lng) {
-                            const dstIcon = L.divIcon({ html: '<i class="fas fa-flag-checkered text-danger fa-lg"></i>', className: 'port-icon', iconSize:[20,20] });
-                            const m2 = L.marker([s.dest_lat, s.dest_lng], { icon: dstIcon }).addTo(map).bindPopup(`<b>Destination Port:</b><br>${s.destination_address}`);
+                        if (s.dest_lat && s.dest_lng) {
+                            const dstIcon = L.divIcon({ html: '<i class="fas fa-flag-checkered text-danger fa-lg"></i>', className: 'port-icon', iconSize:[24,24] });
+                            const m2 = L.marker([s.dest_lat, s.dest_lng], { icon: dstIcon }).addTo(map).bindPopup(`<b>Destination:</b><br>${s.destination_address}`);
                             portMarkers.push(m2);
                         }
 
                         // Draw planned path (Dashed line between ports)
-                        if (s?.origin_lat && s?.dest_lat) {
+                        if (s.origin_lat && s.dest_lat) {
                             voyagePlannedPath = L.polyline([[s.origin_lat, s.origin_lng], [s.dest_lat, s.dest_lng]], {
                                 color: '#ffffff', weight: 1, dashArray: '10, 15', opacity: 0.3
                             }).addTo(map);
+                            map.fitBounds(voyagePlannedPath.getBounds(), { padding: [50, 50] });
                         }
 
                         // 2. Internal GPS Logs
@@ -358,20 +420,9 @@
                                 addEvent({ ...log, timestamp: log.timestamp });
                             });
                         }
-
-                        // 3. WhereParcel Courier Logic
-                        if (data.external && data.external.events) {
-                            data.external.events.forEach(ev => {
-                                addEvent({
-                                    status: `<span [EXT]>[EXT]</span> ${ev.status}`,
-                                    message: ev.location,
-                                    timestamp: ev.date
-                                });
-                            });
-                            if (data.external.status) {
-                                document.getElementById('tracking-title').innerText += ` (${data.external.status})`;
-                            }
-                        }
+                    } else {
+                        document.getElementById('tracking-title').innerText = "Shipment Not Found";
+                        addEvent({ status: 'Error', message: 'The shipment ID you entered could not be found.' });
                     }
                 }).catch(() => { });
         }

@@ -590,18 +590,31 @@ async function initPanelMap(shipmentId) {
     const mapEl = document.getElementById('panel-map');
     if (!mapEl) return;
     if (panelMapInstance) { panelMapInstance.remove(); panelMapInstance = null; }
-    panelMapInstance = L.map('panel-map').setView([20, 78], 3);
+
+    // Ensure icons are found in local dist/images/
+    L.Icon.Default.imagePath = 'dist/images/';
+
+    panelMapInstance = L.map('panel-map', { zoomControl: false, attributionControl: false }).setView([20, 78], 3);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(panelMapInstance);
+    
     try {
-        const res = await fetch(`${API_URL}/api/v3/tracking/live/${shipmentId}`, { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/shipment/${shipmentId}/live-vessel`, { credentials: 'include' });
         const data = await res.json();
-        if (data.success && data.tracking.livePosition) {
-            const pos = [data.tracking.livePosition.lat, data.tracking.livePosition.lng];
-            const icon = L.divIcon({ className: 'mini-ship', html: `<div style="color:#22c55e;"><i class="fas fa-ship fa-rotate-270"></i></div>`, iconSize: [20, 20] });
-            L.marker(pos, { icon }).addTo(panelMapInstance).bindPopup(data.tracking.shipName).openPopup();
-            panelMapInstance.flyTo(pos, 5);
+        
+        if (data.success && data.live) {
+            const pos = [data.live.lat, data.live.lng];
+            const icon = L.divIcon({ 
+                className: 'mini-ship', 
+                html: `<div style="color:#22c55e; filter: drop-shadow(0 0 4px rgba(34,197,94,0.6));"><i class="fas fa-ship fa-lg"></i></div>`, 
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+            L.marker(pos, { icon }).addTo(panelMapInstance).bindPopup(`<b>${data.live.vessel_name || 'Vessel'}</b><br>${data.live.speed} knots`).openPopup();
+            panelMapInstance.flyTo(pos, 5, { duration: 1.5 });
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn("Panel map fail:", e);
+    }
 }
 
 async function openCompleteShipmentModal(id) {

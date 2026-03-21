@@ -46,6 +46,8 @@ const createShipmentTable = async (pool) => {
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_lng NUMERIC;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lat NUMERIC;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lng NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS mmsi VARCHAR(20);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS ship_name VARCHAR(255);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_name_manual VARCHAR(255);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN hs_code VARCHAR(50);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN description TEXT;`); } catch (e) { }
@@ -55,13 +57,13 @@ const createShipmentTable = async (pool) => {
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN weight_kg DECIMAL(10, 2);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN volume_cbm DECIMAL(10, 2);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN cargo_value DECIMAL(10, 2);`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN company_id INTEGER REFERENCES users(id);`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN carbon_emission NUMERIC;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN vehicle_type VARCHAR(50);`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN cargo_details JSONB;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN estimated_departure TIMESTAMP;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN estimated_arrival TIMESTAMP;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN product_type VARCHAR(100);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES users(id);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS carbon_emission NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS vehicle_type VARCHAR(50);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS cargo_details JSONB;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS estimated_departure TIMESTAMP;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS estimated_arrival TIMESTAMP;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS product_type VARCHAR(100);`); } catch (e) { }
 
         console.log("✅ Table 'shipments' ready");
     } catch (err) {
@@ -79,25 +81,35 @@ module.exports = (pool, createNotification, io) => {
     router.post('/manager/create', async (req, res) => {
         const {
             trackingNumber, fromCountry, toCountry, mode, weight, productType, 
-            customerNameManual, cargoDetails, hsCode, description
+            customerNameManual, cargoDetails, hsCode, description,
+            mmsi, shipName, originLat, originLng, destLat, destLng
         } = req.body;
 
         const managerId = req.user?.userId;
         if (!managerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+        // Auto-lookup for ports if missing
+        const { getPortCoordinates } = require('./services/ports');
+        const oCoords = !originLat ? getPortCoordinates(fromCountry) : null;
+        const dCoords = !destLat ? getPortCoordinates(toCountry) : null;
 
         try {
             const result = await pool.query(
                 `INSERT INTO shipments (
                     company_id, tracking_number, origin_address, destination_address,
                     origin_country, destination_country, mode, weight_kg, product_type,
-                    customer_name_manual, status, hs_code, description, cargo_details
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Accepted', $11, $12, $13)
+                    customer_name_manual, status, hs_code, description, cargo_details,
+                    mmsi, ship_name, origin_lat, origin_lng, dest_lat, dest_lng
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Accepted', $11, $12, $13, $14, $15, $16, $17, $18, $19)
                 RETURNING id`,
                 [
                     managerId, trackingNumber, fromCountry, toCountry, fromCountry, toCountry,
                     mode || 'Sea', weight || 0, productType || 'General Cargo',
                     customerNameManual, hsCode, description,
-                    cargoDetails ? JSON.stringify(cargoDetails) : '{}'
+                    cargoDetails ? JSON.stringify(cargoDetails) : '{}',
+                    mmsi, shipName, 
+                    originLat || oCoords?.lat, originLng || oCoords?.lng,
+                    destLat || dCoords?.lat, destLng || dCoords?.lng
                 ]
             );
 
@@ -137,8 +149,14 @@ module.exports = (pool, createNotification, io) => {
         try {
             const {
                 hsCode, description, consigneeName, consigneeContact, cargoValue, iecCode, companyId,
-                preferredShippingDate, sourcePort, destinationPort
+                preferredShippingDate, sourcePort, destinationPort,
+                mmsi, shipName, originLat, originLng, destLat, destLng
             } = req.body;
+
+            // Auto-lookup for ports if missing
+            const { getPortCoordinates } = require('./services/ports');
+            const oCoords = !originLat ? getPortCoordinates(fromCountry || sourcePort) : null;
+            const dCoords = !destLat ? getPortCoordinates(toCountry || destinationPort) : null;
 
             const result = await pool.query(
                 `INSERT INTO shipments (
@@ -148,9 +166,10 @@ module.exports = (pool, createNotification, io) => {
                     mode, weight_kg, carbon_emission, status,
                     hs_code, description, consignee_name, consignee_contact,
                     cargo_value, iec_code, product_type, cargo_details, company_id,
-                    preferred_shipping_date, source_port, destination_port
+                    preferred_shipping_date, source_port, destination_port,
+                    mmsi, ship_name, origin_lat, origin_lng, dest_lat, dest_lng
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
                 RETURNING id`,
                 [
                     userId,
@@ -177,7 +196,13 @@ module.exports = (pool, createNotification, io) => {
                     companyId || null,
                     preferredShippingDate || null,
                     sourcePort || origin || null,
-                    destinationPort || dest || null
+                    destinationPort || dest || null,
+                    mmsi || null,
+                    shipName || null,
+                    originLat || oCoords?.lat,
+                    originLng || oCoords?.lng,
+                    destLat || dCoords?.lat,
+                    destLng || dCoords?.lng
                 ]
             );
 
@@ -317,6 +342,40 @@ module.exports = (pool, createNotification, io) => {
         } catch (err) {
             console.error('Tracking history error:', err);
             res.status(500).json({ success: false, message: 'Database error' });
+        }
+    });
+
+    // Get Live Ship Location from VesselFinder Service
+    router.get('/:id/live-vessel', async (req, res) => {
+        const { id } = req.params;
+        try {
+            // Fetch shipment to get MMSI
+            const shipRes = await pool.query('SELECT mmsi, ship_name, origin_lat, origin_lng, dest_lat, dest_lng FROM shipments WHERE id = $1', [id]);
+            if (shipRes.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
+            
+            const shipment = shipRes.rows[0];
+            const { mmsi, ship_name } = shipment;
+
+            if (!mmsi) {
+                return res.status(400).json({ success: false, message: 'MMSI not assigned to this shipment' });
+            }
+
+            const { getShipLocation } = require('./services/vesselFinder');
+            const liveLocation = await getShipLocation(mmsi, ship_name);
+
+            if (!liveLocation) {
+                return res.status(503).json({ success: false, message: 'Vessel location service unavailable' });
+            }
+
+            res.json({
+                success: true,
+                live: liveLocation,
+                shipment: shipment
+            });
+
+        } catch (err) {
+            console.error('Live vessel tracking error:', err);
+            res.status(500).json({ success: false, message: 'Server error fetching ship location' });
         }
     });
 
