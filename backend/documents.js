@@ -91,11 +91,63 @@ router.post('/upload', upload.single('docFile'), async (req, res) => {
     try {
         const { shipmentId, type, docName } = req.body;
         const userId = req.user?.userId;
+        const userRole = req.user?.role;
 
         if (!req.file) {
             console.log("❌ No file in request");
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
+
+        if (!shipmentId) {
+            return res.status(400).json({ success: false, error: 'Shipment ID is required for document upload' });
+        }
+
+        const sid = parseInt(String(shipmentId).includes('-') ? String(shipmentId).split('-').pop() : shipmentId, 10);
+        if (isNaN(sid)) {
+            return res.status(400).json({ success: false, error: 'Invalid shipment ID' });
+        }
+
+        const shipRes = await pool.query(
+            `SELECT id, customer_id, company_id, status, allocated_ship_id
+             FROM shipments
+             WHERE id = $1`,
+            [sid]
+        );
+        if (shipRes.rows.length === 0) {
+            return res.status(404).json({ success: false, error: 'Shipment not found' });
+        }
+
+        const shipment = shipRes.rows[0];
+
+        // Permission checks for uploader role
+        if (userRole === 'customer' && Number(shipment.customer_id) !== Number(userId)) {
+            return res.status(403).json({ success: false, error: 'Unauthorized shipment access' });
+        }
+        if (userRole === 'company' && Number(shipment.company_id || 0) !== Number(userId)) {
+            return res.status(403).json({ success: false, error: 'You can upload only for your assigned shipments' });
+        }
+
+        // Workflow gate: no upload before manager allocates a ship
+        const uploadEnabledStatuses = [
+            'Ship Allocated',
+            'Documents Pending',
+            'Payment Pending',
+            'Cargo Ready',
+            'Confirmed',
+            'Cargo Loaded',
+            'In Transit',
+            'Delivered'
+        ];
+        const canUpload = !!shipment.allocated_ship_id && uploadEnabledStatuses.includes(shipment.status);
+        if (!canUpload) {
+            return res.status(400).json({
+                success: false,
+                error: shipment.status === 'Pending Manager Approval'
+                    ? 'Documents are locked until a manager allocates a ship.'
+                    : `Document upload is not available for status "${shipment.status}".`
+            });
+        }
+
         console.log("📂 File received:", req.file.filename);
 
         const fileUrl = `/uploads/${req.file.filename}`;
@@ -119,9 +171,22 @@ router.post('/upload', upload.single('docFile'), async (req, res) => {
 
         const result = await pool.query(
             'INSERT INTO documents (user_id, shipment_id, type, doc_name, file_url, status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-            [userId, shipmentId || null, type, finalDocName, fileUrl, 'Submitted']
+            [userId, sid, type, finalDocName, fileUrl, 'Submitted']
         );
         console.log("✅ DB Insert successful:", result.rows[0].id);
+
+        // First upload after allocation moves shipment into documents phase
+        if (shipment.status === 'Ship Allocated') {
+            await pool.query(
+                `UPDATE shipments SET status = 'Documents Pending', updated_at = NOW() WHERE id = $1`,
+                [sid]
+            );
+            await pool.query(
+                `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
+                 VALUES ($1, 'Documents Pending', 'User started document upload.', $2)`,
+                [sid, userId || null]
+            );
+        }
 
         res.json({ success: true, document: result.rows[0] });
     } catch (err) {

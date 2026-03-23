@@ -70,6 +70,9 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
             const r = await pool.query(`
                 SELECT s.*, u.name as customer_name, u.email as customer_email,
                        UPPER(LEFT(u.email, 2)) as user_prefix,
+                       v.name as vessel_name,
+                       v.current_port as vessel_current_port,
+                       (SELECT string_agg(port_name, ' → ' ORDER BY stop_order ASC) FROM ship_route_stops WHERE ship_id = s.allocated_ship_id) AS vessel_route,
                        COALESCE(s.origin_lat, 
                            CASE 
                                WHEN LOWER(s.origin_address) LIKE '%india%' THEN 18.94
@@ -98,6 +101,7 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
                        ) as dest_lng
                 FROM shipments s 
                 LEFT JOIN users u ON s.customer_id = u.id
+                LEFT JOIN vehicles v ON s.allocated_ship_id = v.id
                 WHERE s.company_id=$1 AND s.status NOT IN ('Pending Manager Approval', 'Declined')
                 ORDER BY s.created_at DESC
             `, [id]);
@@ -283,14 +287,78 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
             const sid = parseInt(String(shipmentId).includes('-') ? String(shipmentId).split('-').pop() : shipmentId);
             if (isNaN(sid)) return res.status(400).json({ success: false, message: 'Invalid Shipment ID' });
 
+            const allowedTrackingStatuses = ['Confirmed', 'Cargo Loaded', 'In Transit', 'Delivered'];
+            if (!allowedTrackingStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Tracking status must be one of: ${allowedTrackingStatuses.join(', ')}`
+                });
+            }
+
+            const shipmentR = await pool.query(
+                `SELECT id, status, customer_id FROM shipments WHERE id = $1 AND company_id = $2`,
+                [sid, id]
+            );
+            if (shipmentR.rowCount === 0) {
+                return res.status(404).json({ success: false, message: 'Shipment not found in your company scope' });
+            }
+
+            const currentStatus = shipmentR.rows[0].status;
+
+            // ── SMART STATUS FLOW ENGINE ──────────────────────────
+            // Confirmed: allowed from Ship Allocated OR Cargo Ready
+            if (status === 'Confirmed' && !['Ship Allocated', 'Cargo Ready'].includes(currentStatus)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot confirm from "${currentStatus}". Shipment must be Allocated first.`
+                });
+            }
+            
+            // Cargo Loaded: allowed from Confirmed (auto-confirm if Ship Allocated)
+            if (status === 'Cargo Loaded') {
+                if (currentStatus === 'Ship Allocated') {
+                    // AUTO-CONFIRM: Insert the Confirmed step automatically
+                    await pool.query(`UPDATE shipments SET status='Confirmed', updated_at=NOW() WHERE id=$1`, [sid]);
+                    await pool.query(`INSERT INTO shipment_events (shipment_id, status, notes, updated_by) VALUES ($1, 'Confirmed', 'Auto-confirmed by system before Cargo Loaded', $2)`, [sid, id]);
+                    await pool.query(`INSERT INTO tracking_logs (shipment_id, status, location_note, timestamp) VALUES ($1, 'Confirmed', 'System auto-confirmed', NOW())`, [sid]);
+                    // Now currentStatus is effectively 'Confirmed', proceed
+                } else if (currentStatus !== 'Confirmed') {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot mark Cargo Loaded from "${currentStatus}". Confirm shipment first.`
+                    });
+                }
+            }
+            
+            if (status === 'In Transit' && currentStatus !== 'Cargo Loaded') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot mark In Transit from "${currentStatus}". Mark Cargo Loaded first.`
+                });
+            }
+            if (status === 'Delivered' && currentStatus !== 'In Transit') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot mark Delivered from "${currentStatus}". Shipment must be In Transit.`
+                });
+            }
+
             // Update shipment main status
-            await pool.query(`UPDATE shipments SET status=$1 WHERE id=$2 AND company_id=$3`, [status, sid, id]);
+            await pool.query(
+                `UPDATE shipments SET status=$1, updated_at = NOW() WHERE id=$2 AND company_id=$3`,
+                [status, sid, id]
+            );
 
             // Add to journey/log
             const timestamp = new Date();
             await pool.query(
                 `INSERT INTO tracking_logs (shipment_id, status, location_note, timestamp) VALUES ($1, $2, $3, $4)`,
                 [sid, status, notes || `Updated to ${status} at ${location || '—'}`, timestamp]
+            );
+            await pool.query(
+                `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
+                 VALUES ($1, $2, $3, $4)`,
+                [sid, status, notes || `Manager updated status to ${status}`, id]
             );
 
             // Fetch prefix for real-time and notifications
@@ -358,45 +426,10 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
 
     // ── 11. Accept / Reject / Status ────────────────────────
     app.post('/api/company/bookings/accept', ...auth, async (req, res) => {
-        const { shipmentId, vesselName, departureDate, arrivalDate } = req.body;
-        const id = cid(req);
-        try {
-            const sid = parseInt(String(shipmentId).includes('-') ? String(shipmentId).split('-').pop() : shipmentId);
-            if (isNaN(sid)) return res.status(400).json({ success: false, message: 'Invalid Shipment ID' });
-
-            const result = await pool.query(
-                `UPDATE shipments SET 
-                    status='Accepted', 
-                    vehicle_type=COALESCE($1, vehicle_type), 
-                    company_id=$2,
-                    estimated_departure=$4,
-                    estimated_arrival=$5
-                 WHERE id=$3 AND (company_id IS NULL OR company_id=$2)
-                 RETURNING customer_id`,
-                [vesselName || null, id, sid, departureDate || null, arrivalDate || null]
-            );
-            if (result.rowCount > 0) {
-                const customerId = result.rows[0].customer_id;
-                
-                // Fetch prefix
-                const prefRes = await pool.query(`
-                    SELECT UPPER(LEFT(u.email, 2)) as prefix 
-                    FROM users u WHERE u.id = $1`, [customerId]);
-                const prefix = prefRes.rows[0]?.prefix || 'SS';
-
-                const comp = await pool.query('SELECT company_name FROM company_profiles WHERE user_id = $1', [id]);
-                const cName = comp.rows[0]?.company_name || 'A logistics company';
-
-                if (customerId) await notify(customerId, 'Shipment Accepted', `${cName} has accepted your shipment request ${prefix}-${sid}.`, 'success');
-                await notify(id, 'Shipment Claimed', `You accepted shipment ${prefix}-${sid}.`, 'info');
-
-                // Broadcast real-time event
-                if (io) {
-                    io.to(`shipment:${sid}`).emit('shipment:status_update', { shipmentId: sid, status: 'Accepted', user_prefix: prefix });
-                }
-            }
-            res.json({ success: true, message: 'Shipment accepted into fleet' });
-        } catch (e) { res.status(500).json({ success: false, message: 'Failed to accept' }); }
+        return res.status(400).json({
+            success: false,
+            message: 'Legacy accept API is disabled. Use /api/v3/manager/allocate-ship for ship allocation workflow.'
+        });
     });
 
     app.post('/api/company/bookings/reject', ...auth, async (req, res) => {
@@ -441,14 +474,100 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
             const sid = parseInt(String(id).includes('-') ? String(id).split('-').pop() : id);
             if (isNaN(sid)) return res.status(400).json({ success: false, message: 'Invalid Shipment ID' });
 
+            const allowedStatuses = ['Confirmed', 'Cargo Loaded', 'In Transit', 'Delivered'];
+            if (!allowedStatuses.includes(status)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid manager status. Allowed: ${allowedStatuses.join(', ')}`
+                });
+            }
+
+            const shipR = await pool.query(
+                `SELECT id, status, customer_id FROM shipments WHERE id=$1 AND company_id=$2`,
+                [sid, userId]
+            );
+            if (shipR.rows.length === 0) {
+                return res.status(404).json({ success: false, message: 'Shipment not found in your company' });
+            }
+
+            const currentStatus = shipR.rows[0].status;
+            if (currentStatus === status) {
+                return res.json({ success: true, message: `Shipment already in status "${status}"` });
+            }
+
+            // Transition rules for a real logistics workflow.
+            if (status === 'Confirmed') {
+                // MANAGER OVERRIDE: Allowed to forcefully confirm right after Ship Allocation to jumpstart Tracking
+                if (currentStatus !== 'Cargo Ready' && currentStatus !== 'Ship Allocated') {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot confirm shipment from "${currentStatus}". Must be Allocated or Ready.`
+                    });
+                }
+
+                // If doing normal customer progression from Cargo Ready, enforce Docs
+                if (currentStatus === 'Cargo Ready') {
+                    const docsR = await pool.query(
+                        `SELECT COUNT(*)::int AS total_docs, COUNT(*) FILTER (WHERE status = 'Verified')::int AS verified_docs 
+                         FROM documents WHERE shipment_id = $1`, [sid]
+                    );
+                    const totalDocs = docsR.rows[0]?.total_docs || 0;
+                    const verifiedDocs = docsR.rows[0]?.verified_docs || 0;
+                    if (totalDocs > 0 && verifiedDocs < totalDocs) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'All uploaded documents must be verified before confirmation.'
+                        });
+                    }
+                }
+            }
+
+            if (status === 'Cargo Loaded' && currentStatus !== 'Confirmed') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot set "Cargo Loaded" from "${currentStatus}". Confirm shipment first.`
+                });
+            }
+            if (status === 'In Transit' && currentStatus !== 'Cargo Loaded') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot set "In Transit" from "${currentStatus}". Mark cargo loaded first.`
+                });
+            }
+            if (status === 'Delivered' && currentStatus !== 'In Transit') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Cannot set "Delivered" from "${currentStatus}". Shipment must be in transit.`
+                });
+            }
+
             await pool.query(
-                `UPDATE shipments SET status=$1 WHERE id=$2 AND company_id=$3`,
+                `UPDATE shipments SET status=$1, updated_at=NOW() WHERE id=$2 AND company_id=$3`,
                 [status, sid, userId]
+            );
+            await pool.query(
+                `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
+                 VALUES ($1, $2, $3, $4)`,
+                [sid, status, `Manager updated shipment status to "${status}".`, userId]
+            );
+            await pool.query(
+                `INSERT INTO tracking_logs (shipment_id, status, location_note, timestamp)
+                 VALUES ($1, $2, $3, NOW())`,
+                [sid, status, `Status updated by company manager to ${status}`]
             );
 
             // Real-time broadcast
             if (io) {
                 io.to(`shipment:${sid}`).emit('shipment:status_update', { shipmentId: sid, status });
+            }
+
+            if (shipR.rows[0]?.customer_id) {
+                await notify(
+                    shipR.rows[0].customer_id,
+                    'Shipment Status Updated',
+                    `Your shipment #${sid} status is now "${status}".`,
+                    'info'
+                );
             }
 
             res.json({ success: true, message: 'Shipment status updated' });
@@ -458,6 +577,23 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
     app.patch('/api/company/documents/:docId/verify', ...auth, async (req, res) => {
         const { status } = req.body;
         try {
+            if (!['Verified', 'Rejected'].includes(status)) {
+                return res.status(400).json({ success: false, message: 'Invalid document status' });
+            }
+
+            const companyId = cid(req);
+            const docScope = await pool.query(
+                `SELECT d.id, d.user_id, d.doc_name, d.shipment_id,
+                        s.status AS shipment_status, s.customer_id
+                 FROM documents d
+                 JOIN shipments s ON s.id = d.shipment_id
+                 WHERE d.id = $1 AND s.company_id = $2`,
+                [req.params.docId, companyId]
+            );
+            if (docScope.rowCount === 0) {
+                return res.status(404).json({ success: false, message: 'Document not found in your company scope' });
+            }
+
             const docRes = await pool.query(
                 `UPDATE documents SET status=$1 WHERE id=$2 RETURNING user_id, doc_name, shipment_id`,
                 [status, req.params.docId]
@@ -466,7 +602,6 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
             if (docRes.rowCount > 0 && docRes.rows[0].user_id) {
                 const doc = docRes.rows[0];
                 const type = status === 'Verified' ? 'success' : 'error';
-                const actionVerb = status === 'Verified' ? 'approved' : 'rejected';
                 
                 const title = `Document ${status}`;
                 const message = status === 'Verified'
@@ -474,6 +609,50 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
                     : `Your document "${doc.doc_name}" for Shipment #${doc.shipment_id || 'N/A'} was rejected. Please log into your Document Center portal to re-upload.`;
                 
                 await notify(doc.user_id, title, message, type);
+
+                // Workflow progression:
+                // If all uploaded docs are verified and shipment is in docs stage, unlock payment.
+                if (status === 'Verified') {
+                    const summary = await pool.query(
+                        `SELECT
+                            COUNT(*)::int AS total_docs,
+                            COUNT(*) FILTER (WHERE status = 'Verified')::int AS verified_docs
+                         FROM documents
+                         WHERE shipment_id = $1`,
+                        [doc.shipment_id]
+                    );
+                    const totalDocs = summary.rows[0]?.total_docs || 0;
+                    const verifiedDocs = summary.rows[0]?.verified_docs || 0;
+                    const allVerified = totalDocs > 0 && verifiedDocs === totalDocs;
+                    const currentShipmentStatus = docScope.rows[0]?.shipment_status;
+
+                    if (allVerified && ['Ship Allocated', 'Documents Pending'].includes(currentShipmentStatus)) {
+                        await pool.query(
+                            `UPDATE shipments SET status = 'Payment Pending', updated_at = NOW() WHERE id = $1`,
+                            [doc.shipment_id]
+                        );
+                        await pool.query(
+                            `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
+                             VALUES ($1, 'Payment Pending', 'All documents verified. Payment unlocked for customer.', $2)`,
+                            [doc.shipment_id, companyId]
+                        );
+                        await notify(
+                            docScope.rows[0].customer_id,
+                            'Documents Verified — Payment Unlocked',
+                            `All required documents for shipment #${doc.shipment_id} are verified. You can now complete payment.`,
+                            'success'
+                        );
+                    }
+                } else {
+                    // Rejected docs keep shipment in document stage until fixed.
+                    await pool.query(
+                        `UPDATE shipments
+                         SET status = CASE WHEN status = 'Pending Manager Approval' THEN status ELSE 'Documents Pending' END,
+                             updated_at = NOW()
+                         WHERE id = $1`,
+                        [doc.shipment_id]
+                    );
+                }
 
                 // Real-time broadcast to the user
                 if (io) {

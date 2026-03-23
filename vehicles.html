@@ -87,7 +87,7 @@
             <a href="vehicles.html" class="nav-item-dash active"><i class="fas fa-truck w-5"></i> Fleet Management</a>
             <a href="earnings.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Earnings</a>
             <hr class="border-secondary opacity-25 my-3">
-            <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+
             <a href="profile.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
         <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
@@ -158,7 +158,7 @@
                                             <th>Capacity</th>
                                             <th>Reg. No.</th>
                                             <th>Status</th>
-                                            <th class="action-cell">Actions</th>
+                                            <th class="action-cell">Route & Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="fleet-table-body">
@@ -224,6 +224,7 @@
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="fleet-routes-ui.js"></script>
     <script>
         let allVehicles = [];
 
@@ -250,7 +251,7 @@
                 return;
             }
             tbody.innerHTML = vehicles.map(v => `
-                <tr id="vehicle-row-${v.id}">
+                <tr id="vehicle-row-${v.id}" data-ship-id="${v.id}">
                     <td class="text-white fw-semibold">${v.name}</td>
                     <td>${getTypeBadge(v.type)}</td>
                     <td class="text-white-50">${Number(v.capacity_kg).toLocaleString('en-IN')} kg</td>
@@ -260,6 +261,12 @@
                     </td>
                     <td class="action-cell">
                         <div class="d-flex gap-1">
+                            <button onclick="openRouteModal(${v.id}, '${v.name}')" class="btn btn-sm btn-outline-primary rounded-pill px-2" title="Manage route">
+                                <i class="fas fa-route"></i> Route
+                            </button>
+                            <button onclick="openPortPinModal(${v.id}, '${v.name}')" class="btn btn-sm btn-outline-warning rounded-pill px-2" title="Pin ship">
+                                <i class="fas fa-map-pin"></i> Pin
+                            </button>
                             <button onclick="toggleStatus(${v.id}, '${v.status}')" class="btn btn-sm btn-outline-secondary rounded-pill px-2" title="${v.status === 'Active' ? 'Set Maintenance' : 'Set Active'}">
                                 <i class="fas fa-${v.status === 'Active' ? 'tools' : 'check'}"></i>
                             </button>
@@ -393,6 +400,7 @@
                 document.getElementById('user-name-display').innerText = user.name || 'Company';
                 document.getElementById('user-avatar').innerText = (user.name || 'C').charAt(0).toUpperCase();
                 loadFleet();
+                initFleetRouteUI(); // Initialize route management UI
             } catch (e) {
                 window.location.href = 'auth.html';
             }

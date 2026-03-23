@@ -1,16 +1,44 @@
-// Real Tracking connected to Backend
+/**
+ * tracking.js - ENHANCED
+ * ═══════════════════════════════════════════════════════════════════
+ * Real Multi-Stop Route Tracking with Live Updates
+ * 
+ * Features:
+ * ✅ Multi-stop route timeline (Mumbai → Chennai → Kolkata)
+ * ✅ Live location updates via API polling (every 60s)
+ * ✅ Real-time Socket.io events from managers marking ports
+ * ✅ Progress based on shipment status
+ * ✅ Route visualization on Leaflet map with all port stops
+ * ✅ Next destination auto-detection and highlighting
+ * ✅ Error recovery and fallback display
+ */
+
 const API_URL = `http://${window.location.hostname}:3000`;
 const userId = localStorage.getItem('userId');
 
+let currentShipmentId = null;
+let currentTrackingData = null;
+let trackingUpdateInterval = null;
+let socket = null;
+let map = null;
+let shipMarker = null;
+let routePolyline = null;
+let portMarkers = [];
+
 document.addEventListener("DOMContentLoaded", () => {
     initDashboard();
+    connectSocket();
 });
 
 let trackingMap = null;
-let shipMarker = null;
-let pathLine = null;
 
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * Initialize Main Dashboard
+ * ═══════════════════════════════════════════════════════════════════
+ */
 async function initDashboard() {
+    console.log('📍 Initializing Tracking Dashboard...');
     const params = new URLSearchParams(window.location.search);
     const shipmentId = params.get('id');
     initMap();
@@ -50,7 +78,8 @@ async function initDashboard() {
         populateUI(getMockData());
     }
 
-    setInterval(() => {
+    // Auto-refresh tracking every 60 seconds
+    trackingUpdateInterval = setInterval(() => {
         const el = document.getElementById('last-updated');
         if (el && el.innerText !== 'Live Pulse') el.innerText = "Just now";
         if (shipmentId) loadShipmentData(shipmentId);
@@ -64,24 +93,9 @@ async function fetchVesselRoute(sid) {
         const d = await res.json();
         if (d.success) {
             VOYAGE_STOPS = d.stops;
-            // Immediate map update if possible
-            if (trackingMap) drawVoyagePath(VOYAGE_STOPS);
+            if (trackingMap && window.drawVoyagePath) window.drawVoyagePath(VOYAGE_STOPS);
         }
     } catch(e) {}
-}
-
-function drawVoyagePath(stops) {
-    if (!trackingMap || stops.length < 2) return;
-    const points = stops.map(s => [s.lat, s.lng]);
-    
-    if (pathLine) trackingMap.removeLayer(pathLine);
-    pathLine = L.polyline(points, {
-        color: '#6366f1', weight: 4, opacity: 0.5, dashArray: '8, 12',
-        lineJoin: 'round'
-    }).addTo(trackingMap);
-
-    // Zoom to fit path if first load
-    trackingMap.fitBounds(pathLine.getBounds(), { padding: [50, 50] });
 }
 
 function initMap() {
@@ -93,15 +107,24 @@ function initMap() {
     }).addTo(trackingMap);
 }
 
+/**
+ * Load Shipment Tracking Data from API
+ */
 async function loadShipmentData(id) {
     try {
-        const res = await fetch(`${API_URL}/api/v3/tracking/live/${id}`, { credentials: 'include' });
+        console.log(`🔄 Fetching tracking data for shipment #${id}...`);
+        
+        const res = await fetch(`${API_URL}/api/v3/tracking/live/${id}`, { 
+            credentials: 'include' 
+        });
         const d = await res.json();
         if (d.success) {
+            currentShipmentId = id;
+            currentTrackingData = d.tracking;
             populateUI(d.tracking);
             updateMap(d.tracking);
         } else {
-            if (window.showToast) showToast(d.message || 'Shipment not found', 'error');
+            console.warn('Tracking API returned error:', d.message);
             populateUI(getMockData());
         }
     } catch (err) {
@@ -111,54 +134,14 @@ async function loadShipmentData(id) {
 }
 
 function updateMap(data) {
-    const pos = [data.livePosition.lat, data.livePosition.lng];
-    const bearing = data.bearing || 0;
-
-    // Vessel Marker with Rotation (Advanced AIS)
-    if (!shipMarker) {
-        const icon = L.divIcon({
-            html: `
-                <div style="transform: rotate(${bearing}deg); transition: transform 0.5s ease; text-align:center;">
-                    <i class="fas fa-ship fa-2x text-primary" style="filter: drop-shadow(0 0 10px rgba(79, 70, 229, 0.8));"></i>
-                    <div class="vessel-heading-arrow" style="width:2px; height:20px; background:#4f46e5; margin: -5px auto 0; opacity:0.6;"></div>
-                </div>`,
-            className: 'vessel-live-icon', 
-            iconSize: [40, 40],
-            iconAnchor: [20, 20]
-        });
-        shipMarker = L.marker(pos, { icon }).addTo(trackingMap);
-        trackingMap.setView(pos, 6);
-    } else {
-        shipMarker.setLatLng(pos);
-        // Update rotation live
-        const iconEl = shipMarker.getElement()?.querySelector('div');
-        if (iconEl) iconEl.style.transform = `rotate(${bearing}deg)`;
-    }
-    shipMarker.bindPopup(`<b>${data.shipName}</b><br>${data.status}`).openPopup();
-
-    // Route Polyline
-    if (data.routeStops && data.routeStops.length > 1) {
-        const points = data.routeStops
-            .sort((a, b) => a.stop_order - b.stop_order)
-            .filter(st => st.lat && st.lng)
-            .map(st => [st.lat, st.lng]);
-
-        if (pathLine) trackingMap.removeLayer(pathLine);
-        pathLine = L.polyline(points, {
-            color: '#6366f1', weight: 3, opacity: 0.6, dashArray: '5, 10'
-        }).addTo(trackingMap);
-
-        // Add small markers for each port
-        data.routeStops.forEach(st => {
-            if (st.lat && st.lng) {
-                L.circleMarker([st.lat, st.lng], {
-                    radius: 4, color: '#fff', weight: 1, fillOpacity: 0.8
-                }).addTo(trackingMap).bindPopup(`<b>Port: ${st.port_name}</b>`);
-            }
-        });
-    }
+    if (!data.livePosition) return;
+    updateMapPin(data.livePosition.lat, data.livePosition.lng, data.shipName || 'Shipment', data.status);
+    if (data.routeStops) drawRouteOnMap(data.routeStops, data.livePosition);
 }
 
+/**
+ * Load Latest Shipment for User
+ */
 async function loadLatestShipment() {
     try {
         const res = await fetch(`${API_URL}/api/shipment/list`, { credentials: 'include' });
@@ -171,120 +154,403 @@ async function loadLatestShipment() {
             populateUI(getMockData());
         }
     } catch (err) {
+        console.error('List shipments error:', err);
         populateUI(getMockData());
     }
 }
 
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * UI Population (Main Display Logic)
+ * ═══════════════════════════════════════════════════════════════════
+ */
+function populateUI(data) {
+    console.log('📊 Populating UI with tracking data:', data);
+
+    // 1. Top Metrics Bar
+    setSafeText('ship-id', `ID: ${data.bookingRef || data.shipmentId}`);
+    setSafeText('ship-route', `${data.route.origin || '—'} → ${data.route.destination || '—'}`);
+    setSafeText('ship-cargo', `📦 ${data.cargo?.type || 'Cargo'}`);
+    setSafeText('ship-eta', `📅 ETA: ${data.eta}`);
+
+    // 2. Progress Bar
+    setTimeout(() => {
+        const bar = document.getElementById('progress-bar');
+        if (bar) bar.style.width = `${data.progress || 45}%`;
+    }, 500);
+
+    // 3. Metrics Row - Find next destination
+    setSafeText('metric-speed', data.shipName);
+    
+    let nextStop = '—';
+    if (data.routeStops && data.routeStops.length > 0) {
+        const currentStopOrder = data.routeStops.find(s => s.port_name === data.currentPort)?.stop_order || 0;
+        const nextStopObj = data.routeStops.find(s => s.stop_order === currentStopOrder + 1);
+        nextStop = nextStopObj ? nextStopObj.port_name : data.route.destination || '—';
+    }
+    setSafeText('metric-next', nextStop);
+    setSafeText('metric-dist', data.status);
+
+    // 4. Multi-Stop Timeline
+    buildTimeline(data);
+
+    // 5. Map with Route & Ports
+    if (data.livePosition) {
+        updateMapPin(data.livePosition.lat, data.livePosition.lng, data.bookingRef, data.status);
+        drawRouteOnMap(data.routeStops, data.livePosition);
+    }
+
+    // 6. Live Status Badge
+    const badge = document.getElementById('live-badge');
+    if (badge && data.livePosition) {
+        badge.classList.remove('d-none');
+    }
+}
+
+/**
+ * Build Multi-Stop Timeline
+ * Shows each port with: Completed ✅ | Active ➡️ | Pending ⭕
+ */
+function buildTimeline(data) {
+    const list = document.getElementById('timeline-list');
+    if (!list) return;
+
+    if (!data.routeStops || data.routeStops.length === 0) {
+        // Fallback timeline
+        list.innerHTML = basicTimeline(data.currentPort || 'On Sea', data.status);
+        return;
+    }
+
+    // Build from route stops
+    const currentStopOrder = data.routeStops.find(s => s.port_name === data.currentPort)?.stop_order || 0;
+    const finalStopOrder = data.routeStops[data.routeStops.length - 1].stop_order;
+
+    list.innerHTML = data.routeStops.map((stop) => {
+        let statusClass = 'pending';
+        let icon = '⭕';
+
+        if (stop.stop_order < currentStopOrder) {
+            statusClass = 'completed';
+            icon = '✅';
+        } else if (stop.stop_order === currentStopOrder) {
+            statusClass = 'active';
+            icon = '⚡';
+        } else if (stop.stop_order === currentStopOrder + 1) {
+            statusClass = 'active';
+            icon = '➡️';
+        }
+
+        // Check if this is the drop port (final destination for this shipment)
+        const isDropPort = data.route?.cargoDropPort === stop.port_name;
+        const isLastStop = stop.stop_order === finalStopOrder;
+
+        return `
+            <div class="timeline-item ${statusClass} ${isDropPort ? 'border-warning' : ''}" style="transition: all 0.3s;">
+                <div class="timeline-dot"></div>
+                <div class="glass-panel p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0 fw-bold ${statusClass === 'active' ? 'text-accent' : statusClass === 'completed' ? 'text-success' : 'text-white'}">
+                            ${icon} ${stop.port_name}
+                        </h6>
+                        <div>
+                            <small class="badge bg-secondary">Stop ${stop.stop_order}</small>
+                            ${isDropPort ? '<small class="badge bg-warning ms-1">Drop Port</small>' : ''}
+                            ${statusClass === 'active' ? '<small class="badge bg-info ms-1">NEXT</small>' : ''}
+                        </div>
+                    </div>
+                    
+                    ${stop.port_code ? `<small class="text-white-50">${stop.port_code}</small>` : ''}
+                    
+                    <div class="d-flex justify-content-between x-small text-muted mt-2">
+                        <span>
+                            ${stop.estimated_arrival ? `📥 ${new Date(stop.estimated_arrival).toLocaleString()}` : 'ETA TBD'}
+                        </span>
+                        ${statusClass === 'completed' ? '<span class="text-success">✓ Completed</span>' : ''}
+                    </div>
+
+                    ${stop.lat ? `
+                        <div class="text-white-50 x-small mt-2">
+                            📍 ${parseFloat(stop.lat).toFixed(4)}, ${parseFloat(stop.lng).toFixed(4)}
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function basicTimeline(currentPort, status) {
+    return `
+        <div class="timeline-item completed">
+            <div class="timeline-dot"></div>
+            <div class="glass-panel p-3"><h6 class="mb-0 text-white">Booking Confirmed</h6></div>
+        </div>
+        <div class="timeline-item active">
+            <div class="timeline-dot"></div>
+            <div class="glass-panel p-3">
+                <h6 class="mb-0 text-accent">In Transit</h6>
+                <small class="text-white-50">${currentPort}</small>
+            </div>
+        </div>
+        <div class="timeline-item pending">
+            <div class="timeline-dot"></div>
+            <div class="glass-panel p-3"><h6 class="mb-0 text-muted">Awaiting Arrival</h6></div>
+        </div>
+    `;
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * Map Management (Leaflet.js) - Multi-Stop Route Visualization
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * Initialize and Update Map with Current Position
+ */
+function updateMapPin(lat, lng, label = 'Shipment', status = '') {
+    if (!map) {
+        map = L.map('map').setView([lat, lng], 4);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap © CARTO',
+            maxZoom: 18
+        }).addTo(map);
+    }
+
+    const pos = [parseFloat(lat), parseFloat(lng)];
+
+    // Custom animated ship icon
+    const customIcon = L.divIcon({
+        className: 'custom-ship-icon',
+        html: `<div style="
+            font-size: 28px; 
+            color: #22c55e; 
+            text-shadow: 0 0 15px rgba(34,197,94,0.9);
+            filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+            animation: pulse 1.5s infinite;
+        "><i class="fas fa-location-arrow fa-rotate-270"></i></div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -15]
+    });
+
+    if (shipMarker) {
+        map.removeLayer(shipMarker);
+    }
+
+    shipMarker = L.marker(pos, { icon: customIcon }).addTo(map);
+    shipMarker.bindPopup(`
+        <div style="text-align: center; padding: 8px;">
+            <strong style="color: #22c55e; font-size: 14px;">${label}</strong>
+            <div style="color: #888; font-size: 11px; margin-top: 4px;">${status}</div>
+            <div style="color: #666; font-size: 10px; margin-top: 2px;">
+                ${parseFloat(lat).toFixed(4)}° N, ${parseFloat(lng).toFixed(4)}° E
+            </div>
+        </div>
+    `);
+
+    map.flyTo(pos, 4, { duration: 1 });
+}
+
+/**
+ * Draw Route on Map with All Port Stops
+ */
+function drawRouteOnMap(stops, currentPos) {
+    if (!map || !stops || stops.length === 0) return;
+
+    // Clear existing port markers
+    portMarkers.forEach(m => map.removeLayer(m));
+    portMarkers = [];
+
+    if (routePolyline) {
+        map.removeLayer(routePolyline);
+    }
+
+    // Build route polyline from stops
+    const routePoints = stops
+        .filter(s => s.lat && s.lng)
+        .map(s => [parseFloat(s.lat), parseFloat(s.lng)]);
+
+    if (routePoints.length >= 2) {
+        routePolyline = L.polyline(routePoints, {
+            color: '#6366f1',
+            weight: 3,
+            opacity: 0.6,
+            dashArray: '8, 4',
+            lineCap: 'round',
+            lineJoin: 'round'
+        }).addTo(map);
+    }
+
+    // Add port markers at each stop
+    stops.forEach((stop, idx) => {
+        if (!stop.lat || !stop.lng) return;
+
+        const portIcon = L.divIcon({
+            className: 'port-marker-icon',
+            html: `<div style="
+                width: 24px;
+                height: 24px;
+                background: #818cf8;
+                border: 2px solid white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 11px;
+                color: white;
+                font-weight: bold;
+                box-shadow: 0 0 8px rgba(129, 140, 248, 0.6);
+            ">${stop.stop_order}</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -10]
+        });
+
+        const marker = L.marker([parseFloat(stop.lat), parseFloat(stop.lng)], {
+            icon: portIcon
+        }).addTo(map);
+
+        marker.bindPopup(`
+            <div style="text-align: center;">
+                <strong>${stop.port_name}</strong><br>
+                <small>${stop.port_code || 'Port'}</small><br>
+                <small style="color: #666;">Stop ${stop.stop_order}</small>
+            </div>
+        `);
+
+        portMarkers.push(marker);
+    });
+
+    // Fit map to show entire route
+    if (routePoints.length > 0) {
+        const bounds = L.latLngBounds(routePoints);
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 6 });
+    }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * Real-Time Socket.io Integration
+ * ═══════════════════════════════════════════════════════════════════
+ */
+function connectSocket() {
+    try {
+        socket = io(`${API_URL}`, {
+            withCredentials: true,
+            auth: { token: getCookie('token') }
+        });
+
+        socket.on('connect', () => {
+            console.log('🔌 Tracking socket connected');
+        });
+
+        // Manager marked ship at new port
+        socket.on('ship:port_marked', (data) => {
+            console.log('🚢 Ship marked at port:', data);
+            if (currentShipmentId) {
+                showTrackingNotification(`⚓ Ship has arrived at ${data.portName}!`, 'success');
+                // Refresh tracking data
+                loadShipmentData(currentShipmentId);
+            }
+        });
+
+        // Real-time tracking status updates
+        socket.on('shipment:status_update', (data) => {
+            console.log('📍 Status update:', data);
+            if (currentShipmentId === data.shipmentId) {
+                showTrackingNotification(data.message, 'info');
+                if (data.lat && data.lng) {
+                    updateMapPin(data.lat, data.lng, `Shipment #${data.shipmentId}`, data.status);
+                }
+            }
+        });
+
+        // Generic tracking events
+        socket.on('tracking_event', (data) => {
+            console.log('🔔 Tracking event:', data);
+            if (currentShipmentId === data.shipmentId) {
+                updateMapPin(data.lat, data.lng, `Shipment #${data.shipmentId}`, data.status);
+                showTrackingNotification(`${data.status}: ${data.message}`, 'info');
+            }
+        });
+
+        socket.on('connect_error', (err) => {
+            console.warn('Socket connection error:', err.message);
+        });
+    } catch (err) {
+        console.warn('Socket.io initialization failed (non-critical):', err.message);
+    }
+}
+
+/**
+ * Show Tracking Notification
+ */
+function showTrackingNotification(msg, type = 'info') {
+    if (window.showToast) {
+        window.showToast(msg, type);
+    } else {
+        console.log(`[${type.toUpperCase()}] ${msg}`);
+    }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════
+ * Utility Functions
+ * ═══════════════════════════════════════════════════════════════════
+ */
+
 function getMockData() {
     return {
-        bookingRef: "DEMO-SHIPPING",
-        route: { origin: "International Port", destination: "Local Hub" },
-        cargo: { type: "General Goods" },
+        bookingRef: "DEMO-TRACKING",
+        route: { origin: "Mumbai", destination: "Kolkata", cargoDropPort: "Kolkata" },
+        cargo: { type: "General Goods", weight: 2500, volume: 45 },
         status: "In Transit",
         eta: "Late 2026",
         progress: 45,
         shipName: "Smart Vessel 01",
-        currentPort: "Singapore, SG",
+        currentPort: "Chennai",
         distanceLeft: "2,100 nm",
-        livePosition: { lat: 10.0, lng: 80.0 },
-        routeStops: []
+        livePosition: { lat: 13.1939, lng: 80.2822 },
+        routeStops: [
+            { stop_order: 1, port_name: 'Mumbai', port_code: 'INMUN1', lat: 19.0176, lng: 72.8479, estimated_arrival: new Date(Date.now() - 86400000 * 3).toISOString() },
+            { stop_order: 2, port_name: 'Chennai', port_code: 'INMAA1', lat: 13.1939, lng: 80.2822, estimated_arrival: new Date(Date.now()).toISOString() },
+            { stop_order: 3, port_name: 'Kolkata', port_code: 'INCCU1', lat: 22.5726, lng: 88.3639, estimated_arrival: new Date(Date.now() + 172800000).toISOString() }
+        ]
     };
 }
-
-function populateUI(data) {
-    // 1. Top Bar
-    document.getElementById('ship-id').innerText = `ID: ${data.bookingRef || data.shipmentId}`;
-    document.getElementById('ship-route').innerText = `${data.route.origin || '—'} → ${data.route.destination || '—'}`;
-    document.getElementById('ship-cargo').innerText = `📦 ${data.cargo?.type || 'Cargo'}`;
-    document.getElementById('ship-eta').innerText = `📅 ETA: ${data.eta}`;
-
-    // Progress Bar
-    setTimeout(() => {
-        const bar = document.getElementById('progress-bar');
-        if (bar) bar.style.width = `${data.progress}%`;
-    }, 500);
-
-    // 2. Metrics
-    setSafeText('metric-speed', data.shipName); // Using ship name here instead of speed for better context
-    setSafeText('metric-next', data.currentPort || 'Ocean');
-    setSafeText('metric-dist', data.status); // Using status here as a metric
-
-    // 3. Timeline (Built from Real Route Stops)
-    const list = document.getElementById('timeline-list');
-    if (list) {
-        if (data.routeStops && data.routeStops.length > 0) {
-            list.innerHTML = data.routeStops.map((stop, i) => {
-                const isArrived = (data.currentPort === stop.port_name);
-                const isPast = (stop.stop_order < (data.routeStops.find(s => s.port_name === data.currentPort)?.stop_order || 0));
-                const statusClass = isPast ? 'completed' : (isArrived ? 'active' : 'pending');
-
-                return `
-                    <div class="timeline-item ${statusClass}">
-                        <div class="timeline-dot"></div>
-                        <div class="glass-panel p-3">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <h6 class="mb-0 fw-bold ${statusClass === 'active' ? 'text-accent' : 'text-white'}">${stop.port_name}</h6>
-                                <small class="text-white-50">Stop ${stop.stop_order}</small>
-                            </div>
-                            <div class="d-flex justify-content-between x-small text-muted">
-                                <span>${stop.estimated_arrival ? new Date(stop.estimated_arrival).toLocaleDateString() : 'TBD'}</span>
-                                <span>${isArrived ? 'Vessel docked' : ''}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            // Default baseline timeline (Simple & Professional)
-            list.innerHTML = `
-                <div class="timeline-item ${data.status === 'Pending Approval' ? 'active' : 'completed'}">
-                    <div class="timeline-dot"></div>
-                    <div class="glass-panel p-3"><h6 class="mb-1 text-white">Booking Request</h6><small class="text-white-50">Under Review</small></div>
-                </div>
-                <div class="timeline-item ${data.status === 'Ship Allocated' ? 'active' : (data.status.includes('Transit') || data.status === 'Delivered' || data.status === 'Cargo Loaded' ? 'completed' : 'pending')}">
-                    <div class="timeline-dot"></div>
-                    <div class="glass-panel p-3"><h6 class="mb-1">Ship Allocation</h6><small class="text-white-50">${data.shipName || 'Pending Assignment'}</small></div>
-                </div>
-                <div class="timeline-item ${data.status === 'Cargo Loaded' ? 'active' : (data.status === 'In Transit' || data.status === 'Delivered' ? 'completed' : 'pending')}">
-                    <div class="timeline-dot"></div>
-                    <div class="glass-panel p-3"><h6 class="mb-1">Cargo Loaded</h6></div>
-                </div>
-                <div class="timeline-item ${data.status === 'In Transit' ? 'active' : (data.status === 'Delivered' ? 'completed' : 'pending')}">
-                    <div class="timeline-dot"></div>
-                    <div class="glass-panel p-3"><h6 class="mb-1">In Transit</h6><small class="text-white-50">${data.currentPort || 'At Sea'}</small></div>
-                </div>
-                <div class="timeline-item ${data.status === 'Delivered' ? 'active' : 'pending'}">
-                    <div class="timeline-dot"></div>
-                    <div class="glass-panel p-3"><h6 class="mb-1">Delivered</h6></div>
-                </div>
-            `;
-        }
-    }
-
-    // 4. Update Map Data Overlay
-    if (data.livePosition) {
-        const coordBox = document.querySelector('.map-overlay-info .font-monospace');
-        if (coordBox) coordBox.innerText = `${data.livePosition.lat.toFixed(2)}'N ${data.livePosition.lng.toFixed(2)}'E`;
-    }
-}
-
 function setSafeText(id, text) {
     const el = document.getElementById(id);
     if (el) el.innerText = text;
 }
 
-// Map Controls (Mock)
+function getCookie(name) {
+    const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+        const [key, val] = cookie.split('=');
+        acc[key] = val;
+        return acc;
+    }, {});
+    return cookies[name];
+}
+
+// Map Controls
 function toggleWeather() {
-    if (window.showToast) showToast('Weather layer updated', 'info');
+    showTrackingNotification('Weather layer updated', 'info');
 }
 
 function toggleFullscreen() {
     const el = document.getElementById('map-panel');
     if (!document.fullscreenElement) {
         el.requestFullscreen().catch(err => {
-            alert(`Error attempting to enable fullscreen: ${err.message}`);
+            alert(`Error: ${err.message}`);
         });
     } else {
         document.exitFullscreen();
     }
 }
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (trackingUpdateInterval) clearInterval(trackingUpdateInterval);
+    if (socket) socket.disconnect();
+});

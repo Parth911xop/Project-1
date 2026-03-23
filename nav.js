@@ -80,13 +80,10 @@
             dropdown: null,
         },
         {
-            href: '#',
-            label: 'Finance',
+            href: 'finance.html',
+            label: 'Billing',
             icon: 'fa-wallet',
-            dropdown: [
-                { href: 'finance.html', icon: 'fa-file-invoice-dollar', color: 'text-success', label: 'Billing & Payments', sub: 'View charges & pay invoices' },
-                { href: 'earnings.html', icon: 'fa-chart-bar', color: 'text-info', label: 'Earnings', sub: 'Revenue overview & analytics' },
-            ]
+            dropdown: null,
         },
         {
             href: 'support.html',

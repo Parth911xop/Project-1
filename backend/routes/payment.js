@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Razorpay = require('razorpay');
-const crypto = require('crypto');
+const Stripe = require('stripe');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { Pool } = require('pg');
 
@@ -10,37 +9,19 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-// Guard: Detect missing Razorpay keys and fail fast with a clear message
-const RZP_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
-const RZP_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
-const isMockRzpKey = !RZP_KEY_ID || RZP_KEY_ID.includes('Mock') || !RZP_KEY_SECRET;
+const stripeKey = process.env.STRIPE_SECRET_KEY || 'sk_test_mock';
+const stripe = Stripe(stripeKey);
 
-if (isMockRzpKey) {
-    console.warn('⚠️  RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is a mock/placeholder. Payments will return 503 until real keys are set in .env');
-}
-
-let razorpayInstance;
-if (!isMockRzpKey) {
-    razorpayInstance = new Razorpay({
-        key_id: RZP_KEY_ID,
-        key_secret: RZP_KEY_SECRET,
-    });
-}
-
-// Middleware to block payment endpoints when key is invalid
-function requireRealRzpKey(req, res, next) {
-    if (isMockRzpKey) {
-        return res.status(503).json({
-            success: false,
-            message: 'Payment gateway not configured. Please add your real RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET to the backend .env file.',
-            action: 'Set RAZORPAY_KEY_ID=rzp_test_... in /backend/.env and restart the server.'
-        });
+// Middleware to mock or require keys
+function requireRealStripeKey(req, res, next) {
+    if (stripeKey.includes('mock')) {
+        console.warn('⚠️ STRIPE_SECRET_KEY is a mock. Payment bypass will be used or fail.');
     }
     next();
 }
 
-// Create Razorpay Checkout Order
-router.post('/create-checkout-session', express.json(), authenticateToken, authorizeRole(['customer', 'admin']), requireRealRzpKey, async (req, res) => {
+// Create Stripe Checkout Session
+router.post('/create-checkout-session', express.json(), authenticateToken, authorizeRole(['customer', 'admin']), requireRealStripeKey, async (req, res) => {
     const { shipmentId } = req.body;
     const userId = req.user.userId;
 
@@ -58,7 +39,7 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
         const shipment = shipRes.rows[0];
 
         // V3 Workflow: Payment gated behind ship allocation
-        const payableStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending', 'Booked'];
+        const payableStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending'];
         if (!payableStatuses.includes(shipment.status)) {
             const msg = shipment.status === 'Pending Manager Approval'
                 ? 'Payment locked: A manager must allocate a ship before payment.'
@@ -66,60 +47,69 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
             return res.status(400).json({ success: false, message: msg });
         }
 
+        const docsRes = await pool.query(
+            "SELECT COUNT(*)::int AS count FROM documents WHERE shipment_id = $1",
+            [shipment.id]
+        );
+        if ((docsRes.rows[0]?.count || 0) <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Upload required shipment documents before starting payment.'
+            });
+        }
+
         const cost = parseFloat(shipment.estimated_cost);
 
-        // 2. Create Razorpay Order
-        const options = {
-            amount: Math.round(cost * 100), // Razorpay expects amount in paise (smallest currency unit)
-            currency: 'INR', // Default to INR assuming India context
-            receipt: `receipt_order_${shipment.id}`,
-            notes: {
-                shipmentId: shipment.id.toString(),
-                userId: userId.toString()
-            }
-        };
-
-        const rzpOrder = await razorpayInstance.orders.create(options);
+        // 2. Create Stripe Checkout Session
+        const session = await stripe.checkout.sessions.create({
+            payment_method_types: ['card'],
+            line_items: [{
+                price_data: {
+                    currency: 'usd',
+                    product_data: {
+                        name: `Shipment #${shipment.id}`,
+                        description: `Freight booking for ${shipment.product_type}`
+                    },
+                    unit_amount: Math.round(cost * 100),
+                },
+                quantity: 1,
+            }],
+            mode: 'payment',
+            success_url: `${process.env.FRONTEND_URL || 'http://localhost:5500'}/shipments.html?complete=${shipment.id}&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5500'}/shipments.html?payment_cancelled=true`,
+            metadata: { shipmentId: shipment.id.toString(), userId: userId.toString() }
+        });
 
         // 3. Create Pending Transaction ledger entry
         await pool.query(
             "INSERT INTO transactions (shipment_id, customer_id, stripe_charge_id, amount, currency, status) VALUES ($1, $2, $3, $4, $5, 'Pending')",
-            [shipment.id, userId, rzpOrder.id, cost, 'INR']
+            [shipment.id, userId, session.id, cost, 'USD']
         );
 
         res.json({
             success: true,
-            orderId: rzpOrder.id,
-            amount: options.amount,
-            currency: options.currency,
-            keyId: RZP_KEY_ID
+            url: session.url,
+            sessionId: session.id
         });
 
     } catch (error) {
-        console.error("Razorpay Checkout Error:", error);
+        console.error("Stripe Checkout Error:", error);
         res.status(500).json({ success: false, message: "Internal server error during checkout." });
     }
 });
 
-// Razorpay Payment Verification
-router.post('/verify-payment', express.json(), async (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, shipmentId } = req.body;
+// Stripe Payment Verification
+router.post('/verify-payment', express.json(), authenticateToken, async (req, res) => {
+    const { sessionId, shipmentId } = req.body;
 
     try {
-        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
 
-        const expectedSignature = crypto
-            .createHmac("sha256", RZP_KEY_SECRET)
-            .update(body.toString())
-            .digest("hex");
-
-        const isAuthentic = expectedSignature === razorpay_signature;
-
-        if (isAuthentic) {
+        if (session.payment_status === 'paid') {
             // 1. Update Transaction to Completed
             const txRes = await pool.query(
-                "UPDATE transactions SET status = 'Completed', stripe_charge_id = $1 WHERE stripe_charge_id = $2 RETURNING id",
-                [razorpay_payment_id, razorpay_order_id]
+                "UPDATE transactions SET status = 'Completed' WHERE stripe_charge_id = $1 RETURNING id",
+                [session.id]
             );
 
             if (txRes.rows.length > 0) {
@@ -135,7 +125,7 @@ router.post('/verify-payment', express.json(), async (req, res) => {
                 await pool.query(
                     `INSERT INTO shipment_events (shipment_id, status, notes)
                      VALUES ($1, $2, $3)`,
-                    [shipmentId, 'Cargo Ready', 'Payment verified. Cargo ready for loading.']
+                    [shipmentId, 'Cargo Ready', 'Payment verified via Stripe. Cargo ready for loading.']
                 );
 
                 // 3. Generate Auto-Invoice
@@ -170,7 +160,7 @@ router.post('/verify-payment', express.json(), async (req, res) => {
                         sd.ship_name || sd.vehicle_type || 'N/A',
                         JSON.stringify({ type: sd.product_type, weight: sd.weight_kg, origin: sd.origin_address, destination: sd.destination_address }),
                         amount,
-                        razorpay_payment_id
+                        session.payment_intent // Stripe specific ref
                     ]
                 );
 
@@ -179,7 +169,7 @@ router.post('/verify-payment', express.json(), async (req, res) => {
 
             res.json({ success: true, message: 'Payment verified successfully' });
         } else {
-            res.status(400).json({ success: false, message: 'Invalid payment signature' });
+            res.status(400).json({ success: false, message: 'Stripe payment not completed.' });
         }
     } catch (err) {
         console.error("Database error during payment verification:", err);

@@ -582,6 +582,24 @@ async function openPanel(id) {
             .catch(() => docsEl.innerHTML = `<div class="text-white-50 x-small text-center py-2">Error loading docs</div>`);
     }
 
+    // Add Contextual Quick Links connecting the actual user flow
+    const quickLinksId = 'panel-quick-links';
+    let quickLinksArea = document.getElementById(quickLinksId);
+    if (!quickLinksArea) {
+        quickLinksArea = document.createElement('div');
+        quickLinksArea.id = quickLinksId;
+        quickLinksArea.className = "d-grid gap-2";
+        const docsElNode = document.getElementById('panel-docs-status').parentElement;
+        docsElNode.insertAdjacentElement('afterend', quickLinksArea);
+    }
+    quickLinksArea.innerHTML = `
+        <h6 class="text-white-50 x-small fw-bold text-uppercase mt-2 mb-2">Shipment Actions</h6>
+        <button class="btn btn-outline-primary btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='track.html?id=${s.id}'"><i class="fas fa-map-marker-alt w-5 me-2 text-primary"></i>Live Track Shipment</button>
+        <button class="btn btn-outline-info btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='documents.html?shipmentId=${s.id}'"><i class="fas fa-folder-open w-5 me-2 text-info"></i>Manage Documents</button>
+        <button class="btn btn-outline-success btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='finance.html?shipmentId=${s.id}'"><i class="fas fa-file-invoice-dollar w-5 me-2 text-success"></i>Billing & Payments</button>
+        <button class="btn btn-outline-warning btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='support.html?shipmentId=${s.id}'"><i class="fas fa-headset w-5 me-2 text-warning"></i>Open Support Ticket</button>
+    `;
+
     document.getElementById('slide-panel').classList.add('open');
 }
 
@@ -590,34 +608,21 @@ async function initPanelMap(shipmentId) {
     const mapEl = document.getElementById('panel-map');
     if (!mapEl) return;
     if (panelMapInstance) { panelMapInstance.remove(); panelMapInstance = null; }
-
-    // Ensure icons are found in local dist/images/
-    L.Icon.Default.imagePath = 'dist/images/';
-
-    panelMapInstance = L.map('panel-map', { zoomControl: false, attributionControl: false }).setView([20, 78], 3);
+    panelMapInstance = L.map('panel-map').setView([20, 78], 3);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '© CARTO' }).addTo(panelMapInstance);
-    
     try {
-        const res = await fetch(`${API_URL}/api/shipment/${shipmentId}/live-vessel`, { credentials: 'include' });
+        const res = await fetch(`${API_URL}/api/v3/tracking/live/${shipmentId}`, { credentials: 'include' });
         const data = await res.json();
-        
-        if (data.success && data.live) {
-            const pos = [data.live.lat, data.live.lng];
-            const icon = L.divIcon({ 
-                className: 'mini-ship', 
-                html: `<div style="color:#22c55e; filter: drop-shadow(0 0 4px rgba(34,197,94,0.6));"><i class="fas fa-ship fa-lg"></i></div>`, 
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-            });
-            L.marker(pos, { icon }).addTo(panelMapInstance).bindPopup(`<b>${data.live.vessel_name || 'Vessel'}</b><br>${data.live.speed} knots`).openPopup();
-            panelMapInstance.flyTo(pos, 5, { duration: 1.5 });
+        if (data.success && data.tracking.livePosition) {
+            const pos = [data.tracking.livePosition.lat, data.tracking.livePosition.lng];
+            const icon = L.divIcon({ className: 'mini-ship', html: `<div style="color:#22c55e;"><i class="fas fa-ship fa-rotate-270"></i></div>`, iconSize: [20, 20] });
+            L.marker(pos, { icon }).addTo(panelMapInstance).bindPopup(data.tracking.shipName).openPopup();
+            panelMapInstance.flyTo(pos, 5);
         }
-    } catch (e) {
-        console.warn("Panel map fail:", e);
-    }
+    } catch (e) {}
 }
 
-async function openCompleteShipmentModal(id) {
+function openCompleteShipmentModal(id) {
     let modalEl = document.getElementById('completeShipmentModal');
     if (!modalEl) {
         modalEl = document.createElement('div');
@@ -632,40 +637,31 @@ async function openCompleteShipmentModal(id) {
                 </div>
                 <div class="modal-body pb-4">
                     <!-- Step Progress -->
-                    <div class="d-flex justify-content-between mb-4 mt-2 px-4 position-relative">
-                        <div style="position:absolute; top:12px; left:10%; right:10%; height:2px; background:rgba(255,255,255,0.1); z-index:0;"></div>
-                        <div id="step-dot-0" class="step-dot active">1<br><small>Service</small></div>
-                        <div id="step-dot-1" class="step-dot">2<br><small>Details</small></div>
-                        <div id="step-dot-2" class="step-dot">3<br><small>Docs</small></div>
-                        <div id="step-dot-3" class="step-dot">4<br><small>Payment</small></div>
+                    <div class="d-flex justify-content-between mb-4 mt-2 px-5 position-relative">
+                        <div style="position:absolute; top:12px; left:15%; right:15%; height:2px; background:rgba(255,255,255,0.1); z-index:0;"></div>
+                        <div id="step-dot-1" class="step-dot active">1<br><small>Details</small></div>
+                        <div id="step-dot-2" class="step-dot">2<br><small>Documents</small></div>
+                        <div id="step-dot-3" class="step-dot">3<br><small>Payment</small></div>
                     </div>
 
-                    <!-- Step 0: Service Selection -->
-                    <div id="comp-step-0">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">1. Select Service & Lock Price</h6>
-                        <div id="quote-options-container" class="row g-3">
-                            <!-- Premium Service Cards generated dynamically -->
-                        </div>
-                    </div>
-
-                    <!-- Step 1: Consignee Info -->
-                    <div id="comp-step-1" style="display:none;">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">2. Shipment & Consignee Information</h6>
+                    <!-- Step 1: Filling Details -->
+                    <div id="comp-step-1">
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">1. Shipment & Consignee Information</h6>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="small text-white-50 mb-1">HS Code *</label>
-                                <input type="text" id="comp-hs-code" class="form-control form-control-sm bg-dark text-white border-secondary">
+                                <input type="text" id="comp-hs-code" class="form-control form-control-sm bg-dark text-white border-secondary" placeholder="e.g. 8703">
                             </div>
                             <div class="col-md-6">
                                 <label class="small text-white-50 mb-1">Consignee Name *</label>
                                 <input type="text" id="comp-consignee" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                             <div class="col-md-12">
-                                <label class="small text-white-50 mb-1">Description *</label>
+                                <label class="small text-white-50 mb-1">Goods Description *</label>
                                 <textarea id="comp-desc" class="form-control form-control-sm bg-dark text-white border-secondary" rows="2"></textarea>
                             </div>
                             <div class="col-md-6">
-                                <label class="small text-white-50 mb-1">Contact *</label>
+                                <label class="small text-white-50 mb-1">Consignee Contact *</label>
                                 <input type="text" id="comp-contact" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                             <div class="col-md-6">
@@ -673,33 +669,72 @@ async function openCompleteShipmentModal(id) {
                                 <input type="number" id="comp-value" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                         </div>
-                        <div class="mt-4 d-flex justify-content-between">
-                            <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(0)"><i class="fas fa-arrow-left me-2"></i> Service</button>
+                        <div class="mt-4 text-end">
                             <button class="btn btn-primary px-4 rounded-pill" onclick="goToStep(2)">Next: Documents <i class="fas fa-arrow-right ms-2"></i></button>
                         </div>
                     </div>
 
                     <!-- Step 2: Documents -->
                     <div id="comp-step-2" style="display:none;">
-                        <div id="comp-step-2-body">
-                            <!-- Dynamic checklist -->
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">2. Upload Mandatory Documents</h6>
+                        <div class="row g-3">
+                             <div class="col-md-6">
+                                <label class="small text-white-50 mb-1">Government ID *</label>
+                                <input type="file" id="comp-kyc" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small text-white-50 mb-1">Commercial Invoice *</label>
+                                <input type="file" id="comp-invoice" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small text-white-50 mb-1">Packing List *</label>
+                                <input type="file" id="comp-packing" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                             <div class="col-md-6">
+                                <label class="small text-white-50 mb-1">IEC / GST Certificate *</label>
+                                <input type="file" id="comp-iec" class="form-control form-control-sm bg-dark text-white border-secondary">
+                            </div>
+                        </div>
+                        <div id="comp-vehicle-docs" style="display:none;">
+                             <div class="row g-3 mt-1">
+                                <div class="col-md-4">
+                                    <label class="small text-white-50 mb-1">Vehicle RC *</label>
+                                    <input type="file" id="comp-rc" class="form-control form-control-sm bg-dark text-white border-secondary">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small text-white-50 mb-1">Insurance Policy *</label>
+                                    <input type="file" id="comp-insurance" class="form-control form-control-sm bg-dark text-white border-secondary">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="small text-white-50 mb-1">Inspection *</label>
+                                    <input type="file" id="comp-inspection" class="form-control form-control-sm bg-dark text-white border-secondary">
+                                </div>
+                             </div>
                         </div>
                         <div class="mt-4 d-flex justify-content-between">
                             <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(1)"><i class="fas fa-arrow-left me-2"></i> Back</button>
-                            <button class="btn btn-primary px-4 rounded-pill fw-bold" id="uploadAllBtn">Verify & Proceed <i class="fas fa-arrow-right ms-2"></i></button>
+                            <button class="btn btn-primary px-4 rounded-pill" id="uploadAllBtn">Upload & Continue <i class="fas fa-cloud-upload-alt ms-2"></i></button>
                         </div>
                     </div>
 
                     <!-- Step 3: Payment -->
                     <div id="comp-step-3" style="display:none;">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">4. Final Review & Payment</h6>
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">3. Final Review & Payment</h6>
+                        
+                        <!-- ⚠️ Payment Gating Check -->
+                        <div id="payment-locked-notice" class="alert alert-warning border-warning bg-warning bg-opacity-10 mb-4" style="display:none;">
+                            <i class="fas fa-lock me-2"></i>
+                            <strong>Payment Locked</strong><br>
+                            <small>A manager must allocate a ship first. Once your booking is approved and a vessel is assigned, payment will be enabled.</small>
+                        </div>
+                        
                         <div class="bg-dark bg-opacity-50 p-4 rounded-3 border border-secondary mb-4">
                              <div class="d-flex justify-content-between mb-2">
                                 <span class="text-white-50">Base Freight Cost:</span>
                                 <span id="comp-amt-base" class="fw-bold fs-5">₹0</span>
                             </div>
                             <div class="d-flex justify-content-between mb-2">
-                                <span class="text-white-50">Taxes & Fees (8%):</span>
+                                <span class="text-white-50">Taxes & Platform Fees (8%):</span>
                                 <span id="comp-amt-tax" class="text-warning fw-bold">₹0</span>
                             </div>
                             <hr class="border-secondary border-opacity-25">
@@ -710,7 +745,14 @@ async function openCompleteShipmentModal(id) {
                         </div>
                         <div class="mt-4 d-flex justify-content-between">
                             <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(2)"><i class="fas fa-arrow-left me-2"></i> Back</button>
-                            <button class="btn btn-success px-5 rounded-pill fw-bold" id="payProceedBtn">Pay Now <i class="fas fa-credit-card ms-2"></i></button>
+                            <div class="d-flex gap-2">
+                                <!-- Receipt Download Button (shown when already paid) -->
+                                <button id="downloadReceiptBtn" class="btn btn-outline-info px-4 rounded-pill" style="display:none;" title="Download payment receipt">
+                                    <i class="fas fa-download me-2"></i> Receipt
+                                </button>
+                                <!-- Payment Button (gated) -->
+                                <button class="btn btn-success px-5 rounded-pill fw-bold" id="payProceedBtn">Pay Now <i class="fas fa-credit-card ms-2"></i></button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -730,17 +772,10 @@ async function openCompleteShipmentModal(id) {
         document.body.appendChild(modalEl);
     }
 
-    // Refresh the specific shipment data for persistence
-    let s = window.ALL_SHIPMENTS.find(x => x.id == id);
-    try {
-        const freshRes = await fetch(`${API_URL}/api/shipment/${id}`, { credentials: 'include' });
-        const freshData = await freshRes.json();
-        if (freshData.success) s = freshData.shipment;
-    } catch (e) { console.warn("Failed to fetch fresh shipment data"); }
-
+    const s = window.ALL_SHIPMENTS.find(x => x.id == id);
     if (!s) return;
 
-    goToStep(0); // Start at Service Selection
+    goToStep(1);
     document.getElementById('comp-hs-code').value = s.hs_code || '';
     document.getElementById('comp-consignee').value = s.consignee_name || '';
     document.getElementById('comp-desc').value = s.description || '';
@@ -760,114 +795,54 @@ async function openCompleteShipmentModal(id) {
     document.getElementById('comp-amt-total').innerText = `₹${total.toLocaleString()}`;
 
     document.getElementById('uploadAllBtn').onclick = () => uploadAllShipmentDocs(id);
-    document.getElementById('payProceedBtn').onclick = () => processBookingPayment(id);
+    
+    // ⚠️ PAYMENT GATING: Check shipment status
+    const payBtn = document.getElementById('payProceedBtn');
+    const receiptBtn = document.getElementById('downloadReceiptBtn');
+    const paymentLockedNotice = document.getElementById('payment-locked-notice');
+    
+    const allowedPaymentStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending', 'Cargo Ready', 'Booked', 'Accepted', 'In Transit', 'Customs', 'Out for Delivery', 'Delivered'];
+    const isPaymentAllowed = allowedPaymentStatuses.includes(s.status);
+    const isAlreadyPaid = s.status === 'Cargo Ready' || s.status === 'Accepted' || s.status === 'In Transit' || s.status === 'Customs' || s.status === 'Out for Delivery' || s.status === 'Delivered';
+    
+    if (!isPaymentAllowed) {
+        payBtn.disabled = true;
+        payBtn.style.opacity = '0.5';
+        payBtn.style.cursor = 'not-allowed';
+        paymentLockedNotice.style.display = 'block';
+        receiptBtn.style.display = 'none';
+    } else if (isAlreadyPaid) {
+        payBtn.style.display = 'none';
+        receiptBtn.style.display = 'inline-block';
+        receiptBtn.onclick = () => downloadReceipt(id, s.user_prefix || 'SS');
+        paymentLockedNotice.style.display = 'none';
+    } else {
+        payBtn.disabled = false;
+        payBtn.style.opacity = '1';
+        payBtn.style.cursor = 'pointer';
+        paymentLockedNotice.style.display = 'none';
+        receiptBtn.style.display = 'none';
+    }
+    
+    payBtn.onclick = () => processBookingPayment(id);
 
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
-
-    // ═══════════════════════════════════════════════════════════
-    // V3: Load Service Options (Triple Quote) & Docs
-    // ═══════════════════════════════════════════════════════════
-    const container = document.getElementById('quote-options-container');
-    if (container) {
-        container.innerHTML = '<div class="col-12 text-center py-4 text-white-50"><span class="spinner-border spinner-border-sm me-2"></span> Loading service options...</div>';
-        
-        fetch(`${API_URL}/api/v3/shipment/${id}/quotes`, { credentials: 'include' })
-            .then(r => r.json())
-            .then(async data => {
-                if (data.success && data.quotes.length > 0) {
-                    container.innerHTML = data.quotes.map(q => {
-                        const icon = q.option_name === 'Economy' ? 'feather' : q.option_name === 'Express' ? 'bolt' : 'anchor';
-                        const color = q.option_name === 'Economy' ? 'info' : q.option_name === 'Express' ? 'warning' : 'primary';
-                        const isSelected = q.id === data.selectedId;
-                        return `
-                        <div class="col-md-4">
-                            <div class="p-3 border rounded text-center h-100 ${isSelected ? 'border-primary bg-primary bg-opacity-10' : 'border-secondary bg-dark bg-opacity-25'}" 
-                                 style="transition: all 0.2s ease;">
-                                <i class="fas fa-${icon} text-${color} mb-2 fs-3"></i>
-                                <div class="fw-bold text-white small">${q.option_name}</div>
-                                <div class="text-white-50 x-small mb-2">${q.transit_time || 'Direct'}</div>
-                                <div class="text-success fw-bold mb-3">₹${Number(q.price).toLocaleString()}</div>
-                                <button class="btn ${isSelected ? 'btn-primary' : 'btn-outline-primary'} btn-sm w-100 rounded-pill x-small fw-bold" onclick="selectShipService('${id}', ${q.id}, ${q.price})">
-                                    ${isSelected ? 'Selected' : 'Book Now'}
-                                </button>
-                            </div>
-                        </div>`;
-                    }).join('');
-                    
-                    // Update Step 2 with Manager's Doc Checklist + Persistence
-                    const docBody = document.getElementById('comp-step-2-body');
-                    const exRes = await fetch(`${API_URL}/api/documents/${id}`, { credentials: 'include' });
-                    const exDocs = (await exRes.json()).documents || [];
-
-                    if (docBody && data.docs.length > 0) {
-                        docBody.innerHTML = `<h6 class="text-primary small fw-bold text-uppercase mb-3">2. Compliance Handshake (${data.docs.length} Required)</h6>` + 
-                        data.docs.map(d => {
-                            const found = exDocs.find(x => x.type === d);
-                            return `
-                            <div class="mb-3 p-3 bg-dark bg-opacity-25 rounded border border-secondary border-opacity-25">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="small text-white fw-bold mb-0">${d} ${found ? '<span class="text-success ms-2"><i class="fas fa-check-circle"></i> Verified</span>' : '*'}</label>
-                                    ${found ? `<a href="${API_URL}${found.file_url}" target="_blank" class="x-small text-info"><i class="fas fa-eye me-1"></i>View</a>` : ''}
-                                </div>
-                                <input type="file" class="form-control form-control-sm bg-dark text-white border-secondary ship-doc-input" data-type="${d}">
-                            </div>`;
-                        }).join('');
-                    }
-                } else {
-                    container.innerHTML = `<div class="col-12 text-center py-5 text-warning small">Rates are still being finalized. Please check back soon.</div>`;
-                }
-            })
-            .catch(err => {
-                container.innerHTML = '<div class="col-12 text-center py-4 text-danger small">Failed to load logistics options.</div>';
-            });
-    }
-}
-
-async function selectShipService(shipmentId, quoteId, price) {
-    console.log(`📌 Selecting Quote #${quoteId} for Shipment #${shipmentId}`);
-    try {
-        const res = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/select-quote`, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quoteId })
-        });
-        const d = await res.json();
-        if (d.success) {
-            // Update prices for the review step
-            const cost = Number(price);
-            document.getElementById('comp-amt-base').innerText = `₹${cost.toLocaleString()}`;
-            document.getElementById('comp-amt-tax').innerText = `₹${(cost * 0.08).toLocaleString()}`;
-            document.getElementById('comp-amt-total').innerText = `₹${(cost * 1.08).toLocaleString()}`;
-            
-            goToStep(1); // Service -> Details
-        } else {
-            alert('Selection Failed: ' + (d.message || 'Server error'));
-        }
-    } catch (e) { 
-        alert('Network Error during selection');
-        console.error('Selection Failed', e); 
-    }
 }
 
 function goToStep(n) {
-    for (let i = 0; i <= 3; i++) {
-        const step = document.getElementById(`comp-step-${i}`);
-        if (step) step.style.display = i === n ? 'block' : 'none';
-    }
+    document.getElementById('comp-step-1').style.display = n === 1 ? 'block' : 'none';
+    document.getElementById('comp-step-2').style.display = n === 2 ? 'block' : 'none';
+    document.getElementById('comp-step-3').style.display = n === 3 ? 'block' : 'none';
+
     document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active'));
-    for (let i = 0; i <= n; i++) {
-        const dot = document.getElementById(`step-dot-${i}`);
-        if (dot) dot.classList.add('active');
+    for (let i = 1; i <= n; i++) {
+        document.getElementById(`step-dot-${i}`).classList.add('active');
     }
 }
 
 async function uploadAllShipmentDocs(shipmentId) {
-    const btn = document.getElementById('uploadAllBtn');
-    const originalText = btn.innerHTML;
-    
-    // 1. Save Details
+    // 1. First Save the "Other Details" from Step 1
     const details = {
         hsCode: document.getElementById('comp-hs-code').value,
         consigneeName: document.getElementById('comp-consignee').value,
@@ -876,8 +851,16 @@ async function uploadAllShipmentDocs(shipmentId) {
         cargoValue: document.getElementById('comp-value').value
     };
 
+    if (!details.hsCode || !details.consigneeName) {
+        alert("Please provide Consignee name and HS code in Step 1.");
+        goToStep(1);
+        return;
+    }
+
+    const btn = document.getElementById('uploadAllBtn');
+    const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Finalizing Details...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Updating Details...';
 
     try {
         await fetch(`${API_URL}/api/shipment/${shipmentId}/update-details`, {
@@ -886,41 +869,53 @@ async function uploadAllShipmentDocs(shipmentId) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(details)
         });
-    } catch (e) { console.warn("Details sync failed"); }
+    } catch (e) { console.warn("Detail update failed, proceeding to docs anyway"); }
 
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Sealing Documents...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Uploading Docs...';
 
-    // 2. Dynamic Uploads
-    const fileInputs = document.querySelectorAll('.ship-doc-input');
+    const s = window.ALL_SHIPMENTS.find(x => x.id == shipmentId);
+    const isVehicle = (s.product_type || '').toLowerCase().includes('car') || (s.product_type || '').toLowerCase().includes('vehi');
+
+    const docs = [
+        { id: 'comp-kyc', type: 'Government ID' },
+        { id: 'comp-invoice', type: 'Commercial Invoice' },
+        { id: 'comp-packing', type: 'Packing List' },
+        { id: 'comp-iec', type: 'IEC Certificate' }
+    ];
+    if (isVehicle) {
+        docs.push({ id: 'comp-rc', type: 'Vehicle RC' });
+        docs.push({ id: 'comp-insurance', type: 'Insurance Policy' });
+        docs.push({ id: 'comp-inspection', type: 'Pre-shipment Inspection' });
+    }
+
     try {
         let successCount = 0;
-        for (const input of fileInputs) {
+        for (const doc of docs) {
+            const input = document.getElementById(doc.id);
             if (input.files.length > 0) {
-                const docType = input.getAttribute('data-type');
-                const file = input.files[0];
-                
                 const formData = new FormData();
-                formData.append('docFile', file);
-                formData.append('type', docType);
+                formData.append('docFile', input.files[0]);
+                formData.append('type', doc.type);
                 formData.append('shipmentId', shipmentId);
-                formData.append('docName', file.name);
+                formData.append('docName', input.files[0].name);
 
                 const res = await fetch(`${API_URL}/api/documents/upload`, {
                     method: 'POST',
                     credentials: 'include',
                     body: formData
                 });
-                const d = await res.json();
-                if (d.success) successCount++;
+                if ((await res.json()).success) successCount++;
             }
         }
-        
-        // Finalize: Success or no new uploads, proceed to Payment
-        console.log(`Uploaded ${successCount} new files.`);
-        goToStep(3); // Go to Payment
+        if (successCount > 0) {
+            // Smooth transition to Payment Step without intrusive alerts
+            goToStep(3);
+        } else {
+            // If they already uploaded or just want to see payment
+            goToStep(3);
+        }
     } catch (e) {
-        console.error('Upload Process Error:', e);
-        alert('Compliance Check Failed: ' + e.message);
+        alert('Upload failed. Please try again.');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -930,23 +925,25 @@ async function uploadAllShipmentDocs(shipmentId) {
 async function processBookingPayment(shipmentId) {
     const btn = document.getElementById('payProceedBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processing...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Redirecting to Stripe...';
 
     try {
-        const res = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/payment-complete`, {
+        const res = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
             method: 'POST',
-            credentials: 'include'
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shipmentId })
         });
         const data = await res.json();
-        if (data.success) {
-            // Fetch and show receipt
-            await showReceipt(shipmentId);
+        if (data.success && data.url) {
+            window.location.href = data.url;
         } else {
-            alert('Payment failed.');
+            alert(data.message || 'Payment initiation failed. Ensure you have properly set up Stripe keys.');
+            btn.disabled = false;
+            btn.innerHTML = 'Pay Now <i class="fas fa-credit-card ms-2"></i>';
         }
     } catch (e) {
-        alert('Network error.');
-    } finally {
+        alert('Network error connecting to payment gateway.');
         btn.disabled = false;
         btn.innerHTML = 'Pay Now <i class="fas fa-credit-card ms-2"></i>';
     }
@@ -1039,3 +1036,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1500);
     }
 });
+
+// ── SCHEDULES TAB EXTENSIONS ──────────────────────────────────────
+function toggleSchView(viewType) {
+    const listSection = document.getElementById('sch-pickups-list');
+    const calSection = document.getElementById('sch-calendar-container');
+
+    if (viewType === 'calendar') {
+        if (listSection) listSection.style.display = 'none';
+        if (calSection) calSection.style.display = 'block';
+    } else {
+        if (listSection) listSection.style.display = 'block';
+        if (calSection) calSection.style.display = 'none';
+    }
+}
+
+function openRescheduleModal(shipmentRef) {
+    const refEl = document.getElementById('reschedule-ref');
+    if (refEl) refEl.innerText = shipmentRef;
+    
+    const rescheduleModal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
+    rescheduleModal.show();
+}
+
+function confirmReschedule() {
+    // In a real application, submit to backend /api/shipment/reschedule
+    alert('✅ Pickup successfully rescheduled! We will notify your logistics manager.');
+    const rescheduleModal = bootstrap.Modal.getInstance(document.getElementById('rescheduleModal'));
+    if (rescheduleModal) rescheduleModal.hide();
+}

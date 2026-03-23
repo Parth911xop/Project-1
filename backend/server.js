@@ -44,6 +44,8 @@ const transporter = nodemailer.createTransport({
 
 const app = express();
 const httpServer = http.createServer(app);
+let PORT = Number.parseInt(process.env.PORT || '3000', 10);
+let isShuttingDown = false;
 
 // Socket.io – CORS must match the frontend origins
 const corsOrigins = [
@@ -85,28 +87,144 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Declare pool globally so routes can use it
 let pool;
 
-// --- DATABASE CONFIGURATION ---
-const getDbConfig = () => {
+const buildDbConfig = (dbUrl, host, hostname) => ({
+    user: dbUrl.username,
+    password: dbUrl.password,
+    host,
+    port: dbUrl.port || 5432,
+    database: dbUrl.pathname.split('/')[1], // remove leading slash
+    connectionTimeoutMillis: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '5000', 10),
+    ssl: {
+        rejectUnauthorized: false,
+        servername: hostname // Crucial for Neon SNI
+    }
+});
+
+// Resolve DB host and return connection candidates, preferring IPv4.
+const resolveDbConfigs = async () => {
     const dbUrlStr = process.env.DATABASE_URL;
     if (!dbUrlStr) {
         throw new Error("DATABASE_URL is missing!");
     }
 
     const dbUrl = new URL(dbUrlStr);
-    return {
-        connectionString: dbUrlStr,
-        ssl: {
-            rejectUnauthorized: false,
-            servername: dbUrl.hostname // Requisite for Neon/SNI
-        }
+    const hostname = dbUrl.hostname;
+
+    console.log(`🔍 Resolving DB host: ${hostname} using native DNS...`);
+
+    const seenHosts = new Set();
+    const candidates = [];
+    const addCandidate = (host, label) => {
+        if (!host || seenHosts.has(host)) return;
+        seenHosts.add(host);
+        candidates.push({ label, config: buildDbConfig(dbUrl, host, hostname) });
     };
+
+    try {
+        // Prefer IPv4 first in environments where IPv6 connectivity is flaky.
+        const addresses = await dns.promises.lookup(hostname, { all: true, verbatim: false });
+        const ipv4 = addresses.filter(entry => entry.family === 4);
+        const ipv6 = addresses.filter(entry => entry.family === 6);
+
+        ipv4.forEach(entry => addCandidate(entry.address, `IPv4 ${entry.address}`));
+        addCandidate(hostname, `hostname ${hostname}`);
+        ipv6.forEach(entry => addCandidate(entry.address, `IPv6 ${entry.address}`));
+
+        if (candidates.length) {
+            console.log(`✅ Resolved ${hostname} to ${addresses.map(entry => `${entry.address} (IPv${entry.family})`).join(', ')}`);
+        }
+    } catch (err) {
+        console.warn(`⚠️ DNS lookup failed for ${hostname}: ${err.message}. Falling back to hostname connection.`);
+        addCandidate(hostname, `hostname ${hostname}`);
+    }
+
+    if (!candidates.length) {
+        throw new Error("No DB connection candidates available");
+    }
+
+    return candidates;
 };
+
+const connectToDatabase = async () => {
+    const candidates = await resolveDbConfigs();
+    let lastError = null;
+
+    for (const candidate of candidates) {
+        const testPool = new Pool(candidate.config);
+        try {
+            console.log(`🔌 Attempting DB connection via ${candidate.label}...`);
+            await testPool.query('SELECT NOW()');
+            console.log(`✅ Database connected via ${candidate.label}`);
+            return testPool;
+        } catch (err) {
+            lastError = err;
+            console.warn(`⚠️ DB connection failed via ${candidate.label}: ${err.code || err.message}`);
+            try {
+                await testPool.end();
+            } catch (_) { }
+        }
+    }
+
+    throw lastError || new Error('Unable to connect to database');
+};
+
+const shutdown = (signal) => {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    console.log(`\n🛑 Received ${signal}. Closing server cleanly...`);
+
+    const forceExitTimer = setTimeout(() => {
+        console.error('❌ Forced shutdown after timeout.');
+        process.exit(1);
+    }, 10000);
+
+    forceExitTimer.unref?.();
+
+    const finalize = async (exitCode) => {
+        clearTimeout(forceExitTimer);
+
+        if (pool) {
+            try {
+                await pool.end();
+            } catch (err) {
+                console.error('⚠️ Error while closing DB pool:', err.message);
+            }
+        }
+
+        process.exit(exitCode);
+    };
+
+    try {
+        io.close();
+    } catch (err) {
+        console.error('⚠️ Error while closing Socket.io:', err.message);
+    }
+
+    httpServer.close((err) => {
+        if (typeof httpServer.closeAllConnections === 'function') {
+            httpServer.closeAllConnections();
+        }
+
+        if (err) {
+            console.error('❌ Error while closing HTTP server:', err);
+            finalize(1);
+            return;
+        }
+
+        console.log('✅ HTTP server closed.');
+        finalize(0);
+    });
+};
+
+process.once('SIGINT', () => shutdown('SIGINT'));
+process.once('SIGTERM', () => shutdown('SIGTERM'));
 
 // --- DATABASE MIGRATIONS (V1, V2, V3) ---
 const runMigrations = async () => {
     try {
         console.log("🛠️ Starting Enterprise Multi-Stage Migrations...");
-        
+
         // 1. Core Users Table
         await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
@@ -122,8 +240,9 @@ const runMigrations = async () => {
             ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255);
             ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'customer';
             ALTER TABLE users ADD COLUMN IF NOT EXISTS company_status VARCHAR(20) DEFAULT 'pending';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'Pending';
         `);
-         // 2. Core Shipments Table (Must exist before admin/support tables)
+        // 2. Core Shipments Table (Must exist before admin/support tables)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS shipments (
                 id SERIAL PRIMARY KEY,
@@ -143,7 +262,7 @@ const runMigrations = async () => {
         // 3. Company Profiles & Other Legacy Tables
         await createCompanyProfilesTable();
         await createAdminTables();
-        
+
         // 4. V3 Advanced Logistics Migration (from physical SQL file)
         const migrationPath = path.join(__dirname, 'migrations', 'v3_logistics_upgrade.sql');
         if (require('fs').existsSync(migrationPath)) {
@@ -298,6 +417,17 @@ const setupPackingListRoutes = async () => {
 };
 
 // Mount Support Routes
+const setupKYCRoutes = async () => {
+    try {
+        const kycRouterFn = require('./kyc');
+        const kycRouter = await kycRouterFn(pool, createNotification);
+        app.use('/api/kyc', authenticateToken, kycRouter);
+        console.log('✅ KYC routes loaded');
+    } catch (err) {
+        console.error('Failed to load KYC routes:', err);
+    }
+};
+
 const setupSupportRoutes = async () => {
     try {
         const supportRouterFn = require('./support');
@@ -327,15 +457,15 @@ const createAdminTables = async () => {
             );
         `);
         // Migration for existing tables to V2 Schema
-        try { await pool.query("ALTER TABLE ports RENAME COLUMN cost_per_cbm TO handling_fees_per_kg;"); } catch(e){}
-        try { await pool.query("ALTER TABLE ports RENAME COLUMN congestion TO congestion_index;"); } catch(e){}
-        
+        try { await pool.query("ALTER TABLE ports RENAME COLUMN cost_per_cbm TO handling_fees_per_kg;"); } catch (e) { }
+        try { await pool.query("ALTER TABLE ports RENAME COLUMN congestion TO congestion_index;"); } catch (e) { }
+
         // Ensure cols exist and types are correct
         await pool.query("ALTER TABLE ports ADD COLUMN IF NOT EXISTS state VARCHAR(100);");
         await pool.query("ALTER TABLE ports ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,7);");
         await pool.query("ALTER TABLE ports ADD COLUMN IF NOT EXISTS longitude DECIMAL(10,7);");
         await pool.query("ALTER TABLE ports ADD COLUMN IF NOT EXISTS code VARCHAR(50) UNIQUE;");
-        
+
         // Explicitly force types for V2 compatibility
         try {
             await pool.query(`ALTER TABLE ports ALTER COLUMN congestion_index TYPE DECIMAL(3,2) 
@@ -346,7 +476,7 @@ const createAdminTables = async () => {
                                  WHEN congestion_index::text ~ '^[0-9.]+$' THEN congestion_index::decimal
                                  ELSE 1.0 
                              END)`);
-        } catch(e) { console.error("Congestion type fix error:", e); }
+        } catch (e) { console.error("Congestion type fix error:", e); }
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS routes (
@@ -367,6 +497,7 @@ const createAdminTables = async () => {
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 shipment_id INTEGER REFERENCES shipments(id) ON DELETE SET NULL,
+                company_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                 issue_type VARCHAR(100),
                 description TEXT NOT NULL,
                 status VARCHAR(20) DEFAULT 'Open',
@@ -395,6 +526,20 @@ const createAdminTables = async () => {
 
         // Migration: Ensure 'link' column exists if table was created older
         await pool.query("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link TEXT DEFAULT '';");
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_kyc_documents (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                doc_type VARCHAR(50) NOT NULL, -- Aadhaar, PAN, Address Proof, Business Certificate
+                file_url TEXT NOT NULL,
+                status VARCHAR(20) DEFAULT 'Pending', -- Pending, Approved, Rejected
+                rejection_reason TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id, doc_type)
+            );
+        `);
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS system_settings (
@@ -1066,7 +1211,7 @@ app.get('/api/schedules/search', (req, res) => {
 app.get('/api/tracking/search', async (req, res) => {
     const { id } = req.query;
     if (!id) return res.status(400).json({ success: false, message: "Tracking ID required" });
-    
+
     try {
         const sid = parseInt(id.includes('-') ? id.split('-').pop() : id);
         if (isNaN(sid)) return res.status(400).json({ success: false, message: "Invalid ID" });
@@ -1075,12 +1220,12 @@ app.get('/api/tracking/search', async (req, res) => {
         const response = await fetch(`http://localhost:${PORT}/api/v3/tracking/live/${sid}`, {
             headers: { 'Internal-Request': 'true' } // bypass auth checks for internal bridge if needed, or better, fetch direct from pool
         }).catch(() => null);
-        
+
         if (response) {
             const data = await response.json();
             return res.json(data);
         }
-        
+
         res.status(404).json({ success: false, message: "Shipment not found" });
     } catch (e) {
         res.status(500).json({ success: false, message: "Internal error" });
@@ -1096,12 +1241,7 @@ app.use(express.static(path.join(__dirname, '../')));
 const startServer = async () => {
     try {
         // 1. Initialize Database
-        const dbConfig = getDbConfig();
-        pool = new Pool(dbConfig);
-
-        // Test connection
-        await pool.query('SELECT NOW()');
-        console.log("✅ Database Connected Successfully"); // Updated log message
+        pool = await connectToDatabase();
 
         // 2. Run Unified Migration Engine (Covers Users, Companies, Admin, V3)
         await runMigrations();
@@ -1116,6 +1256,7 @@ const startServer = async () => {
         await setupCustomsRoutes();
         await setupPackingListRoutes();
         await setupSupportRoutes();
+        await setupKYCRoutes();
         await setupQuoteRouter();
         await setupPaymentRoutes();
 
@@ -1236,7 +1377,7 @@ const startServer = async () => {
                         `SELECT * FROM ship_route_stops WHERE ship_id = $1 ORDER BY stop_order ASC`,
                         [ship.id]
                     );
-                    
+
                     if (stopsRes.rows.length === 0) continue;
 
                     // Locate "Current" stop and "Next" stop
@@ -1255,7 +1396,7 @@ const startServer = async () => {
                         // Calculate Bearing (Course)
                         const y = Math.sin((targetLng - lng) * Math.PI / 180) * Math.cos(targetLat * Math.PI / 180);
                         const x = Math.cos(lat * Math.PI / 180) * Math.sin(targetLat * Math.PI / 180) -
-                                  Math.sin(lat * Math.PI / 180) * Math.cos(targetLat * Math.PI / 180) * Math.cos((targetLng - lng) * Math.PI / 180);
+                            Math.sin(lat * Math.PI / 180) * Math.cos(targetLat * Math.PI / 180) * Math.cos((targetLng - lng) * Math.PI / 180);
                         const bearing = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 
                         // Move based on typical speed (Vessel specific logic)
@@ -1279,8 +1420,8 @@ const startServer = async () => {
                         const sR = await pool.query(`SELECT id FROM shipments WHERE allocated_ship_id = $1`, [ship.id]);
                         sR.rows.forEach(s => {
                             io.to(`shipment:${s.id}`).emit('tracking_event', {
-                                shipmentId: s.id, 
-                                lat: newLat, 
+                                shipmentId: s.id,
+                                lat: newLat,
                                 lng: newLng,
                                 bearing: bearing,
                                 status: 'In Transit',
@@ -1292,15 +1433,21 @@ const startServer = async () => {
                     }
                 }
             } catch (e) { console.error('AIS Intelligence Registry Error:', e.message); }
-        }, 300000); // Pulse every 5 mins
+        }, 15000); // Pulse every 15 seconds for testing
 
         // 5. Start Server — with EADDRINUSE retry to handle node --watch restarts
-        const PORT = process.env.PORT || 3000;
-
         httpServer.on('error', (err) => {
             if (err.code === 'EADDRINUSE') {
-                console.error(`❌ Port ${PORT} already in use. Exiting so node --watch can restart cleanly.`);
-                process.exit(1);
+                console.warn(`⚠️ Port ${PORT} already in use. Retrying on port ${PORT + 1}...`);
+                // Increment port and try again
+                PORT = PORT + 1;
+                process.env.PORT = PORT;
+                
+                // Clear the previous error listener to prevent duplicate triggers
+                httpServer.removeAllListeners('error');
+                
+                // Recursive call to startServer with new port
+                startServer();
             } else {
                 console.error('❌ Server error:', err);
                 process.exit(1);
@@ -1310,7 +1457,7 @@ const startServer = async () => {
         httpServer.listen(PORT, async () => {
             console.log(`🚀 Server + Socket.io running on port ${PORT}`);
             console.log(`Serving static files from: ${path.join(__dirname, '../')}`);
-            
+
             // Auto Migration on Boot
             await runMigrations();
         });

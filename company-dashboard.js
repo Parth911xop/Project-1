@@ -89,7 +89,7 @@ function showSection(name, el) {
         dashboard: '📊 Company Overview', bookings: '📥 Booking Requests',
         shipments: '📦 Shipment Management', vessels: '🚢 Vessel / Fleet',
         schedules: '📅 Schedule Management', pricing: '🏷️ Pricing & Rates',
-        customers: '👤 Customer Management',
+        customers: '👤 Customer Management', support: '🎧 Customer Support',
         documents: '📄 Document Handling', tracking: '🗺️ Tracking Updates',
         finance: '💹 Financial Management', notifications: '🔔 Notifications'
     };
@@ -100,7 +100,8 @@ function showSection(name, el) {
         vessels: loadVessels, schedules: loadSchedules,
         pricing: loadPricing, customers: loadCustomers,
         documents: loadDocuments, tracking: loadTrackingLogs,
-        finance: loadFinance, notifications: loadNotifications
+        finance: loadFinance, notifications: loadNotifications,
+        support: loadCompanyTickets
     };
     if (loaders[name]) loaders[name]();
     return false;
@@ -127,6 +128,8 @@ async function loadDashboard() {
             drawBar('chart-monthly', months, counts, 'Shipments', '#3b82f6');
         }
     } catch (e) { console.error('Dashboard stats error:', e); }
+
+    loadCompanyTickets(); // Update support ticket badge count
 
     // Recent bookings table
     try {
@@ -174,50 +177,87 @@ async function loadDashboard() {
 // ── BOOKING REQUESTS ──────────────────────────────────────────────
 async function loadBookings() {
     const grid = document.getElementById('bookings-grid');
+    const hist = document.getElementById('bookings-history-body');
     if (!grid) return;
-    grid.innerHTML = '<div class="text-white-50 text-center py-5"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Loading...</div>';
+    grid.innerHTML = '<div class="text-white-50 text-center py-5"><div class="spinner-border spinner-border-sm text-primary me-2"></div>Analyzing incoming requests...</div>';
+
     try {
         const r = await fetch(`${API}/api/v3/manager/booking-requests`, { credentials: 'include' });
         const d = await r.json();
-        ALL_PENDING_REQUESTS = d.success ? d.requests : [];
-        if (!d.success || !d.requests.length) {
-            grid.innerHTML = `<div class="co-table-wrap p-5 text-center"><i class="fas fa-inbox fa-2x text-white-50 mb-3 d-block"></i><span class="text-white-50">No pending booking requests.</span></div>`;
+        const pending = d.success ? d.requests : [];
+        ALL_PENDING_REQUESTS = pending; // Required for Accept Modal
+        
+        // 1. Render Active Inbox
+        if (!pending.length) {
+            grid.innerHTML = `<div class="p-5 text-center bg-dark bg-opacity-10 rounded border border-secondary border-opacity-10"><i class="fas fa-inbox fa-2x text-white-50 mb-3 d-block"></i><div class="text-white-50 small font-monospace">STATION_SILENT: All terminal requests cleared.</div></div>`;
             setV('bookings-count', '0 pending');
             setV('nav-bookings', '0');
-            return;
-        }
-        setV('bookings-count', `${d.requests.length} pending`);
-        setV('nav-bookings', d.requests.length);
-        grid.innerHTML = d.requests.map(req => `
-            <div class="booking-card new-req" id="req-${req.id}">
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <span class="badge-co b-booked me-2">${req.mode || 'Ocean'} Freight</span>
-                        ${(req.type || 'Export').toLowerCase() === 'import' ? '<span class="badge-role me-2" style="background:rgba(16,185,129,0.15);color:#34d399;">Import</span>' : '<span class="badge-role me-2" style="background:rgba(59,130,246,0.15);color:#60a5fa;">Export</span>'}
-                        <span class="text-white-50 small">REQ-${req.id}</span>
-                        <div class="text-white fw-bold mt-1" style="font-size:1rem;">
-                            ${esc(req.origin_address || req.from_country || '—')} → ${esc(req.destination_address || req.to_country || '—')}
+        } else {
+            setV('bookings-count', `${pending.length} pending`);
+            setV('nav-bookings', pending.length);
+            grid.innerHTML = pending.map(req => `
+                <div class="booking-card hover-glow new-req d-flex justify-content-between align-items-center p-3 border border-secondary border-opacity-10 mb-2 rounded-3" id="req-${req.id}">
+                    <div style="flex:1;">
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            <span class="badge bg-primary bg-opacity-10 text-primary px-2 py-1 x-small font-monospace">${req.mode || 'Sea'}</span>
+                            <span class="text-white fw-bold x-small opacity-75">REQ-${req.id}</span>
+                            <span class="badge bg-dark rounded-pill border border-secondary border-opacity-20 x-small text-white-50 font-monospace">UID: ${req.customer_id || req.user_id}</span>
                         </div>
-                        <div class="text-white-50 small mt-1"><i class="fas fa-user me-1"></i>${esc(req.customer_name || 'Customer')}</div>
+                        <div class="text-white fw-bold mb-1" style="font-size:0.95rem;">${esc(req.origin_address || req.from_country || '—')} → ${esc(req.destination_address || req.to_country || '—')}</div>
+                        <div class="x-small text-white-50"><i class="fas fa-user-circle me-1"></i>${esc(req.customer_name || 'Anonymous Partner')}</div>
                     </div>
-                    <div class="text-end">
-                        <div class="text-success fw-bold" style="font-size:1.1rem;">$${num(req.estimated_cost)}</div>
-                        <div class="text-white-50 small mt-1">${fmtD(req.created_at)}</div>
+                    
+                    <div class="px-4 text-center border-start border-end border-secondary border-opacity-10 mx-4" style="min-width:140px;">
+                        <div class="text-success fw-bold" style="font-size:1.1rem;">₹${num(req.estimated_cost * 84)}</div>
+                        <div class="text-white-50 x-small">${fmtD(req.created_at)}</div>
                     </div>
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-4"><div class="co-table-wrap p-2 text-center"><div class="text-white-50" style="font-size:0.68rem;">WEIGHT</div><div class="text-white fw-semibold">${req.weight ? req.weight + ' kg' : '—'}</div></div></div>
-                    <div class="col-4"><div class="co-table-wrap p-2 text-center"><div class="text-white-50" style="font-size:0.68rem;">CARGO</div><div class="text-white fw-semibold">${esc(req.product_type || 'General')}</div></div></div>
-                    <div class="col-4"><div class="co-table-wrap p-2 text-center"><div class="text-white-50" style="font-size:0.68rem;">CONTAINER</div><div class="text-white fw-semibold">${esc(req.container_size || '20ft')}</div></div></div>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn-co btn-accept flex-fill" onclick="openAcceptModal(${req.id})"><i class="fas fa-check me-1"></i>Accept</button>
-                    <button class="btn-co btn-sec" onclick="openDetailsModal(${req.id}, true)"><i class="fas fa-eye me-1"></i>Details</button>
-                    <button class="btn-co btn-reject" onclick="rejectBooking(${req.id})"><i class="fas fa-times me-1"></i>Reject</button>
-                </div>
-            </div>`).join('');
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm" onclick="openAcceptModal(${req.id})">
+                            <i class="fas fa-ship me-2"></i>Approve & Allocate
+                        </button>
+                        <button class="btn btn-outline-danger border-opacity-25 rounded-pill px-4 py-2" onclick="rejectBooking(${req.id})">
+                            <i class="fas fa-times me-2"></i>Decline
+                        </button>
+                    </div>
+                </div>`).join('');
+        }
+
+        // 2. Render Processed Archive
+        const resAll = await fetch(`${API}/api/company/all-shipments`, { credentials: 'include' });
+        const dAll = await resAll.json();
+        const processed = (dAll.shipments || []).filter(s => s.status !== 'Booked' && s.status !== 'Pending Manager Approval');
+        
+        if (hist) {
+            if (!processed.length) {
+                hist.innerHTML = '<tr><td colspan="6" class="text-center py-5 text-white-50 font-monospace">ARCHIVE_EMPTY: No historically processed records.</td></tr>';
+            } else {
+                hist.innerHTML = processed.slice(0, 10).map(s => `
+                    <tr class="transition-all hover-glow">
+                        <td class="font-monospace text-primary fw-bold" style="font-size: 11px;">REQ-${s.id}</td>
+                        <td class="small">
+                            <div class="text-white fw-bold">UID: ${s.customer_id || s.user_id || '---'}</div>
+                            <div class="x-small text-white-50 font-monospace">${esc(s.customer_name || '---')}</div>
+                        </td>
+                        <td class="small text-white-50">
+                            <div>${shortR(s)}</div>
+                            ${s.vessel_route ? `<div class="mt-1 fst-italic text-info opacity-75 text-truncate" style="font-size:0.65rem; max-width: 180px;" title="${esc(s.vessel_route)}">Route: ${esc(s.vessel_route).replace(/ → /g, ' &raquo; ')}</div>` : ''}
+                        </td>
+                        <td>
+                            <div class="text-info x-small fw-bold">${esc(s.mode || '---')}</div>
+                            <div class="text-white-50 x-small">₹${num(s.estimated_cost * 84)}</div>
+                            ${s.vessel_name ? `<div class="mt-1"><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size: 0.65rem;"><i class="fas fa-ship me-1"></i>${esc(s.vessel_name)}</span></div>` : ''}
+                        </td>
+                        <td>${stBadge(s.status)}</td>
+                        <td class="text-end text-white-50 small font-monospace">${fmtD(s.updated_at || s.created_at)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
     } catch (e) {
-        grid.innerHTML = '<div class="text-danger text-center py-4">Failed to load booking requests.</div>';
+        console.error('Request Load Failure:', e);
+        grid.innerHTML = '<div class="text-danger text-center py-4 font-monospace"><i class="fas fa-exclamation-triangle me-2"></i>CRITICAL_LINK_ERROR: Database handshake failed.</div>';
     }
 }
 
@@ -229,31 +269,53 @@ async function openAcceptModal(id) {
 
     setVal('accept-shipment-id', id);
     const prefix = req.user_prefix || 'SS';
-    setVal('accept-shipment-ref', `${prefix}-${id}`);
+    const ref = `${prefix}-${id}`;
+    const refEl = document.getElementById('accept-shipment-ref-display');
+    if (refEl) refEl.innerText = ref;
+
+    // Analyze Booking (Contextual Summary)
+    setV('ana-mode', req.mode || 'Ocean');
+    setV('ana-weight', (req.weight_kg || req.weight || '--') + ' kg');
+    setV('ana-equip', req.container_size || '20ft FCL');
+    setV('ana-product', req.product_type || 'General');
 
     // Clear and load ships
     const select = document.getElementById('accept-vessel-select');
     select.innerHTML = '<option value="">-- Select Available Ship --</option>';
 
+    // Smart Ship Loading with Route-Based Matching
+    const source = req.source_port || req.from_country || "";
+    const dest = req.destination_port || req.to_country || "";
+    
     try {
-        let res = await fetch(`${API}/api/v3/manager/ships/available?nearPort=${req.source_port}`, { credentials: 'include' });
+        let res = await fetch(`${API}/api/v3/manager/ships/available?fromPort=${source}&toPort=${dest}`, { credentials: 'include' });
         let d = await res.json();
-
-        // If no ships near source, fetch all available ships to provide options
-        if (!d.success || d.ships.length === 0) {
-            res = await fetch(`${API}/api/v3/manager/ships/available`, { credentials: 'include' });
-            d = await res.json();
-        }
 
         if (d.success && d.ships.length > 0) {
             d.ships.forEach(s => {
                 const opt = document.createElement('option');
                 opt.value = s.id;
-                opt.textContent = `${s.name} (${s.type}) - ${s.available_slots || s.container_slots - s.used_slots} slots open`;
+                
+                // Formulate Route String
+                const routeStr = s.route_stops && s.route_stops.length > 0 ? s.route_stops.map(st => st.port_name).join(' → ') : 'No Route Defined';
+                const openSlots = s.available_slots != null ? s.available_slots : (s.container_slots - s.used_slots);
+
+                if (s.isMatch) {
+                    opt.textContent = `✅ [SUGGESTED] ${s.name} (${openSlots} slots open) | MATCHES ROUTE: ${routeStr}`;
+                    opt.style.color = '#34d399';
+                    opt.style.fontWeight = 'bold';
+                    opt.className = "text-success fw-bold bg-dark";
+                } else {
+                    opt.textContent = `❌ [MISMATCH] ${s.name} - Wrong Route / Reverse Direction | (Route: ${routeStr})`;
+                    opt.style.color = '#f87171';
+                    opt.className = "text-danger bg-dark";
+                }
                 select.appendChild(opt);
             });
-            // Auto-select first ship (proactive)
-            select.value = d.ships[0].id;
+            
+            // System Logic (AUTO MATCH) - auto selects the first valid matching route
+            const matchShip = d.ships.find(s => s.isMatch);
+            select.value = matchShip ? matchShip.id : d.ships[0].id;
             onAcceptShipSelected();
         } else {
             const opt = document.createElement('option');
@@ -393,23 +455,28 @@ function renderShipments(list) {
         return `
         <tr id="co-ship-${s.id}">
             <td class="font-monospace fw-bold text-primary">${s.user_prefix || 'SS'}-${s.id}</td>
-            <td class="text-white">${esc(s.customer_name || '—')}</td>
-            <td class="text-white-50 small">${shortR(s)}</td>
+            <td class="text-white">
+                <div class="fw-bold">${esc(s.customer_name || '—')}</div>
+                <div class="x-small text-white-50">${esc(s.mode || 'Ocean')} | ${esc(s.product_type || 'Cargo')}</div>
+            </td>
+            <td class="text-white-50 small">
+                <div>${shortR(s)}</div>
+                ${s.vessel_route ? `<div class="mt-1 fst-italic text-info opacity-75 text-truncate" style="font-size:0.65rem; max-width: 180px;" title="${esc(s.vessel_route)}">Route: ${esc(s.vessel_route).replace(/ → /g, ' &raquo; ')}</div>` : ''}
+            </td>
             <td>${typeBadge}</td>
-            <td class="text-white-50">${esc(s.mode || 'Ocean')}</td>
-            <td>${stBadge(s.status)}</td>
-            <td class="text-white-50 small">${s.estimated_arrival ? fmtD(s.estimated_arrival) : '—'}</td>
-            <td class="text-white-50">$${num(s.estimated_cost)}</td>
             <td>
-                <div class="d-flex gap-1">
+                <div class="text-info x-small fw-bold text-truncate" style="max-width:140px;">
+                    ${s.vessel_name ? `<i class="fas fa-ship me-1"></i>${esc(s.vessel_name)}` : esc(s.allocated_ship_name || s.ship_name || 'Pending Vessel')}
+                </div>
+                <div class="text-white-50 x-small">${s.estimated_arrival ? fmtD(s.estimated_arrival) : 'No ETA'} ${s.vessel_current_port ? `<span class="ms-1" title="Current Location">📍 ${esc(s.vessel_current_port)}</span>` : ''}</div>
+            </td>
+            <td>${stBadge(s.status)}</td>
+            <td>
+                <div class="d-flex gap-1 justify-content-end">
+                    ${s.status === 'Ship Allocated' ? `<button class="btn btn-sm btn-success border-success bg-success bg-opacity-10 text-success fw-bold" onclick="quickConfirmShipment(${s.id})" title="Start Logistics Flow"><i class="fas fa-check-circle me-1"></i>Confirm</button>` : ''}
+                    <button class="btn btn-sm btn-dark border-secondary text-primary" title="Manage Logistics" onclick="openShipmentManagement(${s.id})"><i class="fas fa-tasks"></i></button>
                     <button class="btn btn-sm btn-dark border-secondary text-white-50" title="View Details" onclick="openDetailsModal(${s.id})"><i class="fas fa-eye"></i></button>
-                    <select class="co-input" id="status-sel-${s.id}" style="width:130px;padding:4px 8px;font-size:0.75rem;">
-                        <option value="">Update Case</option>
-                        <option>Cargo Loaded</option>
-                        <option>In Transit</option>
-                        <option>Delivered</option>
-                    </select>
-                    <button class="btn-co btn-status" onclick="updateShipmentStatus(${s.id})"><i class="fas fa-save"></i></button>
+                    <button class="btn btn-sm btn-dark border-secondary text-info" title="Invoice" onclick="generateInvoice(${s.id})"><i class="fas fa-file-invoice"></i></button>
                 </div>
             </td>
         </tr>`;
@@ -417,6 +484,28 @@ function renderShipments(list) {
 }
 
 let ALL_PENDING_REQUESTS = [];
+
+async function quickConfirmShipment(id) {
+    if(!confirm("Are you sure you want to Override and verify this Shipment for Live Tracking?")) return;
+    try {
+        const res = await fetch(`${API}/api/company/shipments/${id}/status`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'Confirmed' })
+        });
+        const d = await res.json();
+        if(d.success) {
+            toast('Shipment Confirmed. Live Tracking Unlocked!', 'success');
+            loadShipments(); // reload the table
+            if(window.loadTrackingLogs) loadTrackingLogs();
+        } else {
+            toast(d.message, 'error');
+        }
+    } catch(e) {
+        toast('Server error during confirmation', 'error');
+    }
+}
 
 function openDetailsModal(id, isPending = false) {
     const s = isPending
@@ -506,6 +595,58 @@ function openDetailsModal(id, isPending = false) {
     openModal('details-modal');
 }
 
+async function openShipmentManagement(id) {
+    const s = ALL_SHIPMENTS.find(x => x.id == id);
+    if (!s) return;
+    
+    setVal('edit-ship-id', s.id);
+    setV('edit-ship-ref', `${s.user_prefix || 'SS'}-${s.id}`);
+    setVal('edit-departure', s.estimated_departure ? s.estimated_departure.split('T')[0] : '');
+    setVal('edit-arrival', s.estimated_arrival ? s.estimated_arrival.split('T')[0] : '');
+    setVal('edit-location', s.current_port || '');
+
+    // Load ship options
+    const select = document.getElementById('edit-vessel-select');
+    select.innerHTML = '<option value="">-- No Vessel Assigned --</option>';
+    try {
+        const ships = await fetchVessels();
+        ships.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = `${v.name} (${v.type})`;
+            if (v.id == s.allocated_ship_id) opt.selected = true;
+            select.appendChild(opt);
+        });
+    } catch(e) {}
+
+    openModal('edit-shipment-modal');
+}
+
+async function saveShipmentManagement() {
+    const id = val('edit-ship-id');
+    const update = {
+        shipId: val('edit-vessel-select'),
+        departureDate: val('edit-departure'),
+        arrivalDate: val('edit-arrival'),
+        location: val('edit-location')
+    };
+
+    try {
+        const res = await fetch(`${API}/api/company/shipment/${id}/manage-logistics`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(update)
+        });
+        const d = await res.json();
+        toast(d.message, d.success ? 'success' : 'error');
+        if (d.success) {
+            closeModal('edit-shipment-modal');
+            loadShipments();
+        }
+    } catch (e) { toast('Failed to update logistics', 'error'); }
+}
+
 async function updateShipmentStatus(id) {
     const sel = document.getElementById(`status-sel-${id}`);
     if (!sel?.value) { toast('Select a status first', 'error'); return; }
@@ -540,28 +681,40 @@ async function loadVessels() {
 
         tbody.innerHTML = d.ships.map(v => {
             const slotsPct = Math.round((v.used_slots / v.container_slots) * 100);
+            const cargoCount = ALL_SHIPMENTS.filter(s => s.allocated_ship_id == v.id).length;
             return `
-            <tr>
-                <td class="text-white fw-bold">${esc(v.name)}</td>
-                <td>
-                    <div class="text-white small">${esc(v.type)}</div>
-                    <div class="text-white-50 x-small">${esc(v.cargo_types || 'General Cargo')}</div>
+            <tr class="transition-all hover-glow">
+                <td class="text-white fw-bold">
+                    <div>${esc(v.name)}</div>
+                    <div class="x-small text-white-50 font-monospace">${v.mmsi || 'IMO-Unknown'}</div>
                 </td>
                 <td>
-                    <div class="text-white small">${v.used_slots} / ${v.container_slots} TEU</div>
-                    <div class="progress" style="height:4px; width:80px; background:rgba(255,255,255,0.05);">
+                    <div class="text-white small">${esc(v.type)}</div>
+                    <div class="text-white-50 x-small">${esc(v.cargo_types || 'Multi-Modal')}</div>
+                </td>
+                <td>
+                    <div class="d-flex justify-content-between x-small mb-1">
+                        <span class="text-white-50">${v.used_slots} / ${v.container_slots} TEU</span>
+                        <span class="text-primary">${slotsPct}%</span>
+                    </div>
+                    <div class="progress" style="height:6px; background:rgba(255,255,255,0.05); border-radius:10px;">
                         <div class="progress-bar bg-primary" style="width:${slotsPct}%"></div>
                     </div>
                 </td>
                 <td>
-                    <div class="text-info small">${esc(v.current_port || v.location)}</div>
-                    <div class="text-white-50 x-small">Next: ${v.next || '—'}</div>
+                    <div class="text-white small fw-bold">${esc(v.current_port || 'At Sea')}</div>
+                    <div class="x-small text-white-50">${v.route_stops?.length ? v.route_stops.map(s => s.port_name).join(' → ') : 'No fixed route assigned'}</div>
+                </td>
+                <td class="text-center">
+                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-20 rounded-pill px-3">
+                        <i class="fas fa-box-open me-1"></i> ${cargoCount}
+                    </span>
                 </td>
                 <td>${stBadge(v.status || 'Available')}</td>
                 <td>
                     <div class="d-flex gap-1">
-                        <button class="btn-co btn-edit" title="Manage Route" onclick="openRouteModal(${v.id}, '${esc(v.name)}')"><i class="fas fa-map-marked-alt"></i></button>
-                        <button class="btn-co btn-delete" onclick="deleteVessel(${v.id})"><i class="fas fa-trash"></i></button>
+                        <button class="btn-co btn-edit btn-sm" title="Route Planner" onclick="openRouteModal(${v.id}, '${esc(v.name)}')"><i class="fas fa-map-marked-alt"></i></button>
+                        <button class="btn-co btn-delete btn-sm" onclick="deleteVessel(${v.id})"><i class="fas fa-trash"></i></button>
                     </div>
                 </td>
             </tr>`;
@@ -813,13 +966,6 @@ function assignContainer() {
         </div>`).join('');
     toast(`Container ${contId} assigned to ${shipId}`, 'success');
 
-    // Update status on server
-    fetch(`${API}/api/company/shipments/${shipId}/status`, {
-        method: 'PATCH', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'Container Allocated' })
-    }).catch(() => { });
-
     setVal('cont-shipment-id', '');
     setVal('cont-id', '');
 }
@@ -888,21 +1034,58 @@ async function loadCustomers() {
             return;
         }
         if (countEl) countEl.innerText = d.customers.length;
-        setV('nav-customers', d.customers.length);
-        tbody.innerHTML = d.customers.map(c => `
-            <tr>
-                <td class="text-white fw-semibold">${esc(c.name)}</td>
-                <td class="text-white-50">${esc(c.email)}</td>
-                <td class="text-info">${c.shipment_count}</td>
+        setV('nav-customers', d.customers.length || '--');
+        
+        tbody.innerHTML = d.customers.map(c => {
+            const kycStatus = c.kyc_status || 'Pending';
+            const kycBadge = kycStatus === 'Approved' ? 'bg-success' : kycStatus === 'Rejected' ? 'bg-danger' : 'bg-warning';
+            const isActive = c.is_blocked !== 1;
+            
+            return `
+            <tr class="transition-all hover-glow">
+                <td>
+                    <div class="text-white fw-bold">${esc(c.name)}</div>
+                    <div class="x-small text-white-50">${esc(c.email)}</div>
+                </td>
+                <td class="text-center">
+                    <div class="text-white small fw-bold">${c.shipment_count}</div>
+                    <div class="x-small text-white-50">Shipments</div>
+                </td>
                 <td class="text-white-50 small">${fmtD(c.last_shipment)}</td>
-                <td class="text-success">$${num(c.total_value)}</td>
-                <td><a href="mailto:${esc(c.email)}" class="btn-co btn-status"><i class="fas fa-envelope me-1"></i>Contact</a></td>
-            </tr>`).join('');
+                <td>
+                    <span class="badge ${kycBadge} bg-opacity-10 text-capitalize px-3 rounded-pill" style="font-size:10px; border: 1px solid currentColor;">${kycStatus}</span>
+                </td>
+                <td>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleUserStatus(${c.id}, this.checked)">
+                        <label class="x-small ${isActive ? 'text-success' : 'text-danger'}">${isActive ? 'Active' : 'Blocked'}</label>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn-co btn-status py-1 px-2" onclick="location.href='mailto:${esc(c.email)}'"><i class="fas fa-envelope"></i></button>
+                        <button class="btn-co btn-edit py-1 px-2" onclick="viewCustomerDetails(${c.id})"><i class="fas fa-user-gear"></i></button>
+                    </div>
+                </td>
+            </tr>`;
+        }).join('');
     } catch (e) {
         tbody.innerHTML = errRow(6, 'Error loading customers');
-        if (countEl) countEl.innerText = '';
-        setV('nav-customers', '');
     }
+}
+
+async function toggleUserStatus(userId, active) {
+    try {
+        const res = await fetch(`${API}/api/company/customer/${userId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ isBlocked: !active })
+        });
+        const d = await res.json();
+        toast(d.message || (active ? 'User Activated' : 'User Blocked'), d.success ? 'success' : 'error');
+        loadCustomers();
+    } catch (e) { toast('Status update failed', 'error'); }
 }
 
 // ── DOCUMENTS ─────────────────────────────────────────────────────
@@ -1305,21 +1488,36 @@ async function submitTracking() {
     const shipmentId = val('tr-shipment');
     if (!shipmentId) { toast('Select a shipment first', 'error'); return; }
     
-    // Auto-detect best status for "Push"
+    // Bind to the exact UI Dropdown value to pass strict Validation Strings
+    const status = val('tr-event'); 
+    
     const s = ALL_SHIPMENTS.find(x => x.id == shipmentId);
-    const status = (s && s.status === 'In Transit') ? 'Vessel Voyaging' : 'At Sea (Location Pulse)';
-    const location = s ? (s.current_port || 'AIS Interpolated') : 'AIS Live';
+    const location = s?.vessel_current_port || 'AIS Network Ping';
+
+    // Disable button to prevent double fire
+    const btn = document.getElementById('push-track-btn');
+    if (btn) btn.disabled = true;
 
     try {
         const r = await fetch(`${API}/api/company/tracking/update`, {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ shipmentId, status, location, notes: 'Automated Position Broadcast' })
+            body: JSON.stringify({ shipmentId, status, location, notes: `Manual status logged by system: ${status}` })
         });
         const d = await r.json();
-        toast(d.success ? 'Live Pulse Pushed' : d.message, d.success ? 'success' : 'error');
-        if (d.success) loadTrackingLogs();
-    } catch (e) { toast('Server error', 'error'); }
+        toast(d.success ? 'Live Pipeline Successfully Updated!' : d.message, d.success ? 'success' : 'error');
+        
+        if (d.success) {
+            // refresh timeline visual right side
+            selectShipmentForTracking(shipmentId);
+            // Refresh main table
+            loadShipments(); 
+        }
+    } catch (e) { 
+        toast('Server error over pipeline', 'error'); 
+    } finally {
+        if (btn) btn.disabled = false;
+    }
 }
 
 // ── FINANCIAL ─────────────────────────────────────────────────────
@@ -1360,9 +1558,13 @@ async function loadFinance() {
                 <td class="text-white">${esc(s.customer_name || '—')}</td>
                 <td class="text-white-50 small">${shortR(s)}</td>
                 <td>${typeBadge}</td>
-                <td class="text-white-50">$${num(s.estimated_cost)}</td>
-                <td class="text-success">$${num(s.estimated_cost * 0.95)}</td>
-                <td>${stBadge('Delivered')}</td>
+                <td class="text-white-50">₹${num(s.estimated_cost * 84)}</td>
+                <td class="text-success">₹${num(s.estimated_cost * 84 * 0.95)}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-info rounded-pill px-3 py-1" onclick="generateInvoice(${s.id})">
+                        <i class="fas fa-file-invoice me-1"></i> Invoice
+                    </button>
+                </td>
             </tr>`;
         }).join('');
     } catch (e) { }
@@ -1411,6 +1613,20 @@ async function loadNotifications() {
                 : '<div class="text-white-50 text-center py-5">No notifications yet.</div>';
         }
     } catch (e) { console.error('Notifications error:', e); }
+}
+
+async function generateInvoice(id) {
+    toast(`Generating invoice for Shipment #${id}...`, 'info');
+    try {
+        const res = await fetch(`${API}/api/finance/invoice/generate/${id}`, { method: 'POST', credentials: 'include' });
+        const d = await res.json();
+        if (d.success) {
+            toast('Invoice generated successfully!', 'success');
+            window.open(`documents.html?shipmentId=${id}`, '_blank');
+        } else {
+            toast(d.error || 'Failed to generate', 'error');
+        }
+    } catch (e) { toast('Server error', 'error'); }
 }
 
 function toggleNotifs() {
@@ -1537,7 +1753,10 @@ function stBadge(s) {
         'Booked': 'b-booked', 'booked': 'b-booked', 'Accepted': 'b-accepted', 'At Port': 'b-port',
         'In Transit': 'b-transit', 'Delivered': 'b-delivered', 'delivered': 'b-delivered',
         'Declined': 'b-declined', 'Rejected': 'b-declined', 'Verified': 'b-delivered', 'Submitted': 'b-booked',
-        'Available': 'b-accepted', 'At Sea': 'b-transit', 'Maintenance': 'b-declined', 'Scheduled': 'b-port'
+        'Available': 'b-accepted', 'At Sea': 'b-transit', 'Maintenance': 'b-declined', 'Scheduled': 'b-port',
+        'Pending Manager Approval': 'b-booked', 'Ship Allocated': 'b-port', 'Documents Pending': 'b-booked',
+        'Payment Pending': 'b-booked', 'Cargo Ready': 'b-accepted', 'Confirmed': 'b-accepted',
+        'Cargo Loaded': 'b-port'
     };
     const cls = map[s] || 'b-accepted';
     return `<span class="badge-co ${cls}">${esc(s)}</span>`;
@@ -1659,3 +1878,91 @@ setInterval(() => {
         }
     }
 }, 30000); 
+
+// ── SUPPORT TICKETS ───────────────────────────────────────────────
+async function loadCompanyTickets() {
+    const list = document.getElementById('support-tickets-body');
+    const statusFilter = val('support-status-filter');
+    if (!list) return;
+
+    try {
+        const res = await fetch(`${API}/api/support/company-tickets`, { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.success) {
+            let tickets = data.tickets;
+            if (statusFilter) {
+                tickets = tickets.filter(t => t.status === statusFilter);
+            }
+
+            // Update badge
+            const openCount = data.tickets.filter(t => t.status === 'Open').length;
+            const badge = document.getElementById('nav-support');
+            if (badge) {
+                badge.innerText = openCount || '--';
+                badge.style.display = openCount > 0 ? 'inline-block' : 'none';
+            }
+
+            if (tickets.length === 0) {
+                list.innerHTML = '<tr><td colspan="7" class="text-center text-white-50 py-4">No tickets found.</td></tr>';
+                return;
+            }
+
+            list.innerHTML = tickets.map(t => `
+                <tr class="transition-all hover-glow">
+                    <td><span class="text-info fw-bold">TKT-${t.id}</span></td>
+                    <td>
+                        <div class="fw-bold text-white">${t.customer_name}</div>
+                        <div class="x-small text-white-50">${t.customer_email}</div>
+                    </td>
+                    <td>
+                        <div class="x-small badge bg-dark border border-secondary border-opacity-20">#${t.shipment_id || 'N/A'}</div>
+                        <div class="x-small text-white-50 mt-1">${t.tracking_number || ''}</div>
+                    </td>
+                    <td><span class="badge bg-secondary bg-opacity-10 text-white border border-white border-opacity-10">${t.issue_type}</span></td>
+                    <td style="max-width: 200px;">
+                        <div class="text-truncate text-white-50 small" title="${t.description}">${t.description}</div>
+                    </td>
+                    <td>
+                        <span class="badge ${getTicketStatusClass(t.status)} px-3 rounded-pill">${t.status}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <select class="co-input py-1 px-2 x-small" style="width:110px;" onchange="updateTicketStatus(${t.id}, this.value)">
+                                <option value="Open" ${t.status === 'Open' ? 'selected' : ''}>Open</option>
+                                <option value="In Progress" ${t.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                <option value="Resolved" ${t.status === 'Resolved' ? 'selected' : ''}>Resolved</option>
+                                <option value="Closed" ${t.status === 'Closed' ? 'selected' : ''}>Closed</option>
+                            </select>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    } catch (err) { console.error(err); }
+}
+
+function getTicketStatusClass(status) {
+    switch (status) {
+        case 'Open': return 'bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25';
+        case 'In Progress': return 'bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25';
+        case 'Resolved': return 'bg-success bg-opacity-10 text-success border border-success border-opacity-25';
+        default: return 'bg-secondary bg-opacity-10 text-white-50 border border-secondary border-opacity-25';
+    }
+}
+
+async function updateTicketStatus(id, newStatus) {
+    try {
+        const res = await fetch(`${API}/api/support/ticket/${id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ status: newStatus })
+        });
+        const d = await res.json();
+        if (d.success) {
+            showToast(`Ticket TKT-${id} updated to ${newStatus}`, 'success');
+            loadCompanyTickets();
+        }
+    } catch (e) { showToast('Update failed', 'error'); }
+}

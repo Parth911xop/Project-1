@@ -52,7 +52,7 @@ function showSection(name, el) {
         companies: '🏢 Company Management', shipments: '📦 Shipment Management',
         ports: '⚓ Port Management', routes: '🛣️ Routes & Pricing',
         mapping: '🗺️ Route Mapping',
-        documents: '📄 Document Verification', tracking: '🗺️ Tracking Management',
+        kyc: '🛡️ KYC Verifications', documents: '📄 Document Verification', tracking: '🗺️ Tracking Management',
         analytics: '📈 Analytics & Reports', notifications: '🔔 Notifications',
         support: '🎫 Support Tickets', roles: '🛡️ Role Management',
         logs: '📋 System Logs', settings: '⚙️ System Settings'
@@ -63,7 +63,7 @@ function showSection(name, el) {
     // Lazy load data when section opens
     const loaders = {
         users: loadUsers, companies: loadCompanies, shipments: loadAdminShipments,
-        documents: loadDocuments, tracking: loadTrackingLogs, analytics: loadAnalytics,
+        kyc: loadPendingKYC, documents: loadDocuments, tracking: loadTrackingLogs, analytics: loadAnalytics,
         notifications: loadNotifications, roles: loadRoles, logs: loadLogs,
         ports: loadPorts, routes: loadRoutes, mapping: initRouteMap, support: loadTickets, settings: loadSettings
     };
@@ -74,12 +74,11 @@ function showSection(name, el) {
 // ── DASHBOARD ─────────────────────────────────────────────────────
 async function loadDashboard() {
     try {
-        const r = await fetch(`${API}/api/admin/stats/detailed`, { credentials: 'include' });
+        const r = await fetch(`${API}/api/admin/dashboard`, { credentials: 'include' });
+        if (!r.ok) { console.error("Dashboard data fetch failed"); return; }
         const d = await r.json();
         if (!d.success) return;
 
-        setV('kpi-users', d.users);
-        setV('kpi-companies', d.companies);
         setV('kpi-active', d.activeShipments);
         setV('kpi-delivered', d.delivered);
         setV('kpi-docs', d.pendingDocs);
@@ -1065,4 +1064,59 @@ async function initRouteMap() {
             }
         } catch (err) { console.error("Map fleet & initialization error:", err); }
     }, 100);
+}
+
+// ── KYC APPROVALS ────────────────────────────────────────────────
+async function loadPendingKYC() {
+    const tbody = document.getElementById('kyc-body');
+    if (!tbody) return;
+    tbody.innerHTML = loadingRow(6);
+    try {
+        const r = await fetch(`${API}/api/kyc/admin/pending`, { credentials: 'include' });
+        const d = await r.json();
+        if (!d.success) { tbody.innerHTML = errorRow(6, 'Failed to load KYC'); return; }
+        
+        const filter = document.getElementById('kyc-filter')?.value || 'Pending';
+        let list = d.pendingRequests || [];
+
+        if (!list.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-white-50 py-4">No pending KYC requests.</td></tr>'; return; }
+        
+        tbody.innerHTML = list.map(req => `
+            <tr id="kyc-row-${req.id}">
+                <td>
+                    <div class="fw-bold text-white">${esc(req.name || '—')}</div>
+                    <div class="x-small text-white-50">${esc(req.email)}</div>
+                </td>
+                <td class="text-info">${esc(req.doc_type)}</td>
+                <td><a href="${API}${req.file_url}" target="_blank" class="btn-admin-sm btn-block"><i class="fas fa-eye"></i> View</a></td>
+                <td class="text-white-50 small">${fmtDate(req.updated_at)}</td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn-admin-sm btn-approve" onclick="verifyKYC(${req.id}, 'Approved')"><i class="fas fa-check"></i></button>
+                        <button class="btn-admin-sm btn-reject" onclick="promptKYCReject(${req.id})"><i class="fas fa-times"></i></button>
+                    </div>
+                </td>
+            </tr>`).join('');
+            
+        setV('nav-badge-kyc', list.length);
+    } catch (e) { tbody.innerHTML = errorRow(6, 'Server error'); }
+}
+
+async function verifyKYC(id, status, reason = '') {
+    try {
+        const r = await fetch(`${API}/api/kyc/admin/verify`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, status, reason })
+        });
+        const d = await r.json();
+        toast(d.message, d.success ? 'success' : 'error');
+        if (d.success) loadPendingKYC();
+    } catch (e) { toast('Error updating KYC', 'error'); }
+}
+
+function promptKYCReject(id) {
+    const reason = prompt("Enter rejection reason:");
+    if (reason === null) return;
+    verifyKYC(id, 'Rejected', reason);
 }

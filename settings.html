@@ -23,13 +23,16 @@
         </div>
 
         <nav class="d-flex flex-column gap-1">
-            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
-            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments</a>
+            <a href="shipments.html" class="nav-item-dash ">
+                <i class="fas fa-th-large w-5"></i> Dashboard
+            </a>
             <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
-            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="track.html" class="nav-item-dash "><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="documents.html" class="nav-item-dash "><i class="fas fa-folder-open w-5"></i> Documents</a>
+            <a href="schedules.html" class="nav-item-dash "><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
             <hr class="border-secondary opacity-25 my-3">
-            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice w-5"></i> Billing</a>
-            <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
+            <a href="finance.html" class="nav-item-dash "><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
+            <a href="support.html" class="nav-item-dash "><i class="fas fa-headset w-5"></i> Support</a>
             <a href="settings.html" class="nav-item-dash active"><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
 
@@ -79,7 +82,7 @@
                     </div>
 
                     <!-- Notifications -->
-                    <div class="card-enterprise p-4">
+                    <div class="card-enterprise p-4 mb-4">
                         <h5 class="text-white fw-bold mb-3">Notifications</h5>
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" id="emailNotif" checked>
@@ -90,6 +93,38 @@
                             <input class="form-check-input" type="checkbox" id="smsNotif">
                             <label class="form-check-label text-white" for="smsNotif">SMS Alerts</label>
                             <p class="text-muted x-small mb-0">Receive critical updates via SMS.</p>
+                        </div>
+                    </div>
+
+                    <!-- Saved Addresses -->
+                    <div class="card-enterprise p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="text-white fw-bold mb-0">Saved Addresses</h5>
+                            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus me-1"></i> Add New</button>
+                        </div>
+                        <div class="border border-secondary border-opacity-25 rounded p-3 mb-2 bg-dark">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white small fw-bold mb-1">Main Warehouse</h6>
+                                    <p class="text-white-50 x-small mb-0">123 Logistics Park, Mumbai, Maharashtra 400001</p>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-link text-white-50"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-link text-danger"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="border border-secondary border-opacity-25 rounded p-3 bg-dark">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white small fw-bold mb-1">Delhi Distribution Center</h6>
+                                    <p class="text-white-50 x-small mb-0">Sector 15, Industrial Area, New Delhi 110015</p>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-link text-white-50"><i class="fas fa-edit"></i></button>
+                                    <button class="btn btn-sm btn-link text-danger"><i class="fas fa-trash"></i></button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
