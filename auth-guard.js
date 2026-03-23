@@ -62,9 +62,9 @@
 
         // Role-Based Page Access Control
         const allowedPages = {
-            customer: ['shipments.html', 'track.html', 'wizard.html', 'finance.html', 'analytics.html', 'profile.html'],
-            company: ['company-dashboard.html', 'vehicles.html', 'earnings.html', 'profile.html', 'analytics.html'],
-            admin: ['admin-dashboard.html', 'shipments.html', 'finance.html', 'analytics.html', 'profile.html']
+            customer: ['shipments.html', 'track.html', 'wizard.html', 'finance.html', 'analytics.html', 'profile.html', 'documents.html', 'schedules.html', 'support.html', 'settings.html'],
+            company: ['company-dashboard.html', 'vehicles.html', 'earnings.html', 'profile.html', 'analytics.html', 'documents.html', 'schedules.html', 'support.html', 'settings.html', 'shipments.html', 'wizard.html'],
+            admin: ['admin-dashboard.html', 'shipments.html', 'finance.html', 'analytics.html', 'profile.html', 'documents.html', 'schedules.html', 'support.html', 'settings.html', 'track.html']
         };
 
         const currentPage = path.split('/').pop();

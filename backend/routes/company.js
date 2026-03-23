@@ -64,9 +64,11 @@ module.exports = async (pool, createNotification) => {
             // Fetch shipments that are 'Booked' and not yet assigned to a company
             const result = await pool.query(
                 `SELECT s.*, 
-                 c.full_name as customer_name
+                 COALESCE(cp.full_name, u.name) as customer_name,
+                 u.email as customer_email
                  FROM shipments s 
-                 LEFT JOIN customer_profiles c ON s.customer_id = c.user_id 
+                 LEFT JOIN users u ON s.customer_id = u.id
+                 LEFT JOIN customer_profiles cp ON u.id = cp.user_id 
                  WHERE s.status = 'Booked' AND s.company_id IS NULL
                  ORDER BY s.created_at DESC`
             );

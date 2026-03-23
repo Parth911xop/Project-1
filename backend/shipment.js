@@ -41,6 +41,14 @@ const createShipmentTable = async (pool) => {
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN consignee_details JSONB;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN incoterms VARCHAR(10);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN mode VARCHAR(20);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(100);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_lat NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_lng NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lat NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lng NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS mmsi VARCHAR(20);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS ship_name VARCHAR(255);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_name_manual VARCHAR(255);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN hs_code VARCHAR(50);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN description TEXT;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN consignee_name VARCHAR(255);`); } catch (e) { }
@@ -49,13 +57,13 @@ const createShipmentTable = async (pool) => {
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN weight_kg DECIMAL(10, 2);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN volume_cbm DECIMAL(10, 2);`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN cargo_value DECIMAL(10, 2);`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN company_id INTEGER REFERENCES users(id);`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN carbon_emission NUMERIC;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN vehicle_type VARCHAR(50);`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN cargo_details JSONB;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN estimated_departure TIMESTAMP;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN estimated_arrival TIMESTAMP;`); } catch (e) { }
-        try { await pool.query(`ALTER TABLE shipments ADD COLUMN product_type VARCHAR(100);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES users(id);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS carbon_emission NUMERIC;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS vehicle_type VARCHAR(50);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS cargo_details JSONB;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS estimated_departure TIMESTAMP;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS estimated_arrival TIMESTAMP;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS product_type VARCHAR(100);`); } catch (e) { }
 
         console.log("✅ Table 'shipments' ready");
     } catch (err) {
@@ -68,6 +76,49 @@ const createShipmentTable = async (pool) => {
 module.exports = (pool, createNotification, io) => {
     // Initialize table on load (or call explicitly in server.js)
     createShipmentTable(pool);
+
+    // Manager Direct Shipment Creation
+    router.post('/manager/create', async (req, res) => {
+        const {
+            trackingNumber, fromCountry, toCountry, mode, weight, productType,
+            customerNameManual, cargoDetails, hsCode, description,
+            mmsi, shipName, originLat, originLng, destLat, destLng
+        } = req.body;
+
+        const managerId = req.user?.userId;
+        if (!managerId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+        // Auto-lookup for ports if missing
+        const { getPortCoordinates } = require('./services/ports');
+        const oCoords = !originLat ? getPortCoordinates(fromCountry) : null;
+        const dCoords = !destLat ? getPortCoordinates(toCountry) : null;
+
+        try {
+            const result = await pool.query(
+                `INSERT INTO shipments (
+                    company_id, tracking_number, origin_address, destination_address,
+                    origin_country, destination_country, mode, weight_kg, product_type,
+                    customer_name_manual, status, hs_code, description, cargo_details,
+                    mmsi, ship_name, origin_lat, origin_lng, dest_lat, dest_lng
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Accepted', $11, $12, $13, $14, $15, $16, $17, $18, $19)
+                RETURNING id`,
+                [
+                    managerId, trackingNumber, fromCountry, toCountry, fromCountry, toCountry,
+                    mode || 'Sea', weight || 0, productType || 'General Cargo',
+                    customerNameManual, hsCode, description,
+                    cargoDetails ? JSON.stringify(cargoDetails) : '{}',
+                    mmsi, shipName,
+                    originLat || oCoords?.lat, originLng || oCoords?.lng,
+                    destLat || dCoords?.lat, destLng || dCoords?.lng
+                ]
+            );
+
+            res.json({ success: true, shipmentId: result.rows[0].id, message: 'Direct shipment created and accepted' });
+        } catch (err) {
+            console.error('Manager create error:', err);
+            res.status(500).json({ success: false, message: 'Database error creating shipment' });
+        }
+    });
 
     // Create a new shipment
     router.post('/create', async (req, res) => {
@@ -90,7 +141,19 @@ module.exports = (pool, createNotification, io) => {
             return res.status(400).json({ success: false, message: "Missing required fields" });
         }
 
-        const initialStatus = 'Pending Manager Approval';
+        // --- KYC STATUS CHECK ---
+        const userKycRes = await pool.query('SELECT kyc_status FROM users WHERE id = $1', [userId]);
+        const kycStatus = userKycRes.rows[0]?.kyc_status;
+
+        if (kycStatus !== 'Approved') {
+            return res.status(403).json({ 
+                success: false, 
+                message: "KYC Verification Required. Please upload and get your ID documents approved before booking a shipment.",
+                kycStatus: kycStatus
+            });
+        }
+
+        const initialStatus = 'Booked';
         const origin = originAddress || fromCountry || '';
         const dest = destinationAddress || toCountry || '';
         const currency = 'USD';
@@ -98,8 +161,14 @@ module.exports = (pool, createNotification, io) => {
         try {
             const {
                 hsCode, description, consigneeName, consigneeContact, cargoValue, iecCode, companyId,
-                preferredShippingDate, sourcePort, destinationPort
+                preferredShippingDate, sourcePort, destinationPort,
+                mmsi, shipName, originLat, originLng, destLat, destLng
             } = req.body;
+
+            // Auto-lookup for ports if missing
+            const { getPortCoordinates } = require('./services/ports');
+            const oCoords = !originLat ? getPortCoordinates(fromCountry || sourcePort) : null;
+            const dCoords = !destLat ? getPortCoordinates(toCountry || destinationPort) : null;
 
             const result = await pool.query(
                 `INSERT INTO shipments (
@@ -109,9 +178,10 @@ module.exports = (pool, createNotification, io) => {
                     mode, weight_kg, carbon_emission, status,
                     hs_code, description, consignee_name, consignee_contact,
                     cargo_value, iec_code, product_type, cargo_details, company_id,
-                    preferred_shipping_date, source_port, destination_port
+                    preferred_shipping_date, source_port, destination_port,
+                    mmsi, ship_name, origin_lat, origin_lng, dest_lat, dest_lng
                 )
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
                 RETURNING id`,
                 [
                     userId,
@@ -138,12 +208,18 @@ module.exports = (pool, createNotification, io) => {
                     companyId || null,
                     preferredShippingDate || null,
                     sourcePort || origin || null,
-                    destinationPort || dest || null
+                    destinationPort || dest || null,
+                    mmsi || null,
+                    shipName || null,
+                    originLat || oCoords?.lat,
+                    originLng || oCoords?.lng,
+                    destLat || dCoords?.lat,
+                    destLng || dCoords?.lng
                 ]
             );
 
             const shipmentId = result.rows[0].id;
-            
+
             // Fetch user prefix for booking ref/notif
             const userRes = await pool.query('SELECT email FROM users WHERE id = $1', [userId]);
             const prefix = userRes.rows[0]?.email ? userRes.rows[0].email.substring(0, 2).toUpperCase() : 'SS';
@@ -231,7 +307,7 @@ module.exports = (pool, createNotification, io) => {
         }
     });
 
-    // Get tracking history for a shipment
+    // Get tracking history for a shipment (Internal + External Hybrid)
     router.get('/:id/tracking', async (req, res) => {
         const { id } = req.params;
         try {
@@ -253,17 +329,83 @@ module.exports = (pool, createNotification, io) => {
                 return res.status(404).json({ success: false, message: 'Shipment not found' });
             }
 
-            const result = await pool.query(
+            // 1. Fetch Internal Logs
+            const localRes = await pool.query(
                 `SELECT id, shipment_id, lat, lng, status, location_note, timestamp
                  FROM tracking_logs
                  WHERE shipment_id = $1
                  ORDER BY timestamp ASC`,
                 [id]
             );
-            res.json({ success: true, logs: result.rows });
+
+            // 2. Fetch Shipment Details (Ports + Coords)
+            const shipRes = await pool.query(
+                `SELECT tracking_number, mode, origin_address, destination_address, 
+                        origin_lat, origin_lng, dest_lat, dest_lng 
+                 FROM shipments WHERE id = $1`, [id]);
+
+            let shipInfo = shipRes.rows[0];
+
+            // Fallback for visual demonstration if ports are blank
+            if (shipInfo && !shipInfo.origin_lat) {
+                if (shipInfo.origin_address?.toLowerCase().includes('india')) { shipInfo.origin_lat = 18.94; shipInfo.origin_lng = 72.83; }
+                else { shipInfo.origin_lat = 1.35; shipInfo.origin_lng = 103.81; } // Singapore
+            }
+            if (shipInfo && !shipInfo.dest_lat) {
+                if (shipInfo.destination_address?.toLowerCase().includes('china')) { shipInfo.dest_lat = 31.23; shipInfo.dest_lng = 121.47; }
+                else if (shipInfo.destination_address?.toLowerCase().includes('dubai')) { shipInfo.dest_lat = 25.20; shipInfo.dest_lng = 55.27; }
+                else { shipInfo.dest_lat = 51.50; shipInfo.dest_lng = -0.12; } // London
+            }
+
+            let externalData = null;
+            if (shipInfo && shipInfo.tracking_number) {
+                const { getExternalTracking } = require('./services/whereParcel');
+                externalData = await getExternalTracking(shipInfo.tracking_number);
+            }
+
+            res.json({
+                success: true,
+                shipment: shipInfo || null,
+                logs: localRes.rows,
+                external: externalData || null
+            });
         } catch (err) {
             console.error('Tracking history error:', err);
             res.status(500).json({ success: false, message: 'Database error' });
+        }
+    });
+
+    // Get Live Ship Location from VesselFinder Service
+    router.get('/:id/live-vessel', async (req, res) => {
+        const { id } = req.params;
+        try {
+            // Fetch shipment to get MMSI
+            const shipRes = await pool.query('SELECT mmsi, ship_name, origin_lat, origin_lng, dest_lat, dest_lng FROM shipments WHERE id = $1', [id]);
+            if (shipRes.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
+
+            const shipment = shipRes.rows[0];
+            const { mmsi, ship_name } = shipment;
+
+            if (!mmsi) {
+                return res.status(400).json({ success: false, message: 'MMSI not assigned to this shipment' });
+            }
+
+            const { getShipLocation } = require('./services/vesselFinder');
+            const liveLocation = await getShipLocation(mmsi, ship_name);
+
+            if (!liveLocation) {
+                return res.status(503).json({ success: false, message: 'Vessel location service unavailable' });
+            }
+
+            res.json({
+                success: true,
+                live: liveLocation,
+                shipment: shipment
+            });
+
+        } catch (err) {
+            console.error('Live vessel tracking error:', err);
+            res.status(500).json({ success: false, message: 'Server error fetching ship location' });
         }
     });
 
@@ -346,7 +488,7 @@ module.exports = (pool, createNotification, io) => {
             if (updateResult.rowCount === 0) {
                 return res.status(404).json({ success: false, message: 'Shipment not found or unauthorized' });
             }
-            
+
             // Fetch prefix
             const shipRes = await pool.query(`
                 SELECT s.customer_id, UPPER(LEFT(u.email, 2)) as prefix 
@@ -401,6 +543,88 @@ module.exports = (pool, createNotification, io) => {
         } catch (err) {
             console.error(err);
             res.status(500).json({ success: false, message: "Database error fetching history" });
+        }
+    });
+
+    // Update shipment details (HS Code, Consignee, Description)
+    router.patch('/:id/update-details', async (req, res) => {
+        const shipmentId = parseInt(req.params.id);
+        const { hsCode, consigneeName, description, consigneeContact, cargoValue, trackingNumber } = req.body;
+        const userId = req.user?.userId;
+
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+        try {
+            await pool.query(`
+                UPDATE shipments 
+                SET hs_code = COALESCE($1, hs_code),
+                    consignee_name = COALESCE($2, consignee_name),
+                    description = COALESCE($3, description),
+                    consignee_contact = COALESCE($4, consignee_contact),
+                    cargo_value = COALESCE($5, cargo_value),
+                    tracking_number = COALESCE($6, tracking_number),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $7`,
+                [hsCode, consigneeName, description, consigneeContact, cargoValue, trackingNumber, shipmentId]
+            );
+            res.json({ success: true, message: 'Shipment details updated' });
+        } catch (err) {
+            console.error('Update details error:', err);
+            res.status(500).json({ success: false, message: 'Database error' });
+        }
+    });
+
+    // Get Full Unified Tracking Object (Overrides Legacy Trackers)
+    router.get('/:id/tracking', async (req, res) => {
+        try {
+            const id = parseInt(req.params.id);
+            if (isNaN(id)) return res.status(400).json({ success: false, message: 'Invalid ID' });
+
+            const shipR = await pool.query('SELECT * FROM shipments WHERE id = $1', [id]);
+            if (shipR.rowCount === 0) return res.status(404).json({ success: false, message: 'Not found' });
+            const shipment = shipR.rows[0];
+
+            // 1. Logs / Events
+            const logsR = await pool.query('SELECT * FROM tracking_logs WHERE shipment_id = $1 ORDER BY timestamp DESC', [id]);
+            const eventsR = await pool.query('SELECT * FROM shipment_events WHERE shipment_id = $1 ORDER BY created_at DESC', [id]);
+            
+            // Combine both logs and events into one timeline if needed
+            const combinedLogs = [...logsR.rows];
+            eventsR.rows.forEach(e => combinedLogs.push({ stage: e.status, description: e.notes, updated_at: e.created_at, timestamp: e.created_at }));
+
+            // 2. Active Vessel Tracking System Context
+            let tracking = { status: shipment.status };
+            if (shipment.allocated_ship_id) {
+                const vR = await pool.query('SELECT name, current_lat, current_lng, current_port FROM vehicles WHERE id = $1', [shipment.allocated_ship_id]);
+                if (vR.rowCount > 0) {
+                    tracking.vessel = vR.rows[0].name;
+                    tracking.livePosition = { lat: vR.rows[0].current_lat, lng: vR.rows[0].current_lng, port: vR.rows[0].current_port };
+                }
+                
+                const stopsR = await pool.query('SELECT * FROM ship_route_stops WHERE ship_id = $1 ORDER BY stop_order ASC', [shipment.allocated_ship_id]);
+                const originTarget = (shipment.origin_address || '').toLowerCase();
+                const destTarget = (shipment.cargo_drop_port || shipment.destination_address || '').toLowerCase();
+                
+                const originIndex = stopsR.rows.findIndex(s => s.port_name.toLowerCase().includes(originTarget) || originTarget.includes(s.port_name.toLowerCase()));
+                const destIndex = stopsR.rows.findIndex(s => s.port_name.toLowerCase().includes(destTarget) || destTarget.includes(s.port_name.toLowerCase()));
+                
+                // Trim the route specifically to user's perspective journey segment if matches found
+                if (originIndex !== -1 && destIndex !== -1 && originIndex <= destIndex) {
+                    tracking.routeStops = stopsR.rows.slice(originIndex, destIndex + 1);
+                } else {
+                    tracking.routeStops = stopsR.rows;
+                }
+            }
+
+            res.json({
+                success: true,
+                shipment,
+                logs: combinedLogs,
+                tracking
+            });
+        } catch (e) {
+            console.error('Unified Tracking API Error:', e);
+            res.status(500).json({ success: false, message: 'Server Tracking Engine Failure' });
         }
     });
 

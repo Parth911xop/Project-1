@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="dist/leaflet.css">
     <link rel="stylesheet" href="notifications.css">
     <link rel="stylesheet" href="dashboard.css">
     <script src="auth-guard.js"></script>
@@ -391,16 +391,35 @@
             display: flex;
             align-items: center;
         }
+
         .btn-quick:hover {
             transform: translateX(4px);
             background: rgba(255, 255, 255, 0.05) !important;
         }
-        .btn-quick i { width: 22px; }
-        
-        .btn-quick-blue { border-color: #3b82f6 !important; color: #3b82f6 !important; }
-        .btn-quick-white { border-color: #ffffff !important; color: #ffffff !important; }
-        .btn-quick-green { border-color: #10b981 !important; color: #10b981 !important; }
-        .btn-quick-gold { border-color: #f59e0b !important; color: #f59e0b !important; }
+
+        .btn-quick i {
+            width: 22px;
+        }
+
+        .btn-quick-blue {
+            border-color: #3b82f6 !important;
+            color: #3b82f6 !important;
+        }
+
+        .btn-quick-white {
+            border-color: #ffffff !important;
+            color: #ffffff !important;
+        }
+
+        .btn-quick-green {
+            border-color: #10b981 !important;
+            color: #10b981 !important;
+        }
+
+        .btn-quick-gold {
+            border-color: #f59e0b !important;
+            color: #f59e0b !important;
+        }
     </style>
 </head>
 
@@ -416,20 +435,17 @@
         </div>
 
         <nav class="d-flex flex-column gap-1">
-            <a href="shipments.html" class="nav-item-dash active" id="nav-dashboard">
+            <a href="shipments.html" class="nav-item-dash active">
                 <i class="fas fa-th-large w-5"></i> Dashboard
-                <span class="badge bg-primary rounded-pill ms-auto" id="sidebar-shipment-count">--</span>
             </a>
             <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
-            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
-            <a href="documents.html" class="nav-item-dash"><i class="fas fa-folder-open w-5"></i> Documents</a>
-            <a href="#" class="nav-item-dash" id="nav-schedules" onclick="toggleSchedules(this); return false;"><i
-                    class="fas fa-calendar-alt w-5"></i> Schedules</a>
+            <a href="track.html" class="nav-item-dash "><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="documents.html" class="nav-item-dash "><i class="fas fa-folder-open w-5"></i> Documents</a>
+            <a href="schedules.html" class="nav-item-dash "><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
             <hr class="border-secondary opacity-25 my-3">
-            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
-            <a href="earnings.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
-            <a href="support.html" class="nav-item-dash"><i class="fas fa-headset w-5"></i> Support</a>
-            <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+            <a href="finance.html" class="nav-item-dash "><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
+            <a href="support.html" class="nav-item-dash "><i class="fas fa-headset w-5"></i> Support</a>
+            <a href="settings.html" class="nav-item-dash "><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
 
         <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
@@ -481,6 +497,22 @@
                 <button onclick="handleLogout()" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</button>
             </div>
         </header>
+
+        <!-- KYC Alert -->
+        <div id="kyc-dashboard-alert" class="alert d-none border-0 mx-4 mt-3" style="background: rgba(245, 158, 11, 0.08); border-radius: 12px; border-left: 4px solid #f59e0b !important; padding: 12px 20px;">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                        <i class="fas fa-id-card-alt"></i>
+                    </div>
+                    <div>
+                        <h6 class="text-white fw-bold mb-0" style="font-size:0.9rem;">Identity Verification Required</h6>
+                        <p class="text-white-50 small mb-0" style="font-size:0.75rem;">Please complete your KYC to unlock new bookings. Status: <span id="kyc-status-text" class="fw-bold text-warning text-uppercase">Pending</span></p>
+                    </div>
+                </div>
+                <a href="documents.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold shadow-sm" style="font-size:0.75rem;">Complete KYC <i class="fas fa-chevron-right ms-1 x-small"></i></a>
+            </div>
+        </div>
 
         <div class="p-4">
 
@@ -578,7 +610,38 @@
                 <span class="ms-auto text-muted x-small" id="filter-result-count"></span>
             </div>
 
-            <!-- MAIN GRID -->
+            <!-- Reschedule Modal -->
+            <div class="modal fade" id="rescheduleModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content bg-dark border border-secondary text-white">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title"><i class="fas fa-calendar-alt text-primary me-2"></i>Reschedule
+                                Pickup</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="text-white-50 small mb-4">Select a new pickup date and time for Shipment <strong
+                                    id="reschedule-ref" class="text-white"></strong>.</p>
+                            <div class="mb-3">
+                                <label class="form-label text-white-50 small fw-bold">New Pickup Date</label>
+                                <input type="date" class="form-control bg-dark border-secondary text-white">
+                            </div>
+                            <div class="mb-4">
+                                <label class="form-label text-white-50 small fw-bold">New Time Slot</label>
+                                <select class="form-select bg-dark border-secondary text-white">
+                                    <option>Morning (08:00 AM - 12:00 PM)</option>
+                                    <option>Afternoon (12:00 PM - 04:00 PM)</option>
+                                    <option>Evening (04:00 PM - 08:00 PM)</option>
+                                </select>
+                            </div>
+                            <button class="btn btn-primary w-100 rounded-pill fw-bold" onclick="confirmReschedule()"><i
+                                    class="fas fa-check me-2"></i>Confirm Reschedule</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN DASHBOARD SCRIPT -->
             <div class="content-grid">
 
                 <!-- SHIPMENTS TABLE -->
@@ -648,13 +711,16 @@
                             <a href="documents.html" class="btn btn-quick btn-quick-white text-start rounded-3">
                                 <i class="fas fa-cloud-upload-alt me-2"></i>Upload Documents
                             </a>
-                            <a href="#" class="btn btn-quick btn-quick-white text-start rounded-3" data-bs-toggle="modal" data-bs-target="#quickTrackModal">
+                            <a href="#" class="btn btn-quick btn-quick-white text-start rounded-3"
+                                data-bs-toggle="modal" data-bs-target="#quickTrackModal">
                                 <i class="fas fa-map-marked-alt me-2"></i>Track a Shipment
                             </a>
                             <a href="finance.html" class="btn btn-quick btn-quick-green text-start rounded-3">
-                                <i class="fas fa-file-invoice-dollar me-2" style="color: #10b981;"></i>View Invoices & Pay
+                                <i class="fas fa-file-invoice-dollar me-2" style="color: #10b981;"></i>View Invoices &
+                                Pay
                             </a>
-                            <a href="#" class="btn btn-quick btn-quick-gold text-start rounded-3" data-bs-toggle="modal" data-bs-target="#quickSupportModal">
+                            <a href="#" class="btn btn-quick btn-quick-gold text-start rounded-3" data-bs-toggle="modal"
+                                data-bs-target="#quickSupportModal">
                                 <i class="fas fa-headset me-2" style="color: #f59e0b;"></i>Open Support Ticket
                             </a>
                         </div>
@@ -682,13 +748,148 @@
             <div class="d-flex align-items-center justify-content-between mb-4">
                 <div>
                     <h3 class="text-white fw-bold mb-1"><i class="fas fa-calendar-alt text-primary me-2"></i>Vessel
-                        Schedules</h3>
-                    <p class="text-white-50 small mb-0">Find schedules for Point-to-Point, Port Calls, and Vessel
+                        Schedules & Pickups</h3>
+                    <p class="text-white-50 small mb-0">Manage your pickup dates, view calendar, and search global
                         routes.</p>
                 </div>
                 <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="toggleSchedules(null)">
                     <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
                 </button>
+            </div>
+
+            <!-- View Toggles -->
+            <div class="d-flex mb-4">
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check" name="schView" id="schViewList" checked autocomplete="off"
+                        onchange="toggleSchView('list')">
+                    <label class="btn btn-outline-primary" for="schViewList"><i class="fas fa-list me-1"></i> List
+                        View</label>
+
+                    <input type="radio" class="btn-check" name="schView" id="schViewCal" autocomplete="off"
+                        onchange="toggleSchView('calendar')">
+                    <label class="btn btn-outline-primary" for="schViewCal"><i class="fas fa-calendar-grid-58 me-1"></i>
+                        Calendar View</label>
+                </div>
+            </div>
+
+            <!-- Calendar View (Mock) -->
+            <div id="sch-calendar-container" style="display: none;" class="mb-5">
+                <div class="card-enterprise p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="text-white fw-bold mb-0">March 2026</h5>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary"><i
+                                    class="fas fa-chevron-left"></i></button>
+                            <button class="btn btn-sm btn-outline-secondary"><i
+                                    class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 text-center text-white-50 small fw-bold mb-2">
+                        <div class="col">Mon</div>
+                        <div class="col">Tue</div>
+                        <div class="col">Wed</div>
+                        <div class="col">Thu</div>
+                        <div class="col">Fri</div>
+                        <div class="col">Sat</div>
+                        <div class="col">Sun</div>
+                    </div>
+                    <!-- Single week row for illustration -->
+                    <div class="row g-2 mb-2" style="min-height: 100px;">
+                        <div class="col">
+                            <div
+                                class="p-2 border border-secondary border-opacity-25 rounded h-100 bg-dark text-white-50">
+                                23</div>
+                        </div>
+                        <div class="col">
+                            <div
+                                class="p-2 border border-secondary border-opacity-25 rounded h-100 bg-dark text-white-50">
+                                24</div>
+                        </div>
+                        <div class="col">
+                            <div
+                                class="p-2 border border-primary border-opacity-50 rounded h-100 bg-primary bg-opacity-10 position-relative">
+                                <span class="text-white fw-bold">25</span>
+                                <div class="mt-2 text-start p-1 bg-primary rounded x-small text-white cursor-pointer"
+                                    onclick="openRescheduleModal('PA-1023')">
+                                    <i class="fas fa-truck-loading me-1"></i>Pickup PA-1023
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div
+                                class="p-2 border border-secondary border-opacity-25 rounded h-100 bg-dark text-white-50">
+                                26</div>
+                        </div>
+                        <div class="col">
+                            <div
+                                class="p-2 border border-success border-opacity-50 rounded h-100 bg-success bg-opacity-10 position-relative">
+                                <span class="text-white fw-bold">27</span>
+                                <div class="mt-2 text-start p-1 bg-success rounded x-small text-white cursor-pointer"
+                                    onclick="openRescheduleModal('PA-1088')">
+                                    <i class="fas fa-truck-loading me-1"></i>Pickup PA-1088
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div
+                                class="p-2 border border-secondary border-opacity-25 rounded h-100 bg-dark text-white-50">
+                                28</div>
+                        </div>
+                        <div class="col">
+                            <div
+                                class="p-2 border border-secondary border-opacity-25 rounded h-100 bg-dark text-white-50">
+                                29</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Upcoming Pickups List View -->
+            <div id="sch-pickups-list" class="mb-5">
+                <h6 class="text-white fw-semibold mb-3">Your Scheduled Pickups</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card-enterprise p-3 border-start border-4 border-primary">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white fw-bold mb-1">Shipment #PA-1023</h6>
+                                    <p class="text-white-50 small mb-2"><i class="fas fa-map-marker-alt me-1"></i>
+                                        Mumbai Warehouse → Dubai</p>
+                                    <span
+                                        class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25"><i
+                                            class="fas fa-calendar-day me-1"></i> March 25, 2026 - 10:00 AM</span>
+                                    <p class="text-muted x-small mt-2 mb-0">Est. Delivery: April 2, 2026</p>
+                                </div>
+                                <div class="text-end">
+                                    <button class="btn btn-sm btn-outline-light rounded-pill mb-2"
+                                        onclick="openRescheduleModal('PA-1023')"><i
+                                            class="fas fa-calendar-plus me-1"></i>Reschedule</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card-enterprise p-3 border-start border-4 border-success">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="text-white fw-bold mb-1">Shipment #PA-1088</h6>
+                                    <p class="text-white-50 small mb-2"><i class="fas fa-map-marker-alt me-1"></i> Delhi
+                                        Center → Rotterdam</p>
+                                    <span
+                                        class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25"><i
+                                            class="fas fa-calendar-day me-1"></i> March 27, 2026 - 02:00 PM</span>
+                                    <p class="text-muted x-small mt-2 mb-0">Est. Delivery: April 15, 2026</p>
+                                </div>
+                                <div class="text-end">
+                                    <button class="btn btn-sm btn-outline-light rounded-pill mb-2"
+                                        onclick="openRescheduleModal('PA-1088')"><i
+                                            class="fas fa-calendar-plus me-1"></i>Reschedule</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Search Box -->
@@ -774,7 +975,9 @@
             <!-- Live Map Mini -->
             <div id="panel-map-wrap" style="display:none;" class="mb-4">
                 <h6 class="text-white-50 x-small fw-bold text-uppercase mb-2">Live Vessel Location</h6>
-                <div id="panel-map" style="height: 160px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #0b0f19;"></div>
+                <div id="panel-map"
+                    style="height: 160px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: #0b0f19;">
+                </div>
             </div>
 
             <!-- Docs status -->
@@ -835,11 +1038,16 @@
                 </div>
                 <div class="modal-body p-4">
                     <p class="text-white-50 small mb-3">Enter a Shipment ID to see live logistics data.</p>
-                    <div class="input-group mb-4" style="background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
-                        <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i class="fas fa-hashtag"></i></span>
-                        <input type="text" id="quick-track-id" class="form-control bg-transparent border-0 text-white py-3 shadow-none" placeholder="e.g. 47" style="font-weight: 600;">
+                    <div class="input-group mb-4"
+                        style="background: rgba(255,255,255,0.05); border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
+                        <span class="input-group-text bg-transparent border-0 text-muted ps-3"><i
+                                class="fas fa-hashtag"></i></span>
+                        <input type="text" id="quick-track-id"
+                            class="form-control bg-transparent border-0 text-white py-3 shadow-none"
+                            placeholder="e.g. 47" style="font-weight: 600;">
                     </div>
-                    <button class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg" onclick="handleQuickTrack()">
+                    <button class="btn btn-primary w-100 rounded-pill py-3 fw-bold shadow-lg"
+                        onclick="handleQuickTrack()">
                         Track Shipment Now <i class="fas fa-arrow-right ms-2"></i>
                     </button>
                 </div>
@@ -857,18 +1065,25 @@
                 </div>
                 <div class="modal-body p-4">
                     <div class="d-grid gap-3">
-                        <button class="btn btn-outline-light text-start p-3 rounded-4 border-secondary border-opacity-25" onclick="location.href='support.html'">
+                        <button
+                            class="btn btn-outline-light text-start p-3 rounded-4 border-secondary border-opacity-25"
+                            onclick="location.href='support.html'">
                             <div class="d-flex align-items-center gap-3">
-                                <div class="bg-primary bg-opacity-10 p-2 rounded-3"><i class="fas fa-ticket-alt text-primary"></i></div>
+                                <div class="bg-primary bg-opacity-10 p-2 rounded-3"><i
+                                        class="fas fa-ticket-alt text-primary"></i></div>
                                 <div>
                                     <strong class="d-block text-white small">Open New Ticket</strong>
-                                    <div class="text-muted" style="font-size: 10px;">Get technical or logistical help.</div>
+                                    <div class="text-muted" style="font-size: 10px;">Get technical or logistical help.
+                                    </div>
                                 </div>
                             </div>
                         </button>
-                        <button class="btn btn-outline-light text-start p-3 rounded-4 border-secondary border-opacity-25" onclick="alert('Connecting to a live agent...')">
+                        <button
+                            class="btn btn-outline-light text-start p-3 rounded-4 border-secondary border-opacity-25"
+                            onclick="alert('Connecting to a live agent...')">
                             <div class="d-flex align-items-center gap-3">
-                                <div class="bg-success bg-opacity-10 p-2 rounded-3"><i class="fas fa-comments text-success"></i></div>
+                                <div class="bg-success bg-opacity-10 p-2 rounded-3"><i
+                                        class="fas fa-comments text-success"></i></div>
                                 <div>
                                     <strong class="d-block text-white small">Live Chat with Expert</strong>
                                     <div class="text-muted" style="font-size: 10px;">Average response time: 2 mins</div>
@@ -886,13 +1101,13 @@
     <script src="receipt-generator.js"></script>
     <script src="socket-client.js"></script>
     <script src="notifications.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="dist/leaflet.js"></script>
     <script src="shipments.js"></script>
     <script>
         function handleQuickTrack() {
             const val = document.getElementById('quick-track-id').value.trim();
             const id = val.includes('-') ? val.split('-').pop() : val;
-            if(!id) return alert("Please enter a valid shipment ID");
+            if (!id) return alert("Please enter a valid shipment ID");
             window.location.href = `track.html?id=${id}`;
         }
         // ── Schedules toggle ──────────────────────────────────────────
@@ -907,25 +1122,47 @@
             { line: 'Yang Ming', vessel: 'YM WARRANTY', code: 'YM5500', from: 'Shanghai (CN SHA)', to: 'Hamburg (DE HAM)', depart: '17 Mar 2026', arrive: '16 Apr 2026', days: 30, type: '1 Transhipment', price: 1850 },
         ];
 
+        async function checkKYCStatus() {
+            try {
+                const r = await fetch(`http://${location.hostname}:3000/api/kyc/my-status`, { credentials: 'include' });
+                const d = await r.json();
+                if (d.success) {
+                    const alert = document.getElementById('kyc-dashboard-alert');
+                    const statusText = document.getElementById('kyc-status-text');
+                    const headerBooking = document.querySelector('a.btn-primary[href="wizard.html"]');
+                    const navBooking = document.querySelector('a[href="wizard.html"].nav-item-dash');
+
+                    if (d.kycStatus !== 'Approved') {
+                        alert.classList.remove('d-none');
+                        statusText.innerText = d.kycStatus;
+                        if (headerBooking) {
+                            headerBooking.href = 'documents.html';
+                            headerBooking.innerHTML = '<i class="fas fa-id-card me-1"></i> Verify Identity';
+                            headerBooking.classList.replace('btn-primary', 'btn-warning');
+                        }
+                        if (navBooking) {
+                            navBooking.href = 'documents.html';
+                            navBooking.classList.add('text-warning');
+                        }
+                    } else {
+                        alert.classList.add('d-none');
+                    }
+                }
+            } catch (e) { console.error('KYC Check failed:', e); }
+        }
+        document.addEventListener('DOMContentLoaded', checkKYCStatus);
+
         function toggleSchedules(el) {
-            const shipView = document.querySelector('.p-4:not(#schedules-section)');
             const schView = document.getElementById('schedules-section');
-            const navDash = document.getElementById('nav-dashboard');
-            const navSch = document.getElementById('nav-schedules');
+            const shipView = document.querySelector('.content-grid');
             const isShowing = schView.style.display !== 'none';
 
             if (isShowing) {
-                // Back to dashboard
                 schView.style.display = 'none';
-                if (shipView) shipView.style.display = 'block';
-                navDash.classList.add('active');
-                navSch.classList.remove('active');
+                if (shipView) shipView.style.display = 'grid';
             } else {
-                // Show schedules
                 schView.style.display = 'block';
                 if (shipView) shipView.style.display = 'none';
-                navDash.classList.remove('active');
-                navSch.classList.add('active');
                 renderSchedules(SCHEDULE_DATA);
             }
         }

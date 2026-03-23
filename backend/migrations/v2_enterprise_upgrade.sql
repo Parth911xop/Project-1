@@ -23,9 +23,10 @@ BEGIN
     ALTER TABLE shipments DROP CONSTRAINT IF EXISTS shipments_status_check;
     ALTER TABLE shipments ADD CONSTRAINT shipments_status_check 
     CHECK (status IN (
-        'Draft', 'Quoted', 'Booked', 'Paid', 'Accepted', 'In Transit', 
-        'Arrived', 'Cleared', 'Out for Delivery', 'Delivered', 
-        'Cancelled', 'Declined', 'Disputed'
+        'Pending Approval', 'Pending Manager Approval', 'Ship Allocated', 'Cargo Ready',
+        'Cargo Loaded', 'In Transit', 'At Port', 'Arrived', 
+        'Delivered', 'Cancelled', 'Declined', 'Disputed', 
+        'Booked', 'Accepted', 'Customs', 'Out for Delivery' -- Legacy compatibility
     ));
 EXCEPTION WHEN OTHERS THEN 
     RAISE NOTICE 'Constraint update handled';

@@ -9,9 +9,9 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         try {
             const [totalR, activeR, deliveredR, pendingR] = await Promise.all([
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1`, [id]),
-                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1 AND status IN ('Accepted','At Port','In Transit','Customs')`, [id]),
+                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1 AND status IN ('Ship Allocated','Cargo Ready','Cargo Loaded','In Transit','At Port','Accepted')`, [id]),
                 pool.query(`SELECT COUNT(*) as count FROM shipments WHERE company_id=$1 AND status='Delivered'`, [id]),
-                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE status='Booked' AND company_id IS NULL`, [])
+                pool.query(`SELECT COUNT(*) as count FROM shipments WHERE status='Pending Manager Approval'`, [])
             ]);
 
             const revenueR = await pool.query(
@@ -50,12 +50,13 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         try {
             const r = await pool.query(`
                 SELECT s.*, u.name as customer_name, u.email as customer_email,
-                       UPPER(LEFT(u.email, 2)) as user_prefix
+                       UPPER(LEFT(u.email, 2)) as user_prefix,
+                       s.type as cargo_type
                 FROM shipments s 
                 LEFT JOIN users u ON s.customer_id = u.id
-                WHERE s.status='Booked' AND (s.company_id IS NULL OR s.company_id = $1)
+                WHERE s.status='Pending Manager Approval'
                 ORDER BY s.created_at DESC
-            `, [id]);
+            `);
             res.json({ success: true, shipments: r.rows });
         } catch (e) {
             res.status(500).json({ success: false, message: 'Failed to fetch requests' });
@@ -68,14 +69,45 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         try {
             const r = await pool.query(`
                 SELECT s.*, u.name as customer_name, u.email as customer_email,
-                       UPPER(LEFT(u.email, 2)) as user_prefix
+                       UPPER(LEFT(u.email, 2)) as user_prefix,
+                       v.name as vessel_name,
+                       v.current_port as vessel_current_port,
+                       (SELECT string_agg(port_name, ' → ' ORDER BY stop_order ASC) FROM ship_route_stops WHERE ship_id = s.allocated_ship_id) AS vessel_route,
+                       COALESCE(s.origin_lat, 
+                           CASE 
+                               WHEN LOWER(s.origin_address) LIKE '%india%' THEN 18.94
+                               ELSE 1.35 
+                           END
+                       ) as origin_lat,
+                       COALESCE(s.origin_lng,
+                           CASE 
+                               WHEN LOWER(s.origin_address) LIKE '%india%' THEN 72.83
+                               ELSE 103.81
+                           END
+                       ) as origin_lng,
+                       COALESCE(s.dest_lat,
+                           CASE 
+                               WHEN LOWER(s.destination_address) LIKE '%china%' THEN 31.23
+                               WHEN LOWER(s.destination_address) LIKE '%dubai%' THEN 25.20
+                               ELSE 51.50
+                           END
+                       ) as dest_lat,
+                       COALESCE(s.dest_lng,
+                           CASE 
+                               WHEN LOWER(s.destination_address) LIKE '%china%' THEN 121.47
+                               WHEN LOWER(s.destination_address) LIKE '%dubai%' THEN 55.27
+                               ELSE -0.12
+                           END
+                       ) as dest_lng
                 FROM shipments s 
                 LEFT JOIN users u ON s.customer_id = u.id
-                WHERE s.company_id=$1 AND s.status != 'Booked' AND s.status != 'Declined'
+                LEFT JOIN vehicles v ON s.allocated_ship_id = v.id
+                WHERE s.company_id=$1 AND s.status NOT IN ('Pending Manager Approval', 'Declined')
                 ORDER BY s.created_at DESC
             `, [id]);
             res.json({ success: true, shipments: r.rows });
         } catch (e) {
+            console.error('Fetch all-shipments error:', e);
             res.status(500).json({ success: false, message: 'Failed to fetch shipments' });
         }
     });
@@ -123,9 +155,9 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
         const { name, type, capacity, location, next, status } = req.body;
         try {
             await pool.query(
-                `INSERT INTO vehicles (company_id, name, type, capacity, location, next_stop, status) 
-                 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-                [id, name, type, capacity, location, next || '', status || 'Available']
+                `INSERT INTO vehicles (company_id, name, type, capacity_kg, current_port, status) 
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [id, name, type, parseFloat(capacity) || 1000, location || 'Idle', status || 'Active']
             );
             res.json({ success: true, message: 'Vessel added to fleet' });
         } catch (e) {
@@ -255,7 +287,7 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
             const sid = parseInt(String(shipmentId).includes('-') ? String(shipmentId).split('-').pop() : shipmentId);
             if (isNaN(sid)) return res.status(400).json({ success: false, message: 'Invalid Shipment ID' });
 
-            const allowedTrackingStatuses = ['Cargo Loaded', 'In Transit', 'Delivered'];
+            const allowedTrackingStatuses = ['Confirmed', 'Cargo Loaded', 'In Transit', 'Delivered'];
             if (!allowedTrackingStatuses.includes(status)) {
                 return res.status(400).json({
                     success: false,
@@ -272,22 +304,42 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
             }
 
             const currentStatus = shipmentR.rows[0].status;
-            if (status === 'Cargo Loaded' && currentStatus !== 'Confirmed') {
+
+            // ── SMART STATUS FLOW ENGINE ──────────────────────────
+            // Confirmed: allowed from Ship Allocated OR Cargo Ready
+            if (status === 'Confirmed' && !['Ship Allocated', 'Cargo Ready'].includes(currentStatus)) {
                 return res.status(400).json({
                     success: false,
-                    message: `Cannot mark Cargo Loaded from "${currentStatus}". Confirm shipment first.`
+                    message: `Cannot confirm from "${currentStatus}". Shipment must be Allocated first.`
                 });
             }
+            
+            // Cargo Loaded: allowed from Confirmed (auto-confirm if Ship Allocated)
+            if (status === 'Cargo Loaded') {
+                if (currentStatus === 'Ship Allocated') {
+                    // AUTO-CONFIRM: Insert the Confirmed step automatically
+                    await pool.query(`UPDATE shipments SET status='Confirmed', updated_at=NOW() WHERE id=$1`, [sid]);
+                    await pool.query(`INSERT INTO shipment_events (shipment_id, status, notes, updated_by) VALUES ($1, 'Confirmed', 'Auto-confirmed by system before Cargo Loaded', $2)`, [sid, id]);
+                    await pool.query(`INSERT INTO tracking_logs (shipment_id, status, location_note, timestamp) VALUES ($1, 'Confirmed', 'System auto-confirmed', NOW())`, [sid]);
+                    // Now currentStatus is effectively 'Confirmed', proceed
+                } else if (currentStatus !== 'Confirmed') {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Cannot mark Cargo Loaded from "${currentStatus}". Confirm shipment first.`
+                    });
+                }
+            }
+            
             if (status === 'In Transit' && currentStatus !== 'Cargo Loaded') {
                 return res.status(400).json({
                     success: false,
-                    message: `Cannot mark In Transit from "${currentStatus}".`
+                    message: `Cannot mark In Transit from "${currentStatus}". Mark Cargo Loaded first.`
                 });
             }
             if (status === 'Delivered' && currentStatus !== 'In Transit') {
                 return res.status(400).json({
                     success: false,
-                    message: `Cannot mark Delivered from "${currentStatus}".`
+                    message: `Cannot mark Delivered from "${currentStatus}". Shipment must be In Transit.`
                 });
             }
 
@@ -445,28 +497,28 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
 
             // Transition rules for a real logistics workflow.
             if (status === 'Confirmed') {
-                if (currentStatus !== 'Cargo Ready') {
+                // MANAGER OVERRIDE: Allowed to forcefully confirm right after Ship Allocation to jumpstart Tracking
+                if (currentStatus !== 'Cargo Ready' && currentStatus !== 'Ship Allocated') {
                     return res.status(400).json({
                         success: false,
-                        message: `Cannot confirm shipment from "${currentStatus}". Payment must be completed first.`
+                        message: `Cannot confirm shipment from "${currentStatus}". Must be Allocated or Ready.`
                     });
                 }
 
-                const docsR = await pool.query(
-                    `SELECT
-                        COUNT(*)::int AS total_docs,
-                        COUNT(*) FILTER (WHERE status = 'Verified')::int AS verified_docs
-                     FROM documents
-                     WHERE shipment_id = $1`,
-                    [sid]
-                );
-                const totalDocs = docsR.rows[0]?.total_docs || 0;
-                const verifiedDocs = docsR.rows[0]?.verified_docs || 0;
-                if (totalDocs <= 0 || verifiedDocs < totalDocs) {
-                    return res.status(400).json({
-                        success: false,
-                        message: 'All uploaded documents must be verified before confirmation.'
-                    });
+                // If doing normal customer progression from Cargo Ready, enforce Docs
+                if (currentStatus === 'Cargo Ready') {
+                    const docsR = await pool.query(
+                        `SELECT COUNT(*)::int AS total_docs, COUNT(*) FILTER (WHERE status = 'Verified')::int AS verified_docs 
+                         FROM documents WHERE shipment_id = $1`, [sid]
+                    );
+                    const totalDocs = docsR.rows[0]?.total_docs || 0;
+                    const verifiedDocs = docsR.rows[0]?.verified_docs || 0;
+                    if (totalDocs > 0 && verifiedDocs < totalDocs) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'All uploaded documents must be verified before confirmation.'
+                        });
+                    }
                 }
             }
 

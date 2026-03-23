@@ -24,17 +24,29 @@ async function seed() {
         console.log(`Found ${rows.length} un-tracked shipments. Adding generic global tracking route...`);
 
         let count = 0;
+        const ships = [
+            { mmsi: "123456789", oLat: 18.94, oLng: 72.83, dLat: 1.35, dLng: 103.81 }, // Mumbai to Singapore
+            { mmsi: "987654321", oLat: 25.20, oLng: 55.27, dLat: 51.50, dLng: -0.12 }, // Dubai to London
+            { mmsi: "111222333", oLat: 1.35, oLng: 103.81, dLat: 31.23, dLng: 121.47 } // Singapore to Shanghai
+        ];
+
         for (const s of rows) {
+            const shipData = ships[count % ships.length];
+            
+            // Update shipment with MMSI and Port Coords
+            await pool.query(
+                `UPDATE shipments SET mmsi = $1, origin_lat = $2, origin_lng = $3, dest_lat = $4, dest_lng = $5 WHERE id = $6`,
+                [shipData.mmsi, shipData.oLat, shipData.oLng, shipData.dLat, shipData.dLng, s.id]
+            );
+
             const path = [
-                { id: s.id, lat: 18.9438, lng: 72.8387, status: 'At Origin Port', note: 'Cargo received and cleared for export at Mumbai JNPT' },
-                { id: s.id, lat: 1.3521, lng: 103.8198, status: 'In Transit', note: 'Vessel crossing the Malacca Strait' },
-                { id: s.id, lat: 34.0522, lng: -118.2437, status: 'Customs Clearance', note: 'Arrived at Los Angeles Port and awaiting customs' },
-                { id: s.id, lat: 36.1699, lng: -115.1398, status: 'Out for Delivery', note: 'Loaded onto regional carrier truck' }
+                { id: s.id, lat: shipData.oLat, lng: shipData.oLng, status: 'At Origin Port', note: 'Cargo received at source port' },
+                { id: s.id, lat: (shipData.oLat + shipData.dLat) / 2, lng: (shipData.oLng + shipData.dLng) / 2, status: 'In Transit', note: 'Vessel in open waters' },
+                { id: s.id, lat: shipData.dLat, lng: shipData.dLng, status: 'Arrived', note: 'Vessel docked at destination' }
             ];
 
             for (let i = 0; i < path.length; i++) {
                 const log = path[i];
-                // Space out the timestamps so they look realistic (older logs first)
                 await pool.query(
                     `INSERT INTO tracking_logs (shipment_id, lat, lng, status, location_note, timestamp)
                      VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '1 day' * $6)`,

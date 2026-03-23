@@ -3,150 +3,33 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Live Tracking | Smart Shipping</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <!-- Leaflet.js -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dist/leaflet.css">
     <link rel="stylesheet" href="dashboard.css">
-    <script src="auth-guard.js"></script>
     <style>
-        #map {
-            height: 420px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .event-pill {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 8px 14px;
-            font-size: 0.82rem;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-8px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .shipment-btn.active {
-            background: rgba(99, 102, 241, 0.25);
-            border-color: #6366f1;
-        }
-
-        .live-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: #22c55e;
-            display: inline-block;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-
-            0%,
-            100% {
-                opacity: 1;
-                transform: scale(1)
-            }
-
-            50% {
-                opacity: .6;
-                transform: scale(1.4)
-            }
-        }
-
-        /* Multi-Stop Timeline Styles */
-        .timeline-item {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .timeline-dot {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            flex-shrink: 0;
-            margin-top: 4px;
-            position: relative;
-        }
-
-        .timeline-item.completed .timeline-dot {
-            background: #10b981;
-            border-color: #059669;
-            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
-        }
-
-        .timeline-item.active .timeline-dot {
-            background: #6366f1;
-            border-color: #4f46e5;
-            box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .timeline-item.pending .timeline-dot {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
-        .timeline-item .glass-panel {
-            flex: 1;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .timeline-item.active .glass-panel {
-            background: rgba(99, 102, 241, 0.1);
-            border-color: rgba(99, 102, 241, 0.4);
-            box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
-        }
-
-        .timeline-item .glass-panel:hover {
-            border-color: rgba(99, 102, 241, 0.5);
-            background: rgba(99, 102, 241, 0.08);
-        }
-
-        /* Drop Port Highlight */
-        .timeline-item.border-warning .glass-panel {
-            border-left: 3px solid #f59e0b;
-        }
-
-        /* Route Polyline Animation */
-        @keyframes dash {
-            0% {
-                stroke-dashoffset: 0;
-            }
-            100% {
-                stroke-dashoffset: -100;
-            }
-        }
-
-        .leaflet-pane-overlay path {
-            animation: dash 20s linear infinite;
-        }
+        #map { height: 450px; width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .ship-marker-wrapper { position: relative; width: 40px; height: 40px; transform-origin: center; transition: all 0.3s ease; }
+        .ship-icon-body { font-size: 24px; color: #22c55e; display: flex; justify-content: center; align-items: center; }
+        .ship-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; background: rgba(34, 197, 94, 0.3); border-radius: 50%; filter: blur(5px); animation: pulse 2s infinite; z-index: -1; }
+        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
+        .port-icon { display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); border-radius: 50%; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.3); }
+        .event-pill { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; }
+        .tracking-popup { background: #1a1a1a; color: white; padding: 12px; border-radius: 8px; border: 1px solid #333; min-width: 160px; }
+        .popup-header { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+        .popup-id { font-weight: bold; font-size: 15px; margin-bottom: 8px; }
+        .popup-status { color: #22c55e; font-size: 13px; font-weight: 600; padding: 4px 0; border-top: 1px solid #333; margin-top: 4px; }
+        .popup-coords { font-size: 10px; color: #666; font-family: monospace; }
+        .leaflet-popup-content-wrapper { background: #1a1a1a !important; color: white !important; border: 1px solid #333; }
+        .leaflet-popup-tip { background: #1a1a1a !important; border: 1px solid #333; }
     </style>
 </head>
 
-<body class="dashboard-page">
-
-    <!-- SIDEBAR -->
+<body class="dashboard-page overflow-hidden">
     <aside class="sidebar">
         <div class="brand-section">
             <a href="index.html" class="text-decoration-none">
@@ -155,21 +38,19 @@
             <span class="text-xs text-white-50">ENTERPRISE</span>
         </div>
         <nav class="d-flex flex-column gap-1">
-            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
-            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-box w-5"></i> Shipments</a>
+            <a href="shipments.html" class="nav-item-dash "><i class="fas fa-th-large w-5"></i> Dashboard</a>
             <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
-            <a href="track.html" class="nav-item-dash active"><i class="fas fa-map-marked-alt w-5"></i> Live
-                Tracking</a>
+            <a href="track.html" class="nav-item-dash active"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="documents.html" class="nav-item-dash "><i class="fas fa-folder-open w-5"></i> Documents</a>
+            <a href="schedules.html" class="nav-item-dash "><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
             <hr class="border-secondary opacity-25 my-3">
-            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice w-5"></i> Billing</a>
-            <a href="analytics.html" class="nav-item-dash"><i class="fas fa-chart-line w-5"></i> Analytics</a>
-            <a href="profile.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+            <a href="finance.html" class="nav-item-dash "><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
+            <a href="support.html" class="nav-item-dash "><i class="fas fa-headset w-5"></i> Support</a>
+            <a href="settings.html" class="nav-item-dash "><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
         <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
             <div class="d-flex align-items-center gap-2">
-                <div id="user-avatar"
-                    class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                    style="width:32px;height:32px;">U</div>
+                <div id="user-avatar" class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width:32px;height:32px;">U</div>
                 <div class="d-grid">
                     <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
                 </div>
@@ -177,56 +58,45 @@
         </div>
     </aside>
 
-    <!-- MAIN CONTENT -->
-    <main class="dashboard-main">
-        <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fas fa-map-pin text-muted"></i>
-                <input type="text" placeholder="Live Shipment Tracking" disabled>
-            </div>
-            <div class="d-flex align-items-center gap-3">
-                <span class="text-success small"><span class="live-dot me-2"></span>Live</span>
-                <button onclick="handleLogout()" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</button>
-            </div>
-        </header>
-
+    <main class="dashboard-main h-100">
         <div class="p-4">
-            <div class="mb-4">
-                <h3 class="fw-bold">Live Tracking</h3>
-                <p class="text-muted small">Select a shipment to watch real-time location updates on the map.</p>
+            <div class="mb-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h3 class="fw-bold text-white">Live Tracking</h3>
+                    <p class="text-white-50 small">Monitor your global shipments with sub-meter precision.</p>
+                </div>
+                <div id="live-badge" class="badge bg-success bg-opacity-10 text-success border border-success d-none py-2 px-3 rounded-pill">
+                    <span class="live-dot me-2"></span> Satellite Active
+                </div>
             </div>
 
             <div class="row g-4">
-                <!-- LEFT: Shipment List -->
                 <div class="col-lg-3">
                     <div class="summary-card p-3 h-100">
-                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Your Shipments</h6>
-                        <div id="shipment-list" class="d-flex flex-column gap-2">
-                            <div class="text-white-50 small text-center py-3">
-                                <div class="spinner-border spinner-border-sm me-2"></div>Loading...
+                        <div class="mb-4">
+                            <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Quick Search</h6>
+                            <div class="input-group input-group-sm mb-3">
+                                <input type="text" id="shipment-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Ref: SS-1025">
+                                <button class="btn btn-primary" onclick="searchByShipmentId()"><i class="fas fa-search"></i></button>
                             </div>
+                        </div>
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Your Fleet</h6>
+                        <div id="shipment-list" class="d-flex flex-column gap-2" style="max-height: 50vh; overflow-y: auto;">
+                            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- RIGHT: Map + Event Feed -->
                 <div class="col-lg-9">
-                    <div class="summary-card p-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="text-white fw-bold mb-0" id="tracking-title">Select a shipment to begin</h6>
-                            <span id="live-badge" class="badge bg-secondary d-none"><span class="live-dot me-1"></span>
-                                Watching</span>
-                        </div>
+                    <div class="summary-card p-3 mb-3 position-relative">
+                        <h6 class="text-white fw-bold mb-3" id="tracking-title">Select a shipment to begin</h6>
                         <div id="map"></div>
                     </div>
 
-                    <!-- Event Feed -->
                     <div class="summary-card p-3">
-                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3">
-                            <i class="fas fa-satellite-dish me-2 text-primary"></i>Live Event Feed
-                        </h6>
-                        <div id="event-feed" class="d-flex flex-column gap-2">
-                            <p class="text-white-50 small mb-0">Events will appear here as your shipment moves.</p>
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3"><i class="fas fa-satellite-dish me-2 text-primary"></i>Event Feed</h6>
+                        <div id="event-feed" class="d-flex flex-column gap-2" style="max-height: 180px; overflow-y: auto;">
+                            <p class="text-white-50 small">Connection standby...</p>
                         </div>
                     </div>
                 </div>
@@ -234,190 +104,185 @@
         </div>
     </main>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
         const API_URL = `http://${window.location.hostname}:3000`;
         let map, marker, polyline, socket, activeShipmentId;
         let trackingPath = [];
+        let portMarkers = [];
+        let voyagePlannedPath = null;
 
-        // Initialize Leaflet map
         function initMap(lat = 20.5937, lng = 78.9629) {
             if (map) return;
+            L.Icon.Default.imagePath = 'dist/images/';
             map = L.map('map').setView([lat, lng], 3);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© OpenStreetMap contributors © CARTO',
+                attribution: '© CARTO',
                 maxZoom: 18
             }).addTo(map);
 
-            polyline = L.polyline([], { 
-                color: '#6366f1', 
-                weight: 3, 
-                opacity: 0.6,
-                dashArray: '5, 10'
-            }).addTo(map);
+            polyline = L.polyline([], { color: '#6366f1', weight: 4, opacity: 0.8, dashArray: '8, 12' }).addTo(map);
         }
 
-        function updateMapPin(lat, lng, label = 'Shipment', status = '') {
+        function updateMapPin(lat, lng, label = 'Shipment', status = '', heading = 0) {
             if (!map) initMap(lat, lng);
-            
             const pos = [parseFloat(lat), parseFloat(lng)];
-            trackingPath.push(pos);
-            if(polyline) polyline.setLatLngs(trackingPath);
+            
+            if (trackingPath.length === 0 || 
+                trackingPath[trackingPath.length-1][0] !== pos[0] || 
+                trackingPath[trackingPath.length-1][1] !== pos[1]) {
+                trackingPath.push(pos);
+                polyline.setLatLngs(trackingPath);
+            }
 
             if (marker) map.removeLayer(marker);
             
-            // Generate a directional arrow or ship icon
             const customIcon = L.divIcon({
                 className: 'custom-ship-icon',
-                html: `<div style="
-                        font-size: 24px; 
-                        color: #22c55e; 
-                        text-shadow: 0 0 10px rgba(34,197,94,0.8);
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                    "><i class="fas fa-location-arrow fa-rotate-270"></i></div>`,
-                iconSize: [30, 30],
-                iconAnchor: [15, 15],
-                popupAnchor: [0, -10]
+                html: `<div class="ship-marker-wrapper" style="transform: rotate(${heading}deg);">
+                        <div class="ship-icon-body"><i class="fas fa-location-arrow"></i></div>
+                        <div class="ship-glow"></div>
+                    </div>`,
+                iconSize: [40, 40],
+                iconAnchor: [20, 20],
+                popupAnchor: [0, -15]
             });
 
-            marker = L.marker(pos, {
-                icon: customIcon,
-                title: label // Shows tooltip on native hover
-            }).addTo(map);
-
-            // Bind explicitly formatted popup
+            marker = L.marker(pos, { icon: customIcon, zIndexOffset: 1000 }).addTo(map);
             marker.bindPopup(`
-                <div style="min-width: 120px;">
-                    <div style="font-size:10px; color:#888; text-transform:uppercase; margin-bottom:2px;">Shipment ID</div>
-                    <strong style="color:#000; font-size:14px;">${label.replace('Shipment ', '')}</strong>
-                    ${status ? `<div style="margin-top:6px; font-size:12px; font-weight:600; color:#22c55e;">${status.replace(/</g, '&lt;')}</div>` : ''}
+                <div class="tracking-popup">
+                    <div class="popup-header">LIVE SATELLITE UPDATE</div>
+                    <div class="popup-id">${label}</div>
+                    <div class="popup-status active">${status || 'In Transit'}</div>
+                    <div class="popup-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
                 </div>
-            `);
+            `, { closeButton: false, offset: [0, -5] }).openPopup();
 
-            // Auto-open if it's the latest update
-            setTimeout(() => marker.openPopup(), 500);
-
-            map.flyTo(pos, 5, { duration: 1.5 });
+            map.panTo(pos, { animate: true, duration: 1.5 });
         }
 
         function addEvent(data) {
             const feed = document.getElementById('event-feed');
-            const time = new Date(data.timestamp || Date.now()).toLocaleTimeString();
+            if (feed.querySelector('p')) feed.innerHTML = '';
             const pill = document.createElement('div');
-            pill.className = 'event-pill d-flex justify-content-between align-items-center';
+            pill.className = 'event-pill d-flex justify-content-between align-items-center animate-fade-in';
             pill.innerHTML = `
                 <div>
-                    <i class="fas fa-map-pin text-primary me-2"></i>
-                    <span class="text-white fw-medium">${data.status || 'Update'}</span>
+                    <i class="fas fa-dot-circle text-primary me-2 x-small"></i>
+                    <strong class="text-white">${data.status || 'Signal'}</strong>
                     <span class="text-white-50 ms-2">${data.message || ''}</span>
-                    ${data.lat ? `<span class="badge bg-dark text-white-50 ms-2">${parseFloat(data.lat).toFixed(4)}, ${parseFloat(data.lng).toFixed(4)}</span>` : ''}
                 </div>
-                <span class="text-white-50 x-small">${time}</span>
+                <span class="text-white-50 x-small">${new Date(data.timestamp || Date.now()).toLocaleTimeString()}</span>
             `;
             feed.prepend(pill);
         }
 
-        async function connectSocket() {
-            // Get the token from cookie manually for Socket.io handshake
-            socket = io(API_URL, {
-                withCredentials: true,
-                auth: { token: getCookie('token') }
-            });
-
-            socket.on('connect', () => console.log('🔌 Socket connected'));
-            socket.on('join_shipment', (data) => console.log('Joined:', data));
-            socket.on('joined', (data) => {
-                document.getElementById('live-badge').classList.remove('d-none');
-                addEvent({ status: 'Watching', message: data.message, timestamp: new Date() });
-            });
-
-            socket.on('tracking_event', (data) => {
-                console.log('📍 Tracking event:', data);
-                updateMapPin(data.lat, data.lng, `Shipment #${data.user_prefix || 'SS'}-${data.shipmentId}`, data.status);
-                addEvent(data);
-            });
-
-            socket.on('connect_error', (err) => console.warn('Socket error:', err.message));
+        function searchByShipmentId() {
+            const inputVal = document.getElementById('shipment-search-input').value.trim();
+            if(!inputVal) return;
+            const numericId = inputVal.includes('-') ? inputVal.split('-').pop() : inputVal;
+            joinShipment(numericId, 'ID');
         }
 
-        function joinShipment(shipmentId, prefix = 'SS') {
+        async function joinShipment(shipmentId, prefix = 'SS') {
             activeShipmentId = shipmentId;
             trackingPath = [];
             if(polyline) polyline.setLatLngs([]);
-            
-            document.getElementById('tracking-title').innerText = `Tracking Shipment #${prefix}-${shipmentId}`;
+            if(marker) map.removeLayer(marker);
+            marker = null;
+            portMarkers.forEach(m => map.removeLayer(m));
+            portMarkers = [];
+            if(voyagePlannedPath) map.removeLayer(voyagePlannedPath);
+
+            document.getElementById('tracking-title').innerText = `Tracking System: #${prefix}-${shipmentId}`;
             document.getElementById('live-badge').classList.remove('d-none');
-            document.getElementById('event-feed').innerHTML = '<p class="text-white-50 small">Waiting for live updates...</p>';
-
+            
             if (!map) initMap();
-
-            if (socket?.connected) {
-                socket.emit('join_shipment', { shipmentId });
-            }
-
-            // Fetch historical tracking logs
-            fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' })
-                .then(r => r.json())
-                .then(data => {
-                    if (data.success && data.logs?.length > 0) {
-                        data.logs.forEach(log => {
-                            updateMapPin(log.lat, log.lng, `Shipment #${prefix}-${shipmentId}`, log.status);
-                            addEvent({ ...log, timestamp: log.timestamp });
+            
+            try {
+                const res = await fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' });
+                const data = await res.json();
+                if (data.success && data.shipment) {
+                    const s = data.shipment;
+                    
+                    // Plot Partial Segment Journey (Source -> Intermediate Stops -> Drop Port)
+                    if (data.tracking && data.tracking.routeStops) {
+                        const stops = data.tracking.routeStops;
+                        const pathCoords = [];
+                        
+                        stops.forEach((st, idx) => {
+                            if (st.lat && st.lng) {
+                                const pos = [parseFloat(st.lat), parseFloat(st.lng)];
+                                pathCoords.push(pos);
+                                
+                                const iconType = idx === 0 ? 'anchor text-warning' : (idx === stops.length - 1 ? 'flag-checkered text-danger' : 'circle text-white-50');
+                                const label = idx === 0 ? 'Origin' : (idx === stops.length - 1 ? 'Destination' : `Stop ${st.stop_order}`);
+                                
+                                const m = L.marker(pos, { 
+                                    icon: L.divIcon({ 
+                                        html: `<div class="port-icon"><i class="fas fa-${iconType} x-small"></i></div>`, 
+                                        className:'', 
+                                        iconSize:[30,30] 
+                                    })
+                                }).addTo(map).bindPopup(`<b>${label}:</b><br>${st.port_name}`);
+                                portMarkers.push(m);
+                            }
                         });
-                    }
-                }).catch(() => { });
-        }
 
-        function getCookie(name) {
-            const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-            return match ? decodeURIComponent(match[2]) : null;
+                        if (pathCoords.length >= 2) {
+                            voyagePlannedPath = L.polyline(pathCoords, {
+                                color: '#ffffff', weight: 1, dashArray: '10, 15', opacity: 0.3
+                            }).addTo(map);
+                            map.fitBounds(voyagePlannedPath.getBounds(), { padding: [80, 80] });
+                        }
+                    }
+
+                    if (data.tracking?.livePosition) {
+                        const lp = data.tracking.livePosition;
+                        updateMapPin(lp.lat, lp.lng, `#${prefix}-${shipmentId}`, data.tracking.status);
+                    }
+                }
+            } catch (err) { console.error(err); }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
-                const data = await res.json();
-                if (!data.success) { window.location.href = 'auth.html'; return; }
+                const auth = await res.json();
+                if (!auth.success) { window.location.href = 'auth.html'; return; }
+                document.getElementById('user-name-display').innerText = auth.user.name;
+                document.getElementById('user-avatar').innerText = auth.user.name[0].toUpperCase();
 
-                const name = data.user.name || 'User';
-                document.getElementById('user-name-display').innerText = name;
-                document.getElementById('user-avatar').innerText = name[0].toUpperCase();
-
-                // Load shipments
                 const shipRes = await fetch(`${API_URL}/api/shipment/list`, { credentials: 'include' });
                 const shipData = await shipRes.json();
-
                 const listEl = document.getElementById('shipment-list');
-                if (!shipData.success || !shipData.shipments?.length) {
-                    listEl.innerHTML = `<p class="text-white-50 small text-center">No shipments found. <a href="wizard.html" class="text-primary">Book one?</a></p>`;
-                } else {
+                
+                if (shipData.success && shipData.shipments?.length) {
                     listEl.innerHTML = shipData.shipments.map(s => `
-                        <button class="shipment-btn btn btn-dark btn-sm text-start border border-secondary rounded-3 p-3 w-100"
+                        <button class="shipment-btn btn btn-dark btn-sm text-start border border-secondary border-opacity-25 rounded-3 p-3 w-100 mb-2"
                                 onclick="joinShipment(${s.id}, '${s.user_prefix || 'SS'}')">
-                            <div class="fw-bold text-white mb-1">#${s.user_prefix || 'SS'}-${s.id} ${s.mode || 'Shipment'}</div>
-                            <div class="text-white-50 x-small">${(s.origin_address || '--').substring(0, 22)} → ${(s.destination_address || '--').substring(0, 22)}</div>
-                            <span class="badge bg-primary bg-opacity-25 text-primary mt-1" style="font-size:.65rem">${s.status}</span>
+                            <div class="fw-bold text-white mb-1">#${s.user_prefix || 'SS'}-${s.id}</div>
+                            <div class="text-white-50 x-small text-truncate">${s.origin_address} ➔ ${s.destination_address}</div>
                         </button>
                     `).join('');
+                } else {
+                    listEl.innerHTML = '<p class="text-white-50 x-small text-center py-3">No active shipments</p>';
                 }
 
-                initMap();
-                await connectSocket();
-
-            } catch (err) {
-                console.error(err);
-                window.location.href = 'auth.html';
-            }
+                const urlParams = new URLSearchParams(window.location.search);
+                const queryId = urlParams.get('id');
+                if (queryId) {
+                    document.getElementById('shipment-search-input').value = queryId;
+                    joinShipment(queryId, 'ID');
+                }
+            } catch (err) { window.location.href = 'auth.html'; }
         });
 
-        async function handleLogout() {
-            await fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-            window.location.href = 'auth.html';
+        function handleLogout() {
+            fetch(`${API_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' })
+                .then(() => window.location.href = 'auth.html');
         }
     </script>
 </body>
-
 </html>

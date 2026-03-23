@@ -32,6 +32,11 @@ async function requestOTP() {
             }
         }
 
+        const btn = document.getElementById('submitBtn');
+        const originalText = btn.innerText;
+        btn.innerText = "Requesting...";
+        btn.disabled = true;
+
         const res = await fetch(`http://${window.location.hostname}:3000/request-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -39,12 +44,15 @@ async function requestOTP() {
         });
         const data = await res.json();
 
+        btn.innerText = originalText;
+        btn.disabled = false;
+
         if (data.success) {
 
             if (isSignup) {
                 showToast("Account Saved! Please Login to continue.", 'success');
                 // Switch to Login Mode
-                setTimeout(() => toggleSignupMode(), 1000);
+                setTimeout(() => toggleSignupMode(), 300);
                 return;
             }
 
@@ -144,7 +152,7 @@ async function handleFinalSubmit(e) {
                 } else {
                     window.location.href = 'shipments.html';
                 }
-            }, 1000);
+            }, 300);
         } else {
             showToast("Error: " + data.message, 'error');
         }

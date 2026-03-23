@@ -135,7 +135,7 @@ function renderTable(shipments) {
 const STEPS = [
     { key: 'booked', label: 'Booking Request', icon: 'fa-file-invoice' },
     { key: 'allocated', label: 'Ship Allocated', icon: 'fa-ship' },
-    { key: 'loaded', label: 'Cargo Loaded', icon: 'fa-warehouse' },
+    { key: 'port', label: 'Cargo at Port', icon: 'fa-warehouse' },
     { key: 'transit', label: 'In Transit', icon: 'fa-anchor' },
     { key: 'done', label: 'Delivered', icon: 'fa-home' },
 ];
@@ -144,8 +144,8 @@ function getStep(status) {
     const s = (status || '').toLowerCase();
     if (s.includes('deliver')) return 5;
     if (s.includes('transit')) return 4;
-    if (s.includes('cargo loaded') || s.includes('ready') || s.includes('confirm')) return 3;
-    if (s.includes('ship allocated') || s.includes('documents pending') || s.includes('payment pending')) return 2;
+    if (s.includes('port') || s.includes('ready') || s.includes('paid')) return 3;
+    if (s.includes('ship allocated')) return 2;
     if (s.includes('pending manager approval')) return 1;
     return 1;
 }
@@ -178,13 +178,10 @@ function renderStatusPill(status) {
     let cls = 'booked', label = status || 'Booked';
 
     if (s.includes('deliver')) { cls = 'delivered'; label = 'Delivered'; }
-    else if (s.includes('confirm')) { cls = 'arrived'; label = 'Confirmed by Manager'; }
-    else if (s.includes('cargo loaded')) { cls = 'arrived'; label = 'Cargo Loaded'; }
+    else if (s.includes('arriv') || s.includes('clear') || s.includes('out for delivery')) { cls = 'arrived'; label = status; }
     else if (s.includes('transit')) { cls = 'transit'; label = 'In Transit'; }
     else if (s.includes('ship allocated')) { cls = 'port'; label = 'Ship Allocated – Awaiting Documents & Payment'; }
-    else if (s.includes('documents pending')) { cls = 'booked'; label = 'Documents Pending'; }
-    else if (s.includes('payment pending')) { cls = 'booked'; label = 'Payment Pending'; }
-    else if (s.includes('pending manager approval')) { cls = 'delayed'; label = 'Pending Approval'; }
+    else if (s.includes('pending manager approval')) { cls = 'delayed'; label = 'Pending Manager Approval'; }
     else if (s.includes('accept')) { cls = 'port'; label = 'Accepted'; }
     else if (s.includes('port')) { cls = 'port'; label = 'At Port'; }
     else if (s.includes('paid')) { cls = 'booked'; label = 'Paid'; }
@@ -515,7 +512,7 @@ async function openPanel(id) {
 
     // Check status
     const isPending = s.status === 'Pending Manager Approval';
-    const canCompleteFlow = ['Ship Allocated', 'Documents Pending', 'Payment Pending'].includes(s.status);
+    const isAllocated = s.status === 'Ship Allocated';
 
     if (isPending) {
         gatedArea.innerHTML = `
@@ -528,7 +525,7 @@ async function openPanel(id) {
                     </div>
                 </div>
             </div>`;
-    } else if (canCompleteFlow) {
+    } else if (isAllocated) {
         gatedArea.innerHTML = `
             <div class="p-3 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-3 mb-4">
                 <div class="text-white small fw-bold mb-2"><i class="fas fa-ship me-2"></i>Ship Allocated!</div>
@@ -545,7 +542,7 @@ async function openPanel(id) {
     // Live Map Mini in Panel
     const mapWrap = document.getElementById('panel-map-wrap');
     if (mapWrap) {
-        if (canCompleteFlow || s.status.includes('Transit') || s.status.includes('Cargo Loaded') || s.status.includes('Confirmed')) {
+        if (isAllocated || s.status.includes('Transit') || s.status.includes('Accepted')) {
             mapWrap.style.display = 'block';
             setTimeout(() => initPanelMap(s.id), 300);
         } else {
@@ -584,6 +581,24 @@ async function openPanel(id) {
             })
             .catch(() => docsEl.innerHTML = `<div class="text-white-50 x-small text-center py-2">Error loading docs</div>`);
     }
+
+    // Add Contextual Quick Links connecting the actual user flow
+    const quickLinksId = 'panel-quick-links';
+    let quickLinksArea = document.getElementById(quickLinksId);
+    if (!quickLinksArea) {
+        quickLinksArea = document.createElement('div');
+        quickLinksArea.id = quickLinksId;
+        quickLinksArea.className = "d-grid gap-2";
+        const docsElNode = document.getElementById('panel-docs-status').parentElement;
+        docsElNode.insertAdjacentElement('afterend', quickLinksArea);
+    }
+    quickLinksArea.innerHTML = `
+        <h6 class="text-white-50 x-small fw-bold text-uppercase mt-2 mb-2">Shipment Actions</h6>
+        <button class="btn btn-outline-primary btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='track.html?id=${s.id}'"><i class="fas fa-map-marker-alt w-5 me-2 text-primary"></i>Live Track Shipment</button>
+        <button class="btn btn-outline-info btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='documents.html?shipmentId=${s.id}'"><i class="fas fa-folder-open w-5 me-2 text-info"></i>Manage Documents</button>
+        <button class="btn btn-outline-success btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='finance.html?shipmentId=${s.id}'"><i class="fas fa-file-invoice-dollar w-5 me-2 text-success"></i>Billing & Payments</button>
+        <button class="btn btn-outline-warning btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='support.html?shipmentId=${s.id}'"><i class="fas fa-headset w-5 me-2 text-warning"></i>Open Support Ticket</button>
+    `;
 
     document.getElementById('slide-panel').classList.add('open');
 }
@@ -786,21 +801,21 @@ function openCompleteShipmentModal(id) {
     const receiptBtn = document.getElementById('downloadReceiptBtn');
     const paymentLockedNotice = document.getElementById('payment-locked-notice');
     
-    const allowedPaymentStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending'];
+    const allowedPaymentStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending', 'Cargo Ready', 'Booked', 'Accepted', 'In Transit', 'Customs', 'Out for Delivery', 'Delivered'];
     const isPaymentAllowed = allowedPaymentStatuses.includes(s.status);
-    const isAlreadyPaid = s.status === 'Cargo Ready' || s.status === 'Confirmed' || s.status === 'Cargo Loaded' || s.status === 'In Transit' || s.status === 'Delivered';
+    const isAlreadyPaid = s.status === 'Cargo Ready' || s.status === 'Accepted' || s.status === 'In Transit' || s.status === 'Customs' || s.status === 'Out for Delivery' || s.status === 'Delivered';
     
-    if (isAlreadyPaid) {
-        payBtn.style.display = 'none';
-        receiptBtn.style.display = 'inline-block';
-        receiptBtn.onclick = () => downloadReceipt(id, s.user_prefix || 'SS');
-        paymentLockedNotice.style.display = 'none';
-    } else if (!isPaymentAllowed) {
+    if (!isPaymentAllowed) {
         payBtn.disabled = true;
         payBtn.style.opacity = '0.5';
         payBtn.style.cursor = 'not-allowed';
         paymentLockedNotice.style.display = 'block';
         receiptBtn.style.display = 'none';
+    } else if (isAlreadyPaid) {
+        payBtn.style.display = 'none';
+        receiptBtn.style.display = 'inline-block';
+        receiptBtn.onclick = () => downloadReceipt(id, s.user_prefix || 'SS');
+        paymentLockedNotice.style.display = 'none';
     } else {
         payBtn.disabled = false;
         payBtn.style.opacity = '1';
@@ -827,17 +842,6 @@ function goToStep(n) {
 }
 
 async function uploadAllShipmentDocs(shipmentId) {
-    try {
-        const gateRes = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/can-upload`, { credentials: 'include' });
-        const gateData = await gateRes.json();
-        if (!gateData.success || !gateData.canUpload) {
-            alert(gateData.message || 'Document upload is locked until ship allocation.');
-            return;
-        }
-    } catch (e) {
-        // Server-side route still enforces this rule.
-    }
-
     // 1. First Save the "Other Details" from Step 1
     const details = {
         hsCode: document.getElementById('comp-hs-code').value,
@@ -921,23 +925,25 @@ async function uploadAllShipmentDocs(shipmentId) {
 async function processBookingPayment(shipmentId) {
     const btn = document.getElementById('payProceedBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processing...';
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Redirecting to Stripe...';
 
     try {
-        const res = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/payment-complete`, {
+        const res = await fetch(`${API_URL}/api/payment/create-checkout-session`, {
             method: 'POST',
-            credentials: 'include'
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ shipmentId })
         });
         const data = await res.json();
-        if (data.success) {
-            // Fetch and show receipt
-            await showReceipt(shipmentId);
+        if (data.success && data.url) {
+            window.location.href = data.url;
         } else {
-            alert(data.message || 'Payment failed.');
+            alert(data.message || 'Payment initiation failed. Ensure you have properly set up Stripe keys.');
+            btn.disabled = false;
+            btn.innerHTML = 'Pay Now <i class="fas fa-credit-card ms-2"></i>';
         }
     } catch (e) {
-        alert('Network error.');
-    } finally {
+        alert('Network error connecting to payment gateway.');
         btn.disabled = false;
         btn.innerHTML = 'Pay Now <i class="fas fa-credit-card ms-2"></i>';
     }
@@ -1014,4 +1020,48 @@ function timeAgo(secondsAgo) {
     if (secondsAgo < 3600) return `${Math.floor(secondsAgo / 60)} min ago`;
     if (secondsAgo < 86400) return `${Math.floor(secondsAgo / 3600)} hours ago`;
     return `${Math.floor(secondsAgo / 86400)} days ago`;
+}
+
+// ── DEEP LINK HANDLER ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get('complete');
+    if (sid) {
+        console.log(`📡 Deep link detected: Opening wizard for Shipment #${sid}`);
+        // Give time for dashboard data to load
+        setTimeout(() => {
+            if (typeof openCompleteShipmentModal === 'function') {
+                openCompleteShipmentModal(sid);
+            }
+        }, 1500);
+    }
+});
+
+// ── SCHEDULES TAB EXTENSIONS ──────────────────────────────────────
+function toggleSchView(viewType) {
+    const listSection = document.getElementById('sch-pickups-list');
+    const calSection = document.getElementById('sch-calendar-container');
+
+    if (viewType === 'calendar') {
+        if (listSection) listSection.style.display = 'none';
+        if (calSection) calSection.style.display = 'block';
+    } else {
+        if (listSection) listSection.style.display = 'block';
+        if (calSection) calSection.style.display = 'none';
+    }
+}
+
+function openRescheduleModal(shipmentRef) {
+    const refEl = document.getElementById('reschedule-ref');
+    if (refEl) refEl.innerText = shipmentRef;
+    
+    const rescheduleModal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
+    rescheduleModal.show();
+}
+
+function confirmReschedule() {
+    // In a real application, submit to backend /api/shipment/reschedule
+    alert('✅ Pickup successfully rescheduled! We will notify your logistics manager.');
+    const rescheduleModal = bootstrap.Modal.getInstance(document.getElementById('rescheduleModal'));
+    if (rescheduleModal) rescheduleModal.hide();
 }

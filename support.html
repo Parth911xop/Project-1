@@ -11,57 +11,158 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="notifications.css">
     <script src="auth-guard.js"></script>
-    <script src="nav.js"></script>
+    
+    <link rel="stylesheet" href="dashboard.css">
 </head>
 
-<body class="home-page d-flex flex-column min-vh-100">
-
-    <div class="container flex-grow-1 d-flex justify-content-center align-items-center py-5 mt-5">
-        <div class="card-enterprise w-100" style="max-width: 600px;">
-            <div class="p-4 border-bottom border-light border-opacity-10 text-center">
-                <div class="d-inline-flex justify-content-center align-items-center bg-primary bg-opacity-25 text-primary rounded-circle mb-3"
-                    style="width: 64px; height: 64px;">
-                    <i class="fas fa-headset fa-2x"></i>
+<body class="dashboard-page">
+    <aside class="sidebar">
+        <div class="brand-section">
+            <a href="index.html" class="text-decoration-none">
+                <h4 class="fw-bold text-white mb-0"><i class="fas fa-ship me-2 text-primary"></i>SmartShip</h4>
+            </a>
+            <span class="text-xs text-white-50">ENTERPRISE</span>
+        </div>
+        <nav class="d-flex flex-column gap-1">
+            <a href="shipments.html" class="nav-item-dash">
+                <i class="fas fa-th-large w-5"></i> Dashboard
+            </a>
+            <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
+            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="documents.html" class="nav-item-dash "><i class="fas fa-folder-open w-5"></i> Documents</a>
+            <a href="schedules.html" class="nav-item-dash "><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
+            <hr class="border-secondary opacity-25 my-3">
+            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
+            <a href="support.html" class="nav-item-dash active"><i class="fas fa-headset w-5"></i> Support</a>
+            <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
+        </nav>
+        <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
+            <div class="d-flex align-items-center gap-2">
+                <div id="user-avatar" class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width:32px;height:32px;">U</div>
+                <div class="d-grid">
+                    <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
                 </div>
-                <h3 class="text-white fw-bold">Support Desk</h3>
-                <p class="text-white-50 small mb-0">Create a support ticket, and our team will respond within 2 hours.
-                </p>
+            </div>
+        </div>
+    </aside>
+
+    <main class="dashboard-main p-4">
+
+    <div class="container py-2">
+        <div class="row justify-content-center g-4">
+            <!-- Left: Contact Form -->
+            <div class="col-lg-6 col-md-8">
+                <div class="card-enterprise h-100">
+                    <div class="p-4 border-bottom border-light border-opacity-10 text-center">
+                        <div class="d-inline-flex justify-content-center align-items-center bg-primary bg-opacity-25 text-primary rounded-circle mb-3"
+                            style="width: 64px; height: 64px;">
+                            <i class="fas fa-headset fa-2x"></i>
+                        </div>
+                        <h3 class="text-white fw-bold">Support Desk</h3>
+                        <p class="text-white-50 small mb-0">Create a support ticket, and our team will respond within 2 hours.
+                        </p>
+                    </div>
+
+                    <div class="p-4">
+                        <form id="supportForm">
+                            <div class="mb-3">
+                                <label class="form-label text-white-50 small fw-bold text-uppercase">Shipment Reference</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-dark border-secondary text-white-50"><i
+                                            class="fas fa-hashtag"></i></span>
+                                    <input type="text" id="shipmentId" class="form-control bg-dark border-secondary text-white"
+                                        placeholder="e.g. PA-1023">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label text-white-50 small fw-bold text-uppercase">Issue Type</label>
+                                <select id="issueType" class="form-select bg-dark border-secondary text-white" required>
+                                    <option value="">Select Category...</option>
+                                    <option value="delay">Shipment Delay / Tracking</option>
+                                    <option value="customs">Customs Clearance Hold</option>
+                                    <option value="damage">Damaged / Missing Cargo</option>
+                                    <option value="billing">Billing & Invoices</option>
+                                    <option value="other">Other Inquiry</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label text-white-50 small fw-bold text-uppercase">Description</label>
+                                <textarea id="issueDescription" class="form-control bg-dark border-secondary text-white"
+                                    rows="4" placeholder="Please describe your issue in detail..." required></textarea>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill" id="submitBtn">
+                                Submit Ticket <i class="fas fa-paper-plane ms-2"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
-            <div class="p-4">
-                <form id="supportForm">
-                    <div class="mb-3">
-                        <label class="form-label text-white-50 small fw-bold text-uppercase">Shipment Reference</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-dark border-secondary text-white-50"><i
-                                    class="fas fa-hashtag"></i></span>
-                            <input type="text" id="shipmentId" class="form-control bg-dark border-secondary text-white"
-                                placeholder="e.g. PA-1023">
+            <!-- Right: FAQ & Chat Info -->
+            <div class="col-lg-5 col-md-8">
+                <!-- Chat Support -->
+                <div class="card-enterprise p-4 mb-4" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(0,0,0,0.5));">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="bg-primary text-white p-3 rounded-circle">
+                            <i class="fas fa-comments fa-xl"></i>
+                        </div>
+                        <div>
+                            <h5 class="text-white fw-bold mb-1">Live Chat Support</h5>
+                            <p class="text-white-50 small mb-3">Get immediate assistance from our support agents 24/7.</p>
+                            <button class="btn btn-primary rounded-pill btn-sm px-4" onclick="alert('Initiating chat session... (Mock placeholder)')"><i class="fas fa-comment-dots me-2"></i> Start Chat</button>
                         </div>
                     </div>
+                </div>
 
-                    <div class="mb-3">
-                        <label class="form-label text-white-50 small fw-bold text-uppercase">Issue Type</label>
-                        <select id="issueType" class="form-select bg-dark border-secondary text-white" required>
-                            <option value="">Select Category...</option>
-                            <option value="delay">Shipment Delay / Tracking</option>
-                            <option value="customs">Customs Clearance Hold</option>
-                            <option value="damage">Damaged / Missing Cargo</option>
-                            <option value="billing">Billing & Invoices</option>
-                            <option value="other">Other Inquiry</option>
-                        </select>
+                <!-- Frequently Asked Questions -->
+                <div class="card-enterprise p-4">
+                    <h5 class="text-white fw-bold mb-3"><i class="fas fa-question-circle text-info me-2"></i> FAQ</h5>
+                    
+                    <div class="accordion accordion-dark" id="faqAccordion">
+                        <div class="accordion-item bg-transparent border-0 border-bottom border-secondary border-opacity-25 pb-2 mb-2">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-transparent text-white px-0 shadow-none pb-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                    How do I track my shipment?
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body text-white-50 small px-0 pt-0">
+                                    You can navigate to the <b>Live Tracking</b> tab from your dashboard and enter your Shipment Reference ID (e.g., PA-1023).
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item bg-transparent border-0 border-bottom border-secondary border-opacity-25 pb-2 mb-2">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-transparent text-white px-0 shadow-none pb-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                    What if my shipment is delayed at Customs?
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body text-white-50 small px-0 pt-0">
+                                    Check the <b>Documents</b> tab to ensure all required paperwork is uploaded. If documents are missing, customs may hold the cargo until they are received.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="accordion-item bg-transparent border-0 pb-2">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed bg-transparent text-white px-0 shadow-none pb-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                    Can I reschedule my pickup time?
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body text-white-50 small px-0 pt-0">
+                                    Yes! Visit the <b>Schedules</b> section on the Dashboard, find your booking, and select "Reschedule" to pick a new available time slot.
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="mb-4">
-                        <label class="form-label text-white-50 small fw-bold text-uppercase">Description</label>
-                        <textarea id="issueDescription" class="form-control bg-dark border-secondary text-white"
-                            rows="4" placeholder="Please describe your issue in detail..." required></textarea>
-                    </div>
-
-                    <button type="submit" class="btn btn-primary w-100 btn-lg rounded-pill" id="submitBtn">
-                        Submit Ticket <i class="fas fa-paper-plane ms-2"></i>
-                    </button>
-                </form>
+                    
+                </div>
             </div>
         </div>
     </div>
@@ -95,6 +196,7 @@
                 const r = await fetch(`${API_URL}/api/support/create`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify(payload)
                 });
                 const d = await r.json();
@@ -114,6 +216,29 @@
             }
         });
     </script>
+</main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`http://${window.location.hostname}:3000/api/auth/me`, { credentials: 'include' });
+                const data = await res.json();
+                if (data.success && data.user) {
+                    const name = data.user.name || 'User';
+                    const nameEl = document.getElementById('user-name-display');
+                    const avEl = document.getElementById('user-avatar');
+                    if (nameEl) nameEl.innerText = name;
+                    if (avEl) avEl.innerText = name.charAt(0).toUpperCase();
+
+                    // Pre-fill Shipment ID
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const sid = urlParams.get('shipmentId');
+                    if (sid) document.getElementById('shipmentId').value = sid;
+                }
+            } catch (err) { }
+        });
+    </script>
+    
 </body>
 
 </html>

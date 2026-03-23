@@ -1,0 +1,24 @@
+=== SHIPMENT 54 ===
+status: Ship Allocated
+company_id: 17
+customer_id: 12
+allocated_ship_id: 20
+
+=== COMPANY ACCOUNTS ===
+id: 7 email: company@smartshipping.com
+id: 17 email: fedexcomp@example.com
+
+=== ALL RELEVANT SHIPMENTS ===
+id: 54 status: Ship Allocated company_id: 17
+id: 59 status: Cargo Ready company_id: 17
+id: 60 status: Ship Allocated company_id: 17
+id: 61 status: Ship Allocated company_id: 17
+
+=== TRACKING_LOGS COLUMNS ===
+  id (integer) nullable: NO
+  shipment_id (integer) nullable: NO
+  status (character varying) nullable: NO
+  location_note (text) nullable: YES
+  lat (numeric) nullable: YES
+  lng (numeric) nullable: YES
+  timestamp (timestamp without time zone) nullable: YES
