@@ -639,14 +639,27 @@ function openCompleteShipmentModal(id) {
                     <!-- Step Progress -->
                     <div class="d-flex justify-content-between mb-4 mt-2 px-5 position-relative">
                         <div style="position:absolute; top:12px; left:15%; right:15%; height:2px; background:rgba(255,255,255,0.1); z-index:0;"></div>
-                        <div id="step-dot-1" class="step-dot active">1<br><small>Details</small></div>
-                        <div id="step-dot-2" class="step-dot">2<br><small>Documents</small></div>
-                        <div id="step-dot-3" class="step-dot">3<br><small>Payment</small></div>
+                        <div id="step-dot-1" class="step-dot active">1<br><small>Service</small></div>
+                        <div id="step-dot-2" class="step-dot">2<br><small>Details</small></div>
+                        <div id="step-dot-3" class="step-dot">3<br><small>Documents</small></div>
+                        <div id="step-dot-4" class="step-dot">4<br><small>Payment</small></div>
                     </div>
 
-                    <!-- Step 1: Filling Details -->
+                    <!-- Step 1: Selection -->
                     <div id="comp-step-1">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">1. Shipment & Consignee Information</h6>
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">1. Select Preferred Service Level</h6>
+                        <div id="comp-quotes-list" class="d-grid gap-3 mb-4">
+                            <!-- JS Inject -->
+                            <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div> Analyzing quotes...</div>
+                        </div>
+                        <div class="mt-4 text-end">
+                            <button id="quoteNextBtn" class="btn btn-primary px-4 rounded-pill" disabled onclick="goToStep(2)">Next: Shipment Details <i class="fas fa-arrow-right ms-2"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Filling Details -->
+                    <div id="comp-step-2" style="display:none;">
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">2. Shipment & Consignee Information</h6>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="small text-white-50 mb-1">HS Code *</label>
@@ -669,14 +682,15 @@ function openCompleteShipmentModal(id) {
                                 <input type="number" id="comp-value" class="form-control form-control-sm bg-dark text-white border-secondary">
                             </div>
                         </div>
-                        <div class="mt-4 text-end">
-                            <button class="btn btn-primary px-4 rounded-pill" onclick="goToStep(2)">Next: Documents <i class="fas fa-arrow-right ms-2"></i></button>
+                        <div class="mt-4 text-end d-flex justify-content-between">
+                            <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(1)"><i class="fas fa-arrow-left me-2"></i> Back</button>
+                            <button class="btn btn-primary px-4 rounded-pill" onclick="goToStep(3)">Next: Documents <i class="fas fa-arrow-right ms-2"></i></button>
                         </div>
                     </div>
 
-                    <!-- Step 2: Documents -->
-                    <div id="comp-step-2" style="display:none;">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">2. Upload Mandatory Documents</h6>
+                    <!-- Step 3: Documents -->
+                    <div id="comp-step-3" style="display:none;">
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">3. Upload Mandatory Documents</h6>
                         <div class="row g-3">
                              <div class="col-md-6">
                                 <label class="small text-white-50 mb-1">Government ID *</label>
@@ -712,14 +726,14 @@ function openCompleteShipmentModal(id) {
                              </div>
                         </div>
                         <div class="mt-4 d-flex justify-content-between">
-                            <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(1)"><i class="fas fa-arrow-left me-2"></i> Back</button>
+                            <button class="btn btn-outline-light px-4 rounded-pill" onclick="goToStep(2)"><i class="fas fa-arrow-left me-2"></i> Back</button>
                             <button class="btn btn-primary px-4 rounded-pill" id="uploadAllBtn">Upload & Continue <i class="fas fa-cloud-upload-alt ms-2"></i></button>
                         </div>
                     </div>
 
-                    <!-- Step 3: Payment -->
-                    <div id="comp-step-3" style="display:none;">
-                        <h6 class="text-primary small fw-bold text-uppercase mb-3">3. Final Review & Payment</h6>
+                    <!-- Step 4: Payment -->
+                    <div id="comp-step-4" style="display:none;">
+                        <h6 class="text-primary small fw-bold text-uppercase mb-3">4. Final Review & Payment</h6>
                         
                         <!-- ⚠️ Payment Gating Check -->
                         <div id="payment-locked-notice" class="alert alert-warning border-warning bg-warning bg-opacity-10 mb-4" style="display:none;">
@@ -776,6 +790,8 @@ function openCompleteShipmentModal(id) {
     if (!s) return;
 
     goToStep(1);
+    loadQuoteOptions(id);
+
     document.getElementById('comp-hs-code').value = s.hs_code || '';
     document.getElementById('comp-consignee').value = s.consignee_name || '';
     document.getElementById('comp-desc').value = s.description || '';
@@ -834,11 +850,87 @@ function goToStep(n) {
     document.getElementById('comp-step-1').style.display = n === 1 ? 'block' : 'none';
     document.getElementById('comp-step-2').style.display = n === 2 ? 'block' : 'none';
     document.getElementById('comp-step-3').style.display = n === 3 ? 'block' : 'none';
+    document.getElementById('comp-step-4').style.display = n === 4 ? 'block' : 'none';
 
     document.querySelectorAll('.step-dot').forEach(d => d.classList.remove('active'));
     for (let i = 1; i <= n; i++) {
-        document.getElementById(`step-dot-${i}`).classList.add('active');
+        const dot = document.getElementById(`step-dot-${i}`);
+        if (dot) dot.classList.add('active');
     }
+}
+
+async function loadQuoteOptions(shipmentId) {
+    const list = document.getElementById('comp-quotes-list');
+    if (!list) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/quotes`, { credentials: 'include' });
+        const data = await res.json();
+        
+        if (data.success && data.quotes.length > 0) {
+            list.innerHTML = data.quotes.map(q => `
+                <div class="quote-option p-3 rounded-3 border border-secondary border-opacity-25 hover-glow" 
+                     id="quote-opt-${q.id}" onclick="selectQuoteOption(${shipmentId}, ${q.id}, ${q.price})" style="cursor:pointer; transition:all 0.2s;">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="text-white fw-bold">${q.option_name}</div>
+                            <div class="text-white-50 x-small">${q.transit_time || 'General Shipping'}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-success fw-bold fs-5">₹${Number(q.price).toLocaleString()}</div>
+                            <div class="text-white-50 x-small">Estimated Cost</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // If already has a selection
+            const s = window.ALL_SHIPMENTS.find(x => x.id == shipmentId);
+            if (s && s.selected_quote_id) {
+                const q = data.quotes.find(x => x.id == s.selected_quote_id);
+                if (q) selectQuoteOption(shipmentId, q.id, q.price);
+            }
+        } else {
+            list.innerHTML = `<div class="text-white-50 small text-center py-4"><i class="fas fa-exclamation-circle me-2"></i>No quote options provided by manager yet.</div>`;
+        }
+    } catch (e) {
+        list.innerHTML = `<div class="text-danger small text-center py-4">Failed to load quotes.</div>`;
+    }
+}
+
+async function selectQuoteOption(sid, qid, price) {
+    // UI Update
+    document.querySelectorAll('.quote-option').forEach(el => el.classList.remove('border-primary', 'bg-primary', 'bg-opacity-10'));
+    const selected = document.getElementById(`quote-opt-${qid}`);
+    if (selected) {
+        selected.classList.add('border-primary', 'bg-primary', 'bg-opacity-10');
+    }
+
+    document.getElementById('quoteNextBtn').disabled = false;
+    
+    // Update local cost displays
+    const cost = Number(price);
+    const tax = cost * 0.08;
+    const total = cost + tax;
+    document.getElementById('comp-amt-base').innerText = `₹${cost.toLocaleString()}`;
+    document.getElementById('comp-amt-tax').innerText = `₹${tax.toLocaleString()}`;
+    document.getElementById('comp-amt-total').innerText = `₹${total.toLocaleString()}`;
+
+    // Backend update
+    try {
+        await fetch(`${API_URL}/api/v3/shipment/${sid}/select-quote`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quoteId: qid })
+        });
+        // Update local reference
+        const s = window.ALL_SHIPMENTS.find(x => x.id == sid);
+        if (s) {
+            s.selected_quote_id = qid;
+            s.estimated_cost = price;
+        }
+    } catch (e) {}
 }
 
 async function uploadAllShipmentDocs(shipmentId) {
@@ -852,8 +944,8 @@ async function uploadAllShipmentDocs(shipmentId) {
     };
 
     if (!details.hsCode || !details.consigneeName) {
-        alert("Please provide Consignee name and HS code in Step 1.");
-        goToStep(1);
+        alert("Please provide Consignee name and HS code in Step 2.");
+        goToStep(2);
         return;
     }
 
@@ -908,11 +1000,9 @@ async function uploadAllShipmentDocs(shipmentId) {
             }
         }
         if (successCount > 0) {
-            // Smooth transition to Payment Step without intrusive alerts
-            goToStep(3);
+            goToStep(4);
         } else {
-            // If they already uploaded or just want to see payment
-            goToStep(3);
+            goToStep(4);
         }
     } catch (e) {
         alert('Upload failed. Please try again.');

@@ -1411,7 +1411,7 @@ async function submitIntegratedAccept() {
         toast(d.message, d.success ? 'success' : 'error');
         if (d.success) {
             closeModal('accept-modal');
-            loadPendingRequests();
+            loadBookings();
         }
     } catch (e) { toast('Server Error', 'error'); }
 }

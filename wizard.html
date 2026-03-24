@@ -16,23 +16,7 @@
 
 <body class="booking-page">
 
-  <!-- KYC Blocker Overlay -->
-  <div id="kyc-blocker" style="position:fixed; inset:0; background:rgba(12,17,32,0.9); z-index:9999; display:none; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
-    <div class="card bg-dark border-secondary p-5 text-center shadow-lg" style="max-width:500px; border-radius:24px;">
-      <div class="bg-warning text-dark rounded-circle mx-auto mb-4 d-flex align-items-center justify-content-center" style="width:80px; height:80px;">
-        <i class="fas fa-user-shield fa-3x"></i>
-      </div>
-      <h3 class="text-white fw-bold mb-3">Verification Required</h3>
-      <p class="text-white-50 mb-4">To comply with international shipping regulations, we require a one-time identity verification (KYC) before you can book shipments.</p>
-      <div class="d-grid gap-3">
-        <a href="documents.html" class="btn btn-warning btn-lg rounded-pill fw-bold py-3"><i class="fas fa-id-card me-2"></i>Complete KYC Now</a>
-        <a href="shipments.html" class="btn btn-outline-light btn-lg rounded-pill py-3">Cancel & Back</a>
-      </div>
-      <div class="mt-4 pt-3 border-top border-secondary border-opacity-20">
-        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill x-small">One-time process • Quick approval • Secure data</span>
-      </div>
-    </div>
-  </div>
+  <!-- KYC Blocker Disabled -->
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark fixed-top glass-nav">
     <div class="container-fluid px-4">
@@ -345,41 +329,7 @@
                 </div>
               </div>
 
-              <!-- 2. Identity Verification (KYC) -->
-              <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-user-shield me-2"></i>2.
-                Identity Verification (KYC)</h6>
-              <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                  <label class="form-label text-white-50 small fw-bold">IDENTITY PROOF TYPE <span
-                      class="text-danger">*</span></label>
-                  <select id="kycType" class="form-select bg-dark text-white border-secondary">
-                    <option value="Aadhaar Card">Aadhaar Card</option>
-                    <option value="PAN Card">PAN Card</option>
-                    <option value="Passport">Passport</option>
-                    <option value="Driving Licence">Driving Licence</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label text-white-50 small fw-bold">UPLOAD IDENTITY DOC <span
-                      class="text-danger">*</span></label>
-                  <input type="file" id="kycFile" class="form-control bg-dark text-white border-secondary" required>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label text-white-50 small fw-bold">ADDRESS PROOF TYPE <span
-                      class="text-danger">*</span></label>
-                  <select id="addrType" class="form-select bg-dark text-white border-secondary">
-                    <option value="Aadhaar Card">Aadhaar Card</option>
-                    <option value="Voter ID Card">Voter ID Card</option>
-                    <option value="Utility Bill">Utility Bill</option>
-                    <option value="Bank Statement">Bank Statement</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label text-white-50 small fw-bold">UPLOAD ADDRESS PROOF <span
-                      class="text-danger">*</span></label>
-                  <input type="file" id="addrFile" class="form-control bg-dark text-white border-secondary" required>
-                </div>
-              </div>
+              <!-- Identity Verification (KYC) Removed -->
 
               <!-- 3. Trade Documentation -->
               <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-passport me-2"></i>3. Trade
@@ -493,20 +443,8 @@
     <script src="notifications.js"></script>
     <script src="wizard.js"></script>
 <script>
-    // KYC Gate
-    async function checkKYC() {
-        try {
-            const r = await fetch(`http://${location.hostname}:3000/api/kyc/my-status`, { credentials: 'include' });
-            const d = await r.json();
-            if (d.success && d.kycStatus !== 'Approved') {
-                document.getElementById('kyc-blocker').style.display = 'flex';
-            }
-        } catch (e) {
-            console.error('KYC Gate error:', e);
-        }
-    }
-    document.addEventListener('DOMContentLoaded', checkKYC);
-    </script>
+    // KYC Gate Disabled
+</script>
 </body>
 
 </html>

@@ -293,15 +293,15 @@ function showBookingSummary() {
     consigneeContact: document.getElementById('consigneeContact').value,
     originCountry: document.getElementById('originCountry').value,
     cargoValue: document.getElementById('cargoValue').value,
-    kycType: document.getElementById('kycType').value,
-    addrType: document.getElementById('addrType').value,
+    kycType: document.getElementById('kycType')?.value || 'N/A',
+    addrType: document.getElementById('addrType')?.value || 'N/A',
     iecNum: document.getElementById('iecNum').value
   };
 
   const files = {
-    kyc: document.getElementById('kycFile').files[0],
-    addr: document.getElementById('addrFile').files[0],
-    iec: document.getElementById('iecFile').files[0],
+    kyc: document.getElementById('kycFile')?.files[0] || null,
+    addr: document.getElementById('addrFile')?.files[0] || null,
+    iec: document.getElementById('iecFile')?.files[0] || null,
     invoice: document.getElementById('invoiceFile').files[0],
     packing: document.getElementById('packingListFile').files[0]
   };
