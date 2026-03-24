@@ -240,7 +240,9 @@ const runMigrations = async () => {
             ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255);
             ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'customer';
             ALTER TABLE users ADD COLUMN IF NOT EXISTS company_status VARCHAR(20) DEFAULT 'pending';
-            ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'Pending';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'Not Started';
+            -- Also ensure anyone who was 'Pending' but hasn't uploaded docs is reset
+            UPDATE users SET kyc_status = 'Not Started' WHERE kyc_status = 'Pending' AND id NOT IN (SELECT user_id FROM user_kyc_documents);
         `);
         // 2. Core Shipments Table (Must exist before admin/support tables)
         await pool.query(`
@@ -277,6 +279,14 @@ const runMigrations = async () => {
             const v4Sql = require('fs').readFileSync(v4Path, 'utf8');
             await pool.query(v4Sql);
             console.log("💎 Logistics V4 Migration Applied Successfully");
+        }
+
+        // 5. V4.1 Schema Fix (Correcting missing columns)
+        const v41Path = path.join(__dirname, 'migrations', 'v4_1_fix_schema.sql');
+        if (require('fs').existsSync(v41Path)) {
+            const v41Sql = require('fs').readFileSync(v41Path, 'utf8');
+            await pool.query(v41Sql);
+            console.log("🛠️ Logistics V4.1 Schema Fix Applied Successfully");
         }
 
         console.log("🚀 All Data Schemas are Synced and Healthy");
@@ -531,15 +541,18 @@ const createAdminTables = async () => {
             CREATE TABLE IF NOT EXISTS user_kyc_documents (
                 id SERIAL PRIMARY KEY,
                 user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                doc_type VARCHAR(50) NOT NULL, -- Aadhaar, PAN, Address Proof, Business Certificate
+                doc_type VARCHAR(50) NOT NULL,
+                file_name VARCHAR(255),
                 file_url TEXT NOT NULL,
-                status VARCHAR(20) DEFAULT 'Pending', -- Pending, Approved, Rejected
+                status VARCHAR(20) DEFAULT 'Pending',
                 rejection_reason TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, doc_type)
-            );
-        `);
+        );`);
+        // Migration: Ensure file_name column exists
+        try { await pool.query("ALTER TABLE user_kyc_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);"); } catch(e) {}
+
 
         await pool.query(`
             CREATE TABLE IF NOT EXISTS system_settings (
@@ -1442,10 +1455,10 @@ const startServer = async () => {
                 // Increment port and try again
                 PORT = PORT + 1;
                 process.env.PORT = PORT;
-                
+
                 // Clear the previous error listener to prevent duplicate triggers
                 httpServer.removeAllListeners('error');
-                
+
                 // Recursive call to startServer with new port
                 startServer();
             } else {

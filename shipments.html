@@ -1129,23 +1129,52 @@
                 if (d.success) {
                     const alert = document.getElementById('kyc-dashboard-alert');
                     const statusText = document.getElementById('kyc-status-text');
-                    const headerBooking = document.querySelector('a.btn-primary[href="wizard.html"]');
-                    const navBooking = document.querySelector('a[href="wizard.html"].nav-item-dash');
+                    const headerBooking = document.querySelector('header a.btn-primary[href="wizard.html"], header a.btn-warning[href="documents.html"]');
+                    const navBooking = document.querySelector('aside a[href="wizard.html"].nav-item-dash, aside a[href="documents.html"].nav-item-dash');
 
-                    if (d.kycStatus !== 'Approved') {
+                    if (d.kycStatus === 'Approved') {
+                        alert.classList.add('d-none');
+                    } else if (d.kycStatus === 'Pending') {
                         alert.classList.remove('d-none');
-                        statusText.innerText = d.kycStatus;
+                        alert.style.borderLeft = '4px solid #3b82f6';
+                        alert.style.background = 'rgba(59, 130, 246, 0.08)';
+                        statusText.innerText = 'Under Review';
+                        statusText.className = 'fw-bold text-info text-uppercase';
+                        const alertIcon = alert.querySelector('.bg-warning');
+                        if (alertIcon) {
+                            alertIcon.className = 'bg-info text-white rounded-circle d-flex align-items-center justify-content-center';
+                            alertIcon.style.width = '38px'; alertIcon.style.height = '38px';
+                            alertIcon.innerHTML = '<i class="fas fa-history"></i>';
+                        }
+                        const alertTitle = alert.querySelector('h6');
+                        if (alertTitle) alertTitle.innerText = 'Identity Verification Under Review';
+                        if (headerBooking) {
+                            headerBooking.href = 'wizard.html';
+                            headerBooking.innerHTML = '<i class="fas fa-plus me-1"></i> New Booking';
+                            headerBooking.className = 'btn btn-primary btn-sm rounded-pill px-4 fw-semibold shadow-sm';
+                        }
+                        if (navBooking) {
+                            navBooking.href = 'wizard.html';
+                            navBooking.classList.remove('text-warning');
+                        }
+                        const alertBtn = alert.querySelector('a.btn-warning');
+                        if (alertBtn) {
+                            alertBtn.className = 'btn btn-info btn-sm text-white rounded-pill px-4 fw-bold shadow-sm';
+                            alertBtn.innerText = 'Check Status';
+                        }
+                    } else {
+                        // Not Started or Rejected
+                        alert.classList.remove('d-none');
+                        statusText.innerText = d.kycStatus === 'Not Started' ? 'Not Uploaded' : d.kycStatus;
                         if (headerBooking) {
                             headerBooking.href = 'documents.html';
                             headerBooking.innerHTML = '<i class="fas fa-id-card me-1"></i> Verify Identity';
-                            headerBooking.classList.replace('btn-primary', 'btn-warning');
+                            headerBooking.className = 'btn btn-warning btn-sm rounded-pill px-4 fw-semibold text-dark shadow-sm';
                         }
                         if (navBooking) {
                             navBooking.href = 'documents.html';
                             navBooking.classList.add('text-warning');
                         }
-                    } else {
-                        alert.classList.add('d-none');
                     }
                 }
             } catch (e) { console.error('KYC Check failed:', e); }

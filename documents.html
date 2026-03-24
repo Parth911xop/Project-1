@@ -81,9 +81,9 @@
                                 <span class="text-white-50 x-small fw-bold text-uppercase">Identification</span>
                                 <span class="badge bg-secondary x-small" id="kyc-status-id">Not Uploaded</span>
                             </div>
-                            <h6 class="text-white mb-3">ID Proof <small class="text-white-50 d-block x-small">(Aadhaar / Passport)</small></h6>
+                            <h6 class="text-white mb-3">ID Proof <small class="text-white-50 d-block x-small" id="kyc-file-id-name">(Aadhaar / Passport)</small></h6>
                             <input type="file" id="kyc-file-id" class="d-none" onchange="uploadKYC('ID Proof', this)">
-                            <button class="btn btn-sm btn-outline-primary w-100 rounded-pill" onclick="document.getElementById('kyc-file-id').click()">
+                            <button id="kyc-btn-id" class="btn btn-sm btn-outline-primary w-100 rounded-pill" onclick="document.getElementById('kyc-file-id').click()">
                                 <i class="fas fa-upload me-1"></i> Upload ID
                             </button>
                         </div>
@@ -95,9 +95,9 @@
                                 <span class="text-white-50 x-small fw-bold text-uppercase">Tax Document</span>
                                 <span class="badge bg-secondary x-small" id="kyc-status-pan">Not Uploaded</span>
                             </div>
-                            <h6 class="text-white mb-3">PAN Card <small class="text-white-50 d-block x-small">(Tax Identity)</small></h6>
+                            <h6 class="text-white mb-3">PAN Card <small class="text-white-50 d-block x-small" id="kyc-file-pan-name">(Tax Identity)</small></h6>
                             <input type="file" id="kyc-file-pan" class="d-none" onchange="uploadKYC('PAN', this)">
-                            <button class="btn btn-sm btn-outline-primary w-100 rounded-pill" onclick="document.getElementById('kyc-file-pan').click()">
+                            <button id="kyc-btn-pan" class="btn btn-sm btn-outline-primary w-100 rounded-pill" onclick="document.getElementById('kyc-file-pan').click()">
                                 <i class="fas fa-upload me-1"></i> Upload PAN
                             </button>
                         </div>
@@ -109,9 +109,9 @@
                                 <span class="text-white-50 x-small fw-bold text-uppercase">Address</span>
                                 <span class="badge bg-secondary x-small" id="kyc-status-address">Not Uploaded</span>
                             </div>
-                            <h6 class="text-white mb-3">Address Proof <small class="text-white-50 d-block x-small">(Utility Bill / Lease)</small></h6>
+                            <h6 class="text-white mb-3">Address Proof <small class="text-white-50 d-block x-small" id="kyc-file-address-name">(Utility Bill / Lease)</small></h6>
                             <input type="file" id="kyc-file-address" class="d-none" onchange="uploadKYC('Address Proof', this)">
-                            <button class="btn btn-sm btn-outline-primary w-100 rounded-pill" onclick="document.getElementById('kyc-file-address').click()">
+                            <button id="kyc-btn-address" class="btn btn-sm btn-outline-primary w-100 rounded-pill" onclick="document.getElementById('kyc-file-address').click()">
                                 <i class="fas fa-upload me-1"></i> Upload Address
                             </button>
                         </div>

@@ -129,6 +129,7 @@ router.post('/upload', upload.single('docFile'), async (req, res) => {
 
         // Workflow gate: no upload before manager allocates a ship
         const uploadEnabledStatuses = [
+            'Booked',
             'Ship Allocated',
             'Documents Pending',
             'Payment Pending',
@@ -138,7 +139,7 @@ router.post('/upload', upload.single('docFile'), async (req, res) => {
             'In Transit',
             'Delivered'
         ];
-        const canUpload = !!shipment.allocated_ship_id && uploadEnabledStatuses.includes(shipment.status);
+        const canUpload = uploadEnabledStatuses.includes(shipment.status);
         if (!canUpload) {
             return res.status(400).json({
                 success: false,
@@ -176,15 +177,16 @@ router.post('/upload', upload.single('docFile'), async (req, res) => {
         console.log("✅ DB Insert successful:", result.rows[0].id);
 
         // First upload after allocation moves shipment into documents phase
-        if (shipment.status === 'Ship Allocated') {
+        if (shipment.status === 'Ship Allocated' || shipment.status === 'Documents Pending' || shipment.status === 'Details Pending') {
+            const nextStatus = (shipment.status === 'Details Pending') ? 'Documents Pending' : 'Payment Pending';
             await pool.query(
-                `UPDATE shipments SET status = 'Documents Pending', updated_at = NOW() WHERE id = $1`,
-                [sid]
+                `UPDATE shipments SET status = $1, updated_at = NOW() WHERE id = $2`,
+                [nextStatus, sid]
             );
             await pool.query(
                 `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
-                 VALUES ($1, 'Documents Pending', 'User started document upload.', $2)`,
-                [sid, userId || null]
+                 VALUES ($1, $2, 'User uploaded document: ' || $3, $4)`,
+                [sid, nextStatus, type || 'Document', userId || null]
             );
         }
 

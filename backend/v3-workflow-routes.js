@@ -81,14 +81,14 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
                     [ship.id]
                 );
                 const stops = stopsR.rows;
-                
+
                 let isMatch = true;
                 let matchScore = 0;
 
                 if (fromPort && toPort) {
                     const fromIdx = stops.findIndex(s => s.port_name.toLowerCase().includes(fromPort.toLowerCase()));
                     const toIdx = stops.findIndex(s => s.port_name.toLowerCase().includes(toPort.toLowerCase()));
-                    
+
                     if (fromIdx !== -1 && toIdx !== -1 && fromIdx < toIdx) {
                         isMatch = true;
                         matchScore = 100;
@@ -108,10 +108,12 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             // Remove hard filter so we can show "❌ Wrong Cases" to manager
             // if (fromPort && toPort) ships = ships.filter(s => s.isMatch);
 
-            res.json({ success: true, ships: ships.sort((a,b) => {
-                if (a.isMatch !== b.isMatch) return a.isMatch ? -1 : 1;
-                return b.matchScore - a.matchScore;
-            }) });
+            res.json({
+                success: true, ships: ships.sort((a, b) => {
+                    if (a.isMatch !== b.isMatch) return a.isMatch ? -1 : 1;
+                    return b.matchScore - a.matchScore;
+                })
+            });
         } catch (e) {
             console.error('Available ships error:', e);
             res.status(500).json({ success: false, message: 'Failed to fetch ships' });
@@ -130,7 +132,7 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
      */
     app.post('/api/v3/manager/allocate-ship', ...companyAuth, async (req, res) => {
         let { shipmentId, shipId, departureDate, arrivalDate, cargoDropPort, notes, docs, quotes } = req.body;
-        
+
         // Ensure empty strings don't break TIMESTAMP columns
         departureDate = departureDate || null;
         arrivalDate = arrivalDate || null;
@@ -169,7 +171,10 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
                 return res.status(400).json({ success: false, message: 'Ship has no available slots' });
             }
 
-            // Allocate the ship
+            // Fetch customer ID from shipment
+            const customerId = shipCheck.rows[0].customer_id;
+
+            // Allocate the ship and save 3 price quotes
             await pool.query(`
                 UPDATE shipments SET 
                     status = 'Ship Allocated',
@@ -180,13 +185,15 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
                     manager_notes = $5,
                     estimated_departure = $6,
                     estimated_arrival = $7,
+                    negotiated_quotes = $8::jsonb,
                     allocated_at = NOW(),
                     updated_at = NOW()
-                WHERE id = $8
+                WHERE id = $9
             `, [
                 shipId, managerId, ship.name || ship.type,
                 cargoDropPort || null, notes || null,
                 departureDate || null, arrivalDate || null,
+                quotes ? JSON.stringify(quotes) : null,
                 sid
             ]);
 
@@ -639,13 +646,13 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
         if (!source || !drop || allStops.length === 0) return allStops;
         const s = source.toLowerCase();
         const d = drop.toLowerCase();
-        
+
         let startIdx = allStops.findIndex(st => st.port_name.toLowerCase().includes(s) || s.includes(st.port_name.toLowerCase()));
         let endIdx = allStops.findIndex(st => st.port_name.toLowerCase().includes(d) || d.includes(st.port_name.toLowerCase()));
-        
+
         if (startIdx === -1) startIdx = 0;
         if (endIdx === -1) endIdx = allStops.length - 1;
-        
+
         if (startIdx > endIdx) return allStops.slice(endIdx, startIdx + 1); // Reverse logic if needed
         return allStops.slice(startIdx, endIdx + 1);
     }
@@ -800,7 +807,7 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
                 `UPDATE shipments SET status = 'Cargo Ready', updated_at = NOW() WHERE id = $1`,
                 [sid]
             );
-            
+
             // Mark invoice as paid
             await pool.query(
                 `UPDATE invoices SET status = 'Paid' WHERE shipment_id = $1`,
@@ -923,10 +930,10 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             const custId = userR.rows[0]?.customer_id || userR.rows[0]?.user_id;
             if (custId) {
                 const link = `shipments.html?complete=${sid}`;
-                await notify(custId, 'Action Required: Choose Service Level', 
-                    `Your booking #${sid} is accepted. Please select your service (Economy/Standard/Express) and upload documents to lock in your price.`, 
+                await notify(custId, 'Action Required: Choose Service Level',
+                    `Your booking #${sid} is accepted. Please select your service (Economy/Standard/Express) and upload documents to lock in your price.`,
                     'warning', link);
-                
+
                 if (io) {
                     io.to(`shipment:${sid}`).emit('shipment:status_update', {
                         shipmentId: sid,
@@ -981,49 +988,272 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
     // ═══════════════════════════════════════════════════════════
 
     /**
-     * GET /api/v3/shipment/:id/quotes
-     * Returns the 3 service options + required docs for the user
+     * PATCH /api/v3/shipment/:id/update-details
+     * Persists HS Code, Consignee Info, etc. for Step 1.
      */
-    app.get('/api/v3/shipment/:id/quotes', anyAuth, async (req, res) => {
-        const sid = parseInt(req.params.id);
+    app.patch('/api/v3/shipment/:id/update-details', ...anyAuth, async (req, res) => {
+        const sid = parseInt(String(req.params.id).includes('-') ? String(req.params.id).split('-').pop() : req.params.id);
+        const { hsCode, consigneeName, description, consigneeContact, cargoValue } = req.body;
+        const userId = uid(req);
+
         try {
-            const rQ = await pool.query(`SELECT * FROM shipment_quote_options WHERE shipment_id = $1`, [sid]);
-            const rS = await pool.query(`SELECT requested_documents, selected_quote_id FROM shipments WHERE id = $1`, [sid]);
-            
-            if (rS.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
-            
-            res.json({ 
-                success: true, 
-                quotes: rQ.rows, 
-                docs: rS.rows[0].requested_documents || [],
-                selectedId: rS.rows[0].selected_quote_id
-            });
+            await pool.query(`
+                UPDATE shipments SET 
+                    hs_code = $1,
+                    consignee_name = $2,
+                    description = $3,
+                    consignee_contact = $4,
+                    cargo_value = $5,
+                    status = 'Documents Pending',
+                    updated_at = NOW()
+                WHERE id = $6 AND customer_id = $7
+            `, [hsCode, consigneeName, description, consigneeContact, cargoValue, sid, userId]);
+
+            res.json({ success: true, message: 'Details updated successfully.', status: 'Documents Pending' });
         } catch (e) {
-            console.error('Fetch quotes error:', e.message);
-            res.status(500).json({ success: false });
+            console.error('Update details error:', e);
+            res.status(500).json({ success: false, message: 'Database error updating details' });
         }
     });
 
     /**
-     * POST /api/v3/shipment/:id/select-quote
-     * User picks their service level
+     * GET /api/v3/shipment/:id/booking-details
+     * Returns plan options, required docs, etc. (Consolidated)
      */
-    app.post('/api/v3/shipment/:id/select-quote', anyAuth, async (req, res) => {
-        const sid = parseInt(req.params.id);
-        const { quoteId } = req.body;
+    app.get('/api/v3/shipment/:id/booking-details', ...anyAuth, async (req, res) => {
+        const sid = parseInt(String(req.params.id).includes('-') ? String(req.params.id).split('-').pop() : req.params.id);
+        const userId = uid(req);
+        if (isNaN(sid)) return res.status(400).json({ success: false, message: 'Invalid ID' });
+
         try {
-            const rQ = await pool.query(`SELECT price FROM shipment_quote_options WHERE id = $1 AND shipment_id = $2`, [quoteId, sid]);
-            if (rQ.rows.length === 0) throw new Error('Invalid quote selection');
-            
-            await pool.query(
-                `UPDATE shipments SET selected_quote_id = $1, estimated_cost = $2, updated_at = NOW() WHERE id = $3`, 
-                [quoteId, rQ.rows[0].price, sid]
+            const shipCheck = await pool.query(
+                `SELECT status, plan_options, negotiated_quotes, required_documents, requested_documents,
+                        vessel_id, selected_service_level, selected_quote_id, 
+                        hs_code, consignee_name, description, consignee_contact, cargo_value, estimated_cost 
+                 FROM shipments WHERE id = $1 AND customer_id = $2`, 
+                [sid, userId]
             );
-            res.json({ success: true, message: 'Service level selected' });
+            if (shipCheck.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
+            
+            const ship = shipCheck.rows[0];
+            const quotes = (ship.plan_options && Array.isArray(ship.plan_options) && ship.plan_options.length) ? ship.plan_options : (ship.negotiated_quotes || []);
+            const docs = (ship.required_documents && Array.isArray(ship.required_documents)) ? ship.required_documents : (ship.requested_documents || []);
+            
+            const hasPlans = quotes && quotes.length > 0;
+            
+            if (!hasPlans) {
+                return res.json({ success: false, waiting: true, message: 'Waiting for manager approval and resource allocation' });
+            }
+
+            console.log(`[API] Returning booking details for shipment ${sid} to user ${userId}:`, { quotes, docs, hasPlans });
+
+            res.json({ 
+                success: true, 
+                planOptions: quotes, 
+                requiredDocuments: docs, 
+                vesselId: ship.vessel_id,
+                selectedPlan: ship.selected_service_level,
+                selectedId: ship.selected_quote_id,
+                shipment: ship,
+                // Aliases
+                quotes,
+                docs
+            });
+        } catch (err) {
+            console.error('[API ERROR] Booking details error:', err);
+            res.status(500).json({ success: false, message: 'Database error fetching details' });
+        }
+
+    });
+
+    /**
+     * GET /api/v3/shipment/:id/quotes (Alias for backward compatibility)
+     */
+    app.get('/api/v3/shipment/:id/quotes', ...anyAuth, async (req, res) => {
+        const sid = req.params.id;
+        res.redirect(`/api/v3/shipment/${sid}/booking-details`);
+    });
+
+    /**
+     * POST /api/v3/shipment/:id/select-quote
+     * User picks their service level from the 3 manager-provided quotes.
+     */
+    app.post('/api/v3/shipment/:id/select-quote', ...anyAuth, async (req, res) => {
+        const sid = parseInt(String(req.params.id).includes('-') ? String(req.params.id).split('-').pop() : req.params.id);
+        const { quoteIdx, quoteId, serviceLevel } = req.body;
+        const userId = uid(req);
+
+        try {
+            // 1. Fetch current quotes from JSON column
+            const r = await pool.query(`SELECT plan_options, negotiated_quotes, customer_id FROM shipments WHERE id = $1`, [sid]);
+            if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
+
+            const shipment = r.rows[0];
+            if (Number(shipment.customer_id) !== Number(userId)) {
+                return res.status(403).json({ success: false, message: 'Unauthorized selection' });
+            }
+
+            const quotes = (shipment.plan_options && Array.isArray(shipment.plan_options) && shipment.plan_options.length) ? shipment.plan_options : (shipment.negotiated_quotes || []);
+            if (!quotes || !Array.isArray(quotes) || quotes.length === 0) {
+                return res.status(400).json({ success: false, message: 'No negotiated quotes available for this shipment.' });
+            }
+
+            // 2. Resolve the selected quote
+            let selected = null;
+            if (quoteIdx !== undefined && quotes[quoteIdx]) {
+                selected = quotes[quoteIdx];
+            } else if (quoteId) {
+                selected = quotes.find(q => q.id === quoteId || q.quoteId === quoteId);
+            } else if (serviceLevel) {
+                selected = quotes.find(q => (q.name || q.badge || q.type) === serviceLevel);
+            }
+
+            if (!selected) {
+                return res.status(400).json({ success: false, message: 'Invalid plan selection. Please choose from the options assigned by the manager.' });
+            }
+
+            console.log(`[USER] Selected plan for shipment ${sid}:`, selected);
+
+            // 3. Update shipment with the chosen price and move to next status
+            await pool.query(`
+                UPDATE shipments SET 
+                    estimated_cost = $1,
+                    selected_service_level = $2,
+                    selected_quote_id = $3,
+                    selected_plan = $2,
+                    status = 'Details Pending',
+                    updated_at = NOW()
+                WHERE id = $4
+            `, [
+                parseFloat(selected.price || selected.cost || 0),
+                serviceLevel || selected.badge || selected.type || selected.name || 'Standard',
+                quoteId || selected.id || String(quoteIdx),
+                sid
+            ]);
+
+
+
+            // Log event
+            await pool.query(
+                `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
+                 VALUES ($1, 'Details Pending', $2, $3)`,
+                [sid, `User selected service level: ${serviceLevel || selected.badge || 'Standard'}. Price: ${selected.price || selected.cost}`, userId]
+            );
+
+            res.json({
+                success: true,
+                message: 'Price selected successfully. Please fill your shipment details next.',
+                nextStep: 'Fill Information',
+                status: 'Details Pending'
+            });
+
         } catch (e) {
-            res.status(500).json({ success: false, message: e.message });
+            console.error('Select quote error:', e);
+            res.status(500).json({ success: false, message: 'Database error selecting quote' });
         }
     });
 
-    console.log('✅ V3 Workflow routes loaded (Ship Allocation, Route Management, Tracking, Receipts, Vessel Route, Integrated Accept)');
+    /**
+     * POST /api/v3/manager/shipment/:id/integrated-accept
+     * Manager accepts a booking AND provides 3 price quotes + requested docs.
+     */
+    app.post('/api/v3/manager/shipment/:id/integrated-accept', ...companyAuth, async (req, res) => {
+        const sid = parseInt(String(req.params.id).includes('-') ? String(req.params.id).split('-').pop() : req.params.id);
+        const { shipId, cargoDropPort, departureDate, arrivalDate, docs, quotes } = req.body;
+        const managerId = uid(req);
+
+        if (!shipId || !quotes || quotes.length < 1) {
+            return res.status(400).json({ success: false, message: 'Vessel allocation and pricing quotes are required.' });
+        }
+
+        try {
+            // 1. Verify shipment
+            const shipCheck = await pool.query(
+                `SELECT * FROM shipments WHERE id = $1 AND (status = 'Pending Manager Approval' OR status = 'Pending')`,
+                [sid]
+            );
+            if (shipCheck.rows.length === 0) {
+                return res.status(404).json({ success: false, message: 'Shipment not found or already processed.' });
+            }
+
+            console.log(`[MANAGER] Saving integrated approval for shipment ${sid}. Quotes:`, quotes);
+
+            // 2. Clear previous quotes if any and UPDATE
+            await pool.query(`
+                UPDATE shipments SET 
+                    status = 'Ship Allocated',
+                    allocated_ship_id = $1,
+                    company_id = $2,
+                    cargo_drop_port = $3,
+                    estimated_departure = $4,
+                    estimated_arrival = $5,
+                    requested_documents = $6::jsonb,
+                    negotiated_quotes = $7::jsonb,
+                    plan_options = $7::jsonb, -- SYNC for backward compat
+                    required_documents = $6::jsonb, -- SYNC for backward compat
+                    allocated_at = NOW(),
+                    updated_at = NOW()
+                WHERE id = $8
+            `, [
+                shipId, managerId,
+                cargoDropPort || null,
+                departureDate || null,
+                arrivalDate || null,
+                docs ? JSON.stringify(docs) : JSON.stringify(['Government ID', 'Commercial Invoice', 'Packing List']),
+                quotes ? JSON.stringify(quotes) : null,
+                sid
+            ]);
+
+
+            // 3. Mark vessel slot
+            await pool.query(`UPDATE vehicles SET used_slots = used_slots + 1 WHERE id = $1`, [shipId]);
+
+            // 4. Log event
+            await pool.query(
+                `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
+                 VALUES ($1, 'Ship Allocated', $2, $3)`,
+                [sid, `Integrated Approval: Vessel #${shipId} allocated. ${quotes.length} quotes provided. Required docs set.`, managerId]
+            );
+
+            // 5. Notify the customer
+            const customerId = shipCheck.rows[0].customer_id;
+            await notify(
+                customerId,
+                'Shipment Approved & Allocated',
+                `Your shipment request has been approved! Vessel #${shipId} is assigned. Please complete your booking to secure the space.`,
+                'success'
+            );
+
+            res.json({
+                success: true,
+                message: 'Shipment integrated approval successful. User can now complete booking.',
+                shipmentId: sid
+            });
+
+        } catch (e) {
+            console.error('Integrated Accept Error:', e);
+            res.status(500).json({ success: false, message: 'Server error during integrated approval: ' + e.message });
+        }
+    });
+
+    /**
+     * POST /api/v3/shipment/:id/complete-booking
+     * Finalize the booking status to completed
+     */
+    app.post('/api/v3/shipment/:id/complete-booking', ...anyAuth, async (req, res) => {
+        const sid = parseInt(String(req.params.id).includes('-') ? String(req.params.id).split('-').pop() : req.params.id);
+        const userId = uid(req);
+        try {
+            await pool.query(
+                "UPDATE shipments SET status = 'completed', updated_at = NOW() WHERE id = $1 AND customer_id = $2",
+                [sid, userId]
+            );
+            res.json({ success: true, message: 'Booking completed successfully' });
+        } catch (err) {
+            res.status(500).json({ success: false, message: 'Database error finalizing booking' });
+        }
+    });
+
 };
+
+console.log('✅ V3 Workflow routes loaded (Ship Allocation, Route Management, Tracking, Receipts, Vessel Route, Integrated Accept)');

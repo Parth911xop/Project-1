@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateToken, authorizeRole } = require('./middleware/auth');
+
 
 // Initialize Shipment Table
 const createShipmentTable = async (pool) => {
@@ -28,6 +30,11 @@ const createShipmentTable = async (pool) => {
                 company_id INTEGER REFERENCES users(id),
                 carbon_emission NUMERIC,
                 vehicle_type VARCHAR(50),
+                -- New Workflow Fields
+                plan_options JSONB, -- Array of pricing plans
+                selected_plan VARCHAR(50),
+                required_documents JSONB, -- Array of required doc types
+                vessel_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         `);
@@ -64,8 +71,29 @@ const createShipmentTable = async (pool) => {
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS estimated_departure TIMESTAMP;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS estimated_arrival TIMESTAMP;`); } catch (e) { }
         try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS product_type VARCHAR(100);`); } catch (e) { }
+        
+        // New Workflow Columns
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS plan_options JSONB;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS selected_plan VARCHAR(50);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS required_documents JSONB;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS vessel_id INTEGER;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS goods_details TEXT;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS payment_status VARCHAR(50) DEFAULT 'unpaid';`); } catch (e) { }
+
+        // V3 Specific Columns
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS selected_service_level VARCHAR(100);`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ALTER COLUMN selected_quote_id TYPE VARCHAR(100) USING selected_quote_id::text;`); } catch (e) { } 
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS selected_quote_id VARCHAR(100);`); } catch (e) { }
+
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS requested_documents JSONB;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS negotiated_quotes JSONB;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS allocated_ship_id INTEGER;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS allocated_at TIMESTAMP;`); } catch (e) { }
+        try { await pool.query(`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS cargo_drop_port VARCHAR(100);`); } catch (e) { }
 
         console.log("✅ Table 'shipments' ready");
+
+
     } catch (err) {
         console.error("❌ Error creating 'shipments' table:", err);
     }
@@ -145,10 +173,10 @@ module.exports = (pool, createNotification, io) => {
         const userKycRes = await pool.query('SELECT kyc_status FROM users WHERE id = $1', [userId]);
         const kycStatus = userKycRes.rows[0]?.kyc_status;
 
-        if (kycStatus !== 'Approved') {
+        if (kycStatus !== 'Approved' && kycStatus !== 'Pending') {
             return res.status(403).json({ 
                 success: false, 
-                message: "KYC Verification Required. Please upload and get your ID documents approved before booking a shipment.",
+                message: "KYC Verification Required. Please upload your identity documents in the Document Center to enable booking.",
                 kycStatus: kycStatus
             });
         }
@@ -263,7 +291,10 @@ module.exports = (pool, createNotification, io) => {
 
         try {
             const result = await pool.query(
-                `SELECT s.*, u.name as company_name, UPPER(LEFT(u2.email, 2)) as user_prefix
+                `SELECT s.*, 
+                        s.plan_options AS negotiated_quotes, 
+                        s.required_documents AS requested_documents,
+                        u.name as company_name, UPPER(LEFT(u2.email, 2)) as user_prefix
                  FROM shipments s
                  LEFT JOIN users u ON s.company_id = u.id
                  JOIN users u2 ON s.customer_id = u2.id
@@ -273,6 +304,7 @@ module.exports = (pool, createNotification, io) => {
             );
             res.json({ success: true, shipments: result.rows });
         } catch (err) {
+
             console.error('Shipment list error:', err);
             res.status(500).json({ success: false, message: 'Database error' });
         }
@@ -304,6 +336,39 @@ module.exports = (pool, createNotification, io) => {
         } catch (err) {
             console.error(err);
             res.status(500).json({ success: false, message: "Database error retrieving shipments" });
+        }
+    });
+
+    /**
+     * GET /api/shipment/:id
+     * Returns full shipment details including plan_options
+     */
+    router.get('/:id', async (req, res) => {
+        const { id } = req.params;
+        const userId = req.user?.userId;
+        if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
+
+        try {
+            const shipCheck = await pool.query(
+                `SELECT s.*, u.name as company_name 
+                 FROM shipments s 
+                 LEFT JOIN users u ON s.company_id = u.id 
+                 WHERE s.id = $1 AND s.customer_id = $2`, 
+                [id, userId]
+            );
+            if (shipCheck.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
+            
+            const ship = shipCheck.rows[0];
+            // Ensure no null values for plan_options - fallback to negotiated_quotes
+            ship.plan_options = (ship.plan_options && ship.plan_options.length) ? ship.plan_options : (ship.negotiated_quotes || []);
+            ship.required_documents = (ship.required_documents && ship.required_documents.length) ? ship.required_documents : (ship.requested_documents || []);
+
+            console.log(`[API] Returning shipment ${id} details to user ${userId}`);
+
+            res.json({ success: true, shipment: ship });
+        } catch (err) {
+            console.error('Shipment get error:', err);
+            res.status(500).json({ success: false, message: 'Database error retrieving shipment' });
         }
     });
 
@@ -555,6 +620,7 @@ module.exports = (pool, createNotification, io) => {
         if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
         try {
+            // Update fields and advance status if it's currently 'Details Pending'
             await pool.query(`
                 UPDATE shipments 
                 SET hs_code = COALESCE($1, hs_code),
@@ -563,11 +629,12 @@ module.exports = (pool, createNotification, io) => {
                     consignee_contact = COALESCE($4, consignee_contact),
                     cargo_value = COALESCE($5, cargo_value),
                     tracking_number = COALESCE($6, tracking_number),
+                    status = CASE WHEN status = 'Details Pending' THEN 'Documents Pending' ELSE status END,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE id = $7`,
                 [hsCode, consigneeName, description, consigneeContact, cargoValue, trackingNumber, shipmentId]
             );
-            res.json({ success: true, message: 'Shipment details updated' });
+            res.json({ success: true, message: 'Shipment details updated and moved to Documents Pending' });
         } catch (err) {
             console.error('Update details error:', err);
             res.status(500).json({ success: false, message: 'Database error' });
@@ -625,6 +692,58 @@ module.exports = (pool, createNotification, io) => {
         } catch (e) {
             console.error('Unified Tracking API Error:', e);
             res.status(500).json({ success: false, message: 'Server Tracking Engine Failure' });
+        }
+    });
+
+    // --- NEW SHIPMENT WORKFLOW ENDPOINTS (Manager Side) ---
+
+    /**
+     * POST /api/v3/manager/assign-booking
+     * Manager: Approve booking and assign plans/docs/vessel
+     */
+    router.post('/manager/assign-booking', authenticateToken, async (req, res) => {
+        const { shipmentId, planOptions, requiredDocuments, vesselId } = req.body;
+        const managerId = req.user?.userId;
+        const userRole = req.user?.role;
+
+        if (!managerId || !['company', 'admin'].includes(userRole)) {
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
+        }
+
+        try {
+            console.log(`[MANAGER] Assigning booking tools for shipment ${shipmentId}. Plans:`, planOptions);
+
+            const result = await pool.query(
+                `UPDATE shipments 
+                 SET plan_options = $1, 
+                     negotiated_quotes = $1, -- SYNC for backward compat
+                     required_documents = $2, 
+                     requested_documents = $2, -- SYNC for backward compat
+                     vessel_id = $3, 
+                     allocated_ship_id = $3, -- SYNC for backward compat
+                     status = 'assigned', 
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $4
+                 RETURNING *`,
+                [JSON.stringify(planOptions), JSON.stringify(requiredDocuments), vesselId, shipmentId]
+            );
+
+            if (result.rowCount === 0) {
+                return res.status(404).json({ success: false, message: 'Shipment not found' });
+            }
+
+            // Log event
+            await pool.query(
+                `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
+                 VALUES ($1, $2, $3, $4)`,
+
+                [shipmentId, 'assigned', 'Manager approved booking and assigned resources', managerId]
+            );
+
+            res.json({ success: true, message: 'Booking approved and resources assigned', shipment: result.rows[0] });
+        } catch (err) {
+            console.error('Manager assign-booking error:', err);
+            res.status(500).json({ success: false, message: 'Database error' });
         }
     });
 

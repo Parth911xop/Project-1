@@ -1382,39 +1382,47 @@ async function submitIntegratedAccept() {
     const dep = val('accept-departure');
     const arr = val('accept-arrival');
     
-    // Quotes (Point 4)
+    // Quotes (Points for Plan Options)
     const q1 = val('quote-economy'), q2 = val('quote-standard'), q3 = val('quote-express');
     
-    // Docs (Point 3)
+    // Docs (Required Documents Array)
     const docs = Array.from(document.querySelectorAll('#accept-docs-checklist input:checked')).map(i => i.value);
 
     if (!shipId || !q2) { toast('Assign a vessel and at least Standard Price', 'error'); return; }
 
+    const planOptions = [
+        { name: 'Economy', price: q1 || (q2 * 0.8), transitTime: 'Slow/Ocean' },
+        { name: 'Standard', price: q2, transitTime: 'Direct Sea' },
+        { name: 'Premium', price: q3 || (q2 * 1.4), transitTime: 'Fast/Priority' }
+    ];
+
     try {
-        const r = await fetch(`${API}/api/v3/manager/shipment/${sid}/integrated-accept`, {
+        const r = await fetch(`${API}/api/v3/manager/assign-booking`, {
             method: 'POST', credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                shipId, 
+                shipmentId: sid,
+                vesselId: shipId,
+                planOptions: planOptions,
+                requiredDocuments: docs,
+                // Extra fields for v3 logic if needed
                 cargoDropPort: dropPort,
                 departureDate: dep,
-                arrivalDate: arr,
-                docs,
-                quotes: [
-                    { name: 'Economy', price: q1 || (q2*0.8), transitTime: 'Slow/Ocean' },
-                    { name: 'Standard', price: q2, transitTime: 'Direct Sea' },
-                    { name: 'Express', price: q3 || (q2*1.4), transitTime: 'Fast/Priority' }
-                ]
+                arrivalDate: arr
             })
         });
         const d = await r.json();
         toast(d.message, d.success ? 'success' : 'error');
         if (d.success) {
             closeModal('accept-modal');
-            loadPendingRequests();
+            loadBookings();
         }
-    } catch (e) { toast('Server Error', 'error'); }
+    } catch (e) { 
+        console.error(e);
+        toast('Server Error', 'error'); 
+    }
 }
+
 
 let contextMapInstance = null;
 async function updateTrackingContextMap(s) {

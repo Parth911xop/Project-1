@@ -23,49 +23,60 @@ module.exports = function (pool, createNotification) {
             cb(null, uploadDir);
         },
         filename: function (req, file, cb) {
-            cb(null, `kyc-${req.user.userId}-${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
+            const uid = req.user?.userId || req.user?.id || 'unknown';
+            cb(null, `kyc-${uid}-${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
         }
     });
 
     const upload = multer({ storage: storage });
 
-    // Upload KYC Document
-    router.post('/upload', upload.single('kycFile'), async (req, res) => {
-        const { docType } = req.body;
-        const userId = req.user.userId;
-
-        if (!req.file) {
-            return res.status(400).json({ success: false, message: 'No file uploaded' });
-        }
-
-        try {
-            const fileUrl = `/uploads/kyc/${req.file.filename}`;
-            
-            await pool.query(
-                `INSERT INTO user_kyc_documents (user_id, doc_type, file_url, status, updated_at)
-                 VALUES ($1, $2, $3, 'Pending', NOW())
-                 ON CONFLICT (user_id, doc_type) 
-                 DO UPDATE SET file_url = EXCLUDED.file_url, status = 'Pending', updated_at = NOW()`,
-                [userId, docType, fileUrl]
-            );
-
-            const userRes = await pool.query('SELECT kyc_status FROM users WHERE id = $1', [userId]);
-            if (userRes.rows[0].kyc_status !== 'Approved') {
-                await pool.query("UPDATE users SET kyc_status = 'Pending' WHERE id = $1", [userId]);
+    // Upload KYC Document with Enhanced Error Handler
+    router.post('/upload', (req, res) => {
+        upload.single('kycFile')(req, res, async (err) => {
+            if (err instanceof multer.MulterError) {
+                console.error("🔥 Multer Error:", err);
+                return res.status(400).json({ success: false, message: `Upload error: ${err.message}. Ensure the field name is 'kycFile'.` });
+            } else if (err) {
+                console.error("🔥 General Upload Error:", err);
+                return res.status(500).json({ success: false, message: 'Server file system error: ' + err.message });
             }
 
-            res.json({ success: true, message: `${docType} uploaded. Waiting for approval.`, fileUrl });
-        } catch (err) {
-            console.error('KYC Upload error:', err);
-            res.status(500).json({ success: false, message: 'Failed to upload document' });
-        }
+            const docType = req.body.docType || req.body.type;
+            const userId = req.user.userId;
+
+            if (!req.file) {
+                return res.status(400).json({ success: false, message: 'No file received. Please select an image or PDF.' });
+            }
+
+            try {
+                const fileUrl = `/uploads/kyc/${req.file.filename}`;
+                
+                await pool.query(
+                    `INSERT INTO user_kyc_documents (user_id, doc_type, file_name, file_url, status, updated_at)
+                     VALUES ($1, $2, $3, $4, 'Pending', NOW())
+                     ON CONFLICT (user_id, doc_type) 
+                     DO UPDATE SET file_name = EXCLUDED.file_name, file_url = EXCLUDED.file_url, status = 'Pending', updated_at = NOW()`,
+                    [userId, docType, req.file.originalname, fileUrl]
+                );
+
+                const userRes = await pool.query('SELECT kyc_status FROM users WHERE id = $1', [userId]);
+                if (userRes.rows[0].kyc_status !== 'Approved') {
+                    await pool.query("UPDATE users SET kyc_status = 'Pending' WHERE id = $1", [userId]);
+                }
+
+                res.json({ success: true, message: `${docType} uploaded successfully.`, fileUrl, fileName: req.file.originalname });
+            } catch (err) {
+                console.error('🔥 DB Save Error:', err);
+                res.status(500).json({ success: false, message: 'Failed to save file info to database: ' + err.message });
+            }
+        });
     });
 
     router.get('/my-status', async (req, res) => {
         const userId = req.user.userId;
         try {
             const userRes = await pool.query('SELECT kyc_status FROM users WHERE id = $1', [userId]);
-            const docsRes = await pool.query('SELECT doc_type, status, rejection_reason, file_url, updated_at FROM user_kyc_documents WHERE user_id = $1', [userId]);
+            const docsRes = await pool.query('SELECT doc_type, status, rejection_reason, file_name, file_url, updated_at FROM user_kyc_documents WHERE user_id = $1', [userId]);
             
             res.json({
                 success: true,

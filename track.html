@@ -12,20 +12,69 @@
     <link rel="stylesheet" href="dist/leaflet.css">
     <link rel="stylesheet" href="dashboard.css">
     <style>
-        #map { height: 450px; width: 100%; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
-        .ship-marker-wrapper { position: relative; width: 40px; height: 40px; transform-origin: center; transition: all 0.3s ease; }
-        .ship-icon-body { font-size: 24px; color: #22c55e; display: flex; justify-content: center; align-items: center; }
-        .ship-glow { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; background: rgba(34, 197, 94, 0.3); border-radius: 50%; filter: blur(5px); animation: pulse 2s infinite; z-index: -1; }
-        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; } }
-        .port-icon { display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.5); border-radius: 50%; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,0.3); }
-        .event-pill { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); padding: 12px 16px; border-radius: 12px; margin-bottom: 8px; font-size: 13px; }
-        .tracking-popup { background: #1a1a1a; color: white; padding: 12px; border-radius: 8px; border: 1px solid #333; min-width: 160px; }
-        .popup-header { font-size: 10px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
-        .popup-id { font-weight: bold; font-size: 15px; margin-bottom: 8px; }
-        .popup-status { color: #22c55e; font-size: 13px; font-weight: 600; padding: 4px 0; border-top: 1px solid #333; margin-top: 4px; }
-        .popup-coords { font-size: 10px; color: #666; font-family: monospace; }
-        .leaflet-popup-content-wrapper { background: #1a1a1a !important; color: white !important; border: 1px solid #333; }
-        .leaflet-popup-tip { background: #1a1a1a !important; border: 1px solid #333; }
+        /* ── MAP ─────────────────────────────────────── */
+        #map { height: 500px; width: 100%; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
+
+        /* ── SHIP ARROW MARKER ──────────────────────── */
+        .ship-arrow-wrap { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; position: relative; transition: transform 1.2s ease; }
+        .ship-arrow-body { font-size: 22px; color: #22c55e; filter: drop-shadow(0 0 8px rgba(34,197,94,0.6)); z-index: 2; }
+        .ship-arrow-ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(34,197,94,0.4); animation: shipPulse 2s infinite ease-out; }
+        .ship-arrow-ring2 { position: absolute; inset: -4px; border-radius: 50%; border: 1px solid rgba(34,197,94,0.2); animation: shipPulse 2s infinite ease-out 0.5s; }
+        @keyframes shipPulse { 0% { transform: scale(0.8); opacity: 0.9; } 100% { transform: scale(2); opacity: 0; } }
+
+        /* ── SOURCE ICON (Green Anchor) ──────────────── */
+        .origin-icon { width: 36px; height: 36px; background: rgba(34,197,94,0.15); border: 2px solid #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #22c55e; font-size: 16px; box-shadow: 0 0 12px rgba(34,197,94,0.4); }
+
+        /* ── DESTINATION ICON (Red Flag) ─────────────── */
+        .dest-icon { width: 36px; height: 36px; background: rgba(239,68,68,0.15); border: 2px solid #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 16px; box-shadow: 0 0 12px rgba(239,68,68,0.4); }
+
+        /* ── INTERMEDIATE STOP (Blue Dot) ────────────── */
+        .stop-icon { width: 28px; height: 28px; background: rgba(99,102,241,0.15); border: 2px solid #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6366f1; font-size: 10px; box-shadow: 0 0 8px rgba(99,102,241,0.3); }
+
+        /* ── LEAFLET POPUP OVERRIDE ──────────────────── */
+        .leaflet-popup-content-wrapper { background: #0f172a !important; color: #fff !important; border: 1px solid rgba(99,102,241,0.3); border-radius: 12px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; }
+        .leaflet-popup-tip { background: #0f172a !important; }
+        .leaflet-popup-close-button { color: #94a3b8 !important; }
+        .tracking-popup { padding: 4px; min-width: 180px; }
+        .tracking-popup .popup-header { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: #6366f1; margin-bottom: 6px; font-weight: 700; }
+        .tracking-popup .popup-id { font-size: 16px; font-weight: 800; margin-bottom: 8px; }
+        .tracking-popup .popup-status { color: #22c55e; font-size: 13px; font-weight: 600; padding: 6px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+        .tracking-popup .popup-coords { font-size: 10px; color: #64748b; font-family: 'Courier New', monospace; }
+
+        /* ── TIMELINE ───────────────────────────────── */
+        .voyage-timeline { position: relative; padding-left: 24px; }
+        .voyage-timeline::before { content: ''; position: absolute; left: 10px; top: 0; bottom: 0; width: 2px; background: linear-gradient(to bottom, #22c55e, #6366f1, #334155); }
+        .tl-stop { position: relative; padding: 10px 0 10px 16px; }
+        .tl-stop .tl-dot { position: absolute; left: -20px; top: 14px; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; z-index: 2; }
+        .tl-stop.completed .tl-dot { background: #22c55e; color: #fff; box-shadow: 0 0 10px rgba(34,197,94,0.4); }
+        .tl-stop.current .tl-dot { background: #6366f1; color: #fff; box-shadow: 0 0 14px rgba(99,102,241,0.5); animation: currentPulse 1.5s infinite; }
+        .tl-stop.upcoming .tl-dot { background: #1e293b; border: 2px solid #334155; color: #475569; }
+        @keyframes currentPulse { 0%, 100% { box-shadow: 0 0 10px rgba(99,102,241,0.4); } 50% { box-shadow: 0 0 20px rgba(99,102,241,0.7); } }
+        .tl-stop .tl-name { font-weight: 600; font-size: 13px; }
+        .tl-stop.completed .tl-name { color: #22c55e; }
+        .tl-stop.current .tl-name { color: #818cf8; }
+        .tl-stop.upcoming .tl-name { color: #475569; }
+        .tl-stop .tl-eta { font-size: 10px; color: #64748b; margin-top: 2px; }
+
+        /* ── PROGRESS BAR ───────────────────────────── */
+        .voyage-progress { height: 6px; background: #1e293b; border-radius: 99px; overflow: hidden; }
+        .voyage-progress-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #22c55e, #6366f1); transition: width 1.5s ease; }
+
+        /* ── INFO CARDS ─────────────────────────────── */
+        .info-mini { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 12px 14px; }
+        .info-mini .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 700; }
+        .info-mini .info-value { font-size: 15px; color: #fff; font-weight: 700; margin-top: 4px; }
+
+        /* ── EVENT FEED ─────────────────────────────── */
+        .event-pill { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); padding: 10px 14px; border-radius: 10px; margin-bottom: 6px; font-size: 12px; animation: fadeSlideIn 0.4s ease; }
+        @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── SHIPMENT LIST BUTTON ────────────────────── */
+        .shipment-btn { transition: all 0.2s ease; }
+        .shipment-btn:hover, .shipment-btn.active { border-color: #6366f1 !important; background: rgba(99,102,241,0.08) !important; }
+
+        .live-dot { width: 8px; height: 8px; background: #22c55e; border-radius: 50%; display: inline-block; animation: liveDot 1.5s infinite; }
+        @keyframes liveDot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 
@@ -58,45 +107,88 @@
         </div>
     </aside>
 
-    <main class="dashboard-main h-100">
+    <main class="dashboard-main h-100" style="overflow-y:auto;">
         <div class="p-4">
+            <!-- HEADER -->
             <div class="mb-4 d-flex justify-content-between align-items-center">
                 <div>
-                    <h3 class="fw-bold text-white">Live Tracking</h3>
-                    <p class="text-white-50 small">Monitor your global shipments with sub-meter precision.</p>
+                    <h3 class="fw-bold text-white"><i class="fas fa-satellite-dish me-2 text-primary"></i>Live Tracking</h3>
+                    <p class="text-white-50 small mb-0">Real-time vessel monitoring • FedEx-grade precision</p>
                 </div>
                 <div id="live-badge" class="badge bg-success bg-opacity-10 text-success border border-success d-none py-2 px-3 rounded-pill">
-                    <span class="live-dot me-2"></span> Satellite Active
+                    <span class="live-dot me-2"></span> LIVE • Satellite Active
                 </div>
             </div>
 
             <div class="row g-4">
+                <!-- LEFT PANEL: Shipment List + Voyage Timeline -->
                 <div class="col-lg-3">
-                    <div class="summary-card p-3 h-100">
-                        <div class="mb-4">
-                            <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Quick Search</h6>
-                            <div class="input-group input-group-sm mb-3">
-                                <input type="text" id="shipment-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Ref: SS-1025">
-                                <button class="btn btn-primary" onclick="searchByShipmentId()"><i class="fas fa-search"></i></button>
-                            </div>
+                    <div class="summary-card p-3 mb-3">
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3"><i class="fas fa-search me-2"></i>Quick Search</h6>
+                        <div class="input-group input-group-sm mb-3">
+                            <input type="text" id="shipment-search-input" class="form-control bg-dark text-white border-secondary" placeholder="Ref: PA-54">
+                            <button class="btn btn-primary" onclick="searchByShipmentId()"><i class="fas fa-search"></i></button>
                         </div>
-                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3">Your Fleet</h6>
-                        <div id="shipment-list" class="d-flex flex-column gap-2" style="max-height: 50vh; overflow-y: auto;">
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3"><i class="fas fa-boxes-stacked me-2"></i>Your Shipments</h6>
+                        <div id="shipment-list" class="d-flex flex-column gap-2" style="max-height: 28vh; overflow-y: auto;">
                             <div class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div></div>
                         </div>
                     </div>
+
+                    <!-- VOYAGE TIMELINE (Shows after selecting a shipment) -->
+                    <div class="summary-card p-3 d-none" id="voyage-timeline-card">
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3"><i class="fas fa-route me-2 text-primary"></i>Voyage Timeline</h6>
+                        <div class="voyage-progress mb-3">
+                            <div class="voyage-progress-fill" id="voyage-progress-bar" style="width: 0%"></div>
+                        </div>
+                        <div id="voyage-timeline" class="voyage-timeline"></div>
+                    </div>
                 </div>
 
+                <!-- RIGHT PANEL: Map + Info Cards + Event Feed -->
                 <div class="col-lg-9">
+                    <!-- Status Info Strip -->
+                    <div class="row g-3 mb-3" id="info-strip" style="display:none;">
+                        <div class="col-3">
+                            <div class="info-mini">
+                                <div class="info-label">Status</div>
+                                <div class="info-value" id="info-status">—</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="info-mini">
+                                <div class="info-label">Vessel</div>
+                                <div class="info-value" id="info-vessel">—</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="info-mini">
+                                <div class="info-label">Current Port</div>
+                                <div class="info-value" id="info-port">—</div>
+                            </div>
+                        </div>
+                        <div class="col-3">
+                            <div class="info-mini">
+                                <div class="info-label">Next Stop</div>
+                                <div class="info-value" id="info-next">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- MAP -->
                     <div class="summary-card p-3 mb-3 position-relative">
-                        <h6 class="text-white fw-bold mb-3" id="tracking-title">Select a shipment to begin</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="text-white fw-bold mb-0" id="tracking-title"><i class="fas fa-globe me-2 text-primary"></i>Select a shipment to begin tracking</h6>
+                            <span class="badge bg-dark border border-secondary text-white-50 small" id="coord-display"></span>
+                        </div>
                         <div id="map"></div>
                     </div>
 
+                    <!-- EVENT FEED -->
                     <div class="summary-card p-3">
-                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3"><i class="fas fa-satellite-dish me-2 text-primary"></i>Event Feed</h6>
-                        <div id="event-feed" class="d-flex flex-column gap-2" style="max-height: 180px; overflow-y: auto;">
-                            <p class="text-white-50 small">Connection standby...</p>
+                        <h6 class="text-white-50 text-uppercase small fw-bold mb-3"><i class="fas fa-satellite-dish me-2 text-primary"></i>Real-Time Event Feed</h6>
+                        <div id="event-feed" class="d-flex flex-column gap-2" style="max-height: 200px; overflow-y: auto;">
+                            <p class="text-white-50 small text-center py-2"><i class="fas fa-signal me-2"></i>Awaiting satellite connection...</p>
                         </div>
                     </div>
                 </div>
@@ -104,149 +196,507 @@
         </div>
     </main>
 
+    <script src="ports-data.js"></script>
     <script src="dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
-        const API_URL = `http://${window.location.hostname}:3000`;
-        let map, marker, polyline, socket, activeShipmentId;
+        const API_URL = ''; // Matches active server port automatically
+        let map, shipMarker, plannedLine, traveledLine, socket, activeShipmentId;
         let trackingPath = [];
         let portMarkers = [];
-        let voyagePlannedPath = null;
+        let currentStops = [];
+        let simInterval = null;
+        let currentPrefix = 'SS';
 
-        function initMap(lat = 20.5937, lng = 78.9629) {
+        // ═══════════════════════════════════════════════════════════
+        // 1. MAP INITIALIZATION (OpenStreetMap - 100% FREE)
+        // ═══════════════════════════════════════════════════════════
+        function initMap() {
             if (map) return;
             L.Icon.Default.imagePath = 'dist/images/';
-            map = L.map('map').setView([lat, lng], 3);
+            map = L.map('map', { zoomControl: false }).setView([20, 60], 3);
+
+            // Dark ocean tiles (free)
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '© CARTO',
-                maxZoom: 18
+                attribution: '© CARTO © OpenStreetMap',
+                maxZoom: 18, subdomains: 'abcd'
             }).addTo(map);
 
-            polyline = L.polyline([], { color: '#6366f1', weight: 4, opacity: 0.8, dashArray: '8, 12' }).addTo(map);
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            // Traveled path (solid blue)
+            traveledLine = L.polyline([], { color: '#6366f1', weight: 4, opacity: 0.9 }).addTo(map);
+            // Planned path (dashed white)
+            plannedLine = L.polyline([], { color: '#ffffff', weight: 1.5, dashArray: '8, 12', opacity: 0.25 }).addTo(map);
         }
 
-        function updateMapPin(lat, lng, label = 'Shipment', status = '', heading = 0) {
-            if (!map) initMap(lat, lng);
+        // ═══════════════════════════════════════════════════════════
+        // 2. MARKER FACTORY (Source / Destination / Ship / Stop)
+        // ═══════════════════════════════════════════════════════════
+        function createOriginMarker(lat, lng, name) {
+            const icon = L.divIcon({
+                html: `<div class="origin-icon"><i class="fas fa-anchor"></i></div>`,
+                className: '', iconSize: [36, 36], iconAnchor: [18, 18]
+            });
+            return L.marker([lat, lng], { icon, zIndexOffset: 500 })
+                .addTo(map)
+                .bindPopup(`<div class="tracking-popup"><div class="popup-header">ORIGIN PORT</div><div class="popup-id" style="color:#22c55e;">${name}</div></div>`);
+        }
+
+        function createDestMarker(lat, lng, name) {
+            const icon = L.divIcon({
+                html: `<div class="dest-icon"><i class="fas fa-flag-checkered"></i></div>`,
+                className: '', iconSize: [36, 36], iconAnchor: [18, 18]
+            });
+            return L.marker([lat, lng], { icon, zIndexOffset: 500 })
+                .addTo(map)
+                .bindPopup(`<div class="tracking-popup"><div class="popup-header">DESTINATION PORT</div><div class="popup-id" style="color:#ef4444;">${name}</div></div>`);
+        }
+
+        function createStopMarker(lat, lng, name, order) {
+            const icon = L.divIcon({
+                html: `<div class="stop-icon"><i class="fas fa-circle"></i></div>`,
+                className: '', iconSize: [28, 28], iconAnchor: [14, 14]
+            });
+            return L.marker([lat, lng], { icon, zIndexOffset: 400 })
+                .addTo(map)
+                .bindPopup(`<div class="tracking-popup"><div class="popup-header">TRANSIT STOP #${order}</div><div class="popup-id" style="color:#818cf8;">${name}</div></div>`);
+        }
+
+        function updateShipMarker(lat, lng, heading, label, status) {
             const pos = [parseFloat(lat), parseFloat(lng)];
-            
-            if (trackingPath.length === 0 || 
-                trackingPath[trackingPath.length-1][0] !== pos[0] || 
+            if (!lat || !lng || isNaN(pos[0]) || isNaN(pos[1])) return;
+
+            // Update traveled path
+            if (trackingPath.length === 0 ||
+                trackingPath[trackingPath.length-1][0] !== pos[0] ||
                 trackingPath[trackingPath.length-1][1] !== pos[1]) {
                 trackingPath.push(pos);
-                polyline.setLatLngs(trackingPath);
+                traveledLine.setLatLngs(trackingPath);
             }
 
-            if (marker) map.removeLayer(marker);
-            
-            const customIcon = L.divIcon({
-                className: 'custom-ship-icon',
-                html: `<div class="ship-marker-wrapper" style="transform: rotate(${heading}deg);">
-                        <div class="ship-icon-body"><i class="fas fa-location-arrow"></i></div>
-                        <div class="ship-glow"></div>
-                    </div>`,
-                iconSize: [40, 40],
-                iconAnchor: [20, 20],
-                popupAnchor: [0, -15]
+            if (shipMarker) map.removeLayer(shipMarker);
+
+            const icon = L.divIcon({
+                className: '',
+                html: `<div class="ship-arrow-wrap" style="transform: rotate(${heading || 0}deg);">
+                         <div class="ship-arrow-body"><i class="fas fa-location-arrow"></i></div>
+                         <div class="ship-arrow-ring"></div>
+                         <div class="ship-arrow-ring2"></div>
+                       </div>`,
+                iconSize: [44, 44], iconAnchor: [22, 22], popupAnchor: [0, -20]
             });
 
-            marker = L.marker(pos, { icon: customIcon, zIndexOffset: 1000 }).addTo(map);
-            marker.bindPopup(`
+            shipMarker = L.marker(pos, { icon, zIndexOffset: 1000 }).addTo(map);
+            shipMarker.bindPopup(`
                 <div class="tracking-popup">
-                    <div class="popup-header">LIVE SATELLITE UPDATE</div>
+                    <div class="popup-header">LIVE SATELLITE POSITION</div>
                     <div class="popup-id">${label}</div>
-                    <div class="popup-status active">${status || 'In Transit'}</div>
-                    <div class="popup-coords">${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
+                    <div class="popup-status">${status || 'In Transit'}</div>
+                    <div class="popup-coords">${parseFloat(lat).toFixed(4)}°N, ${parseFloat(lng).toFixed(4)}°E</div>
                 </div>
             `, { closeButton: false, offset: [0, -5] }).openPopup();
 
+            document.getElementById('coord-display').textContent = `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`;
             map.panTo(pos, { animate: true, duration: 1.5 });
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // 3. VOYAGE TIMELINE (Left Panel)
+        // ═══════════════════════════════════════════════════════════
+        function renderVoyageTimeline(stops, currentPortName, shipStatus) {
+            const container = document.getElementById('voyage-timeline');
+            const card = document.getElementById('voyage-timeline-card');
+            if (!container || !card) return;
+            card.classList.remove('d-none');
+
+            // Find current index based on ship's current port
+            let currentIdx = -1;
+            if (shipStatus === 'Delivered') {
+                currentIdx = stops.length; // all done
+            } else if (currentPortName) {
+                currentIdx = stops.findIndex(s => 
+                    s.port_name.toLowerCase().includes(currentPortName.toLowerCase()) || 
+                    currentPortName.toLowerCase().includes(s.port_name.toLowerCase())
+                );
+            }
+
+            // Progress bar
+            const progress = currentIdx >= 0 ? Math.min(100, ((currentIdx + 1) / stops.length) * 100) : 5;
+            document.getElementById('voyage-progress-bar').style.width = `${progress}%`;
+
+            container.innerHTML = stops.map((st, idx) => {
+                let state = 'upcoming';
+                let icon = 'fa-circle';
+                if (currentIdx >= 0 && idx < currentIdx) { state = 'completed'; icon = 'fa-check'; }
+                else if (idx === currentIdx) { state = 'current'; icon = 'fa-ship'; }
+
+                const isFirst = idx === 0;
+                const isLast = idx === stops.length - 1;
+                const label = isFirst ? 'ORIGIN' : (isLast ? 'DESTINATION' : `STOP ${st.stop_order}`);
+
+                return `
+                    <div class="tl-stop ${state}">
+                        <div class="tl-dot"><i class="fas ${icon}"></i></div>
+                        <div>
+                            <div class="tl-name">${st.port_name}</div>
+                            <div class="tl-eta">${label} ${state === 'completed' ? '• ✅ Departed' : (state === 'current' ? '• ⏳ Current' : '• Upcoming')}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Find next stop for info card
+            const nextIdx = currentIdx >= 0 ? currentIdx + 1 : 0;
+            if (nextIdx < stops.length) {
+                document.getElementById('info-next').textContent = stops[nextIdx].port_name;
+            } else {
+                document.getElementById('info-next').textContent = 'Arrived ✅';
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 4. EVENT FEED
+        // ═══════════════════════════════════════════════════════════
         function addEvent(data) {
             const feed = document.getElementById('event-feed');
             if (feed.querySelector('p')) feed.innerHTML = '';
+
+            const iconMap = {
+                'Confirmed': 'fa-check-circle text-info',
+                'Cargo Loaded': 'fa-box text-warning',
+                'In Transit': 'fa-ship text-primary',
+                'Delivered': 'fa-flag-checkered text-success',
+                'At Port': 'fa-anchor text-info'
+            };
+            const iconClass = iconMap[data.status] || 'fa-dot-circle text-primary';
+
             const pill = document.createElement('div');
-            pill.className = 'event-pill d-flex justify-content-between align-items-center animate-fade-in';
+            pill.className = 'event-pill d-flex justify-content-between align-items-center';
             pill.innerHTML = `
                 <div>
-                    <i class="fas fa-dot-circle text-primary me-2 x-small"></i>
+                    <i class="fas ${iconClass} me-2"></i>
                     <strong class="text-white">${data.status || 'Signal'}</strong>
                     <span class="text-white-50 ms-2">${data.message || ''}</span>
                 </div>
-                <span class="text-white-50 x-small">${new Date(data.timestamp || Date.now()).toLocaleTimeString()}</span>
+                <span class="text-white-50" style="font-size:10px;">${new Date(data.timestamp || Date.now()).toLocaleTimeString()}</span>
             `;
             feed.prepend(pill);
         }
 
-        function searchByShipmentId() {
-            const inputVal = document.getElementById('shipment-search-input').value.trim();
-            if(!inputVal) return;
-            const numericId = inputVal.includes('-') ? inputVal.split('-').pop() : inputVal;
-            joinShipment(numericId, 'ID');
+        // ═══════════════════════════════════════════════════════════
+        // 5. BEARING CALCULATOR (for ship arrow rotation)
+        // ═══════════════════════════════════════════════════════════
+        function calcBearing(lat1, lng1, lat2, lng2) {
+            const toRad = x => x * Math.PI / 180;
+            const y = Math.sin(toRad(lng2 - lng1)) * Math.cos(toRad(lat2));
+            const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                      Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(toRad(lng2 - lng1));
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // 6. SEARCH
+        // ═══════════════════════════════════════════════════════════
+        function searchByShipmentId() {
+            const inputVal = document.getElementById('shipment-search-input').value.trim();
+            if (!inputVal) return;
+            const numericId = inputVal.includes('-') ? inputVal.split('-').pop() : inputVal;
+            const prefix = inputVal.includes('-') ? inputVal.split('-')[0] : 'SS';
+            joinShipment(numericId, prefix);
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 7. MAIN: JOIN SHIPMENT (Core Logic)
+        // ═══════════════════════════════════════════════════════════
         async function joinShipment(shipmentId, prefix = 'SS') {
             activeShipmentId = shipmentId;
+            currentPrefix = prefix;
             trackingPath = [];
-            if(polyline) polyline.setLatLngs([]);
-            if(marker) map.removeLayer(marker);
-            marker = null;
+            currentStops = [];
+            if (simInterval) { clearInterval(simInterval); simInterval = null; }
+
+            // Clean map layers
+            if (traveledLine) traveledLine.setLatLngs([]);
+            if (plannedLine) plannedLine.setLatLngs([]);
+            if (shipMarker) { map.removeLayer(shipMarker); shipMarker = null; }
             portMarkers.forEach(m => map.removeLayer(m));
             portMarkers = [];
-            if(voyagePlannedPath) map.removeLayer(voyagePlannedPath);
 
-            document.getElementById('tracking-title').innerText = `Tracking System: #${prefix}-${shipmentId}`;
+            // Highlight active button
+            document.querySelectorAll('.shipment-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.shipment-btn').forEach(b => {
+                if (b.dataset.id == shipmentId) b.classList.add('active');
+            });
+
+            document.getElementById('tracking-title').innerHTML = `<i class="fas fa-globe me-2 text-primary"></i>Tracking: #${prefix}-${shipmentId}`;
             document.getElementById('live-badge').classList.remove('d-none');
-            
+            document.getElementById('info-strip').style.display = 'flex';
+
             if (!map) initMap();
-            
+
             try {
                 const res = await fetch(`${API_URL}/api/shipment/${shipmentId}/tracking`, { credentials: 'include' });
                 const data = await res.json();
-                if (data.success && data.shipment) {
-                    const s = data.shipment;
-                    
-                    // Plot Partial Segment Journey (Source -> Intermediate Stops -> Drop Port)
-                    if (data.tracking && data.tracking.routeStops) {
-                        const stops = data.tracking.routeStops;
-                        const pathCoords = [];
-                        
-                        stops.forEach((st, idx) => {
-                            if (st.lat && st.lng) {
-                                const pos = [parseFloat(st.lat), parseFloat(st.lng)];
-                                pathCoords.push(pos);
-                                
-                                const iconType = idx === 0 ? 'anchor text-warning' : (idx === stops.length - 1 ? 'flag-checkered text-danger' : 'circle text-white-50');
-                                const label = idx === 0 ? 'Origin' : (idx === stops.length - 1 ? 'Destination' : `Stop ${st.stop_order}`);
-                                
-                                const m = L.marker(pos, { 
-                                    icon: L.divIcon({ 
-                                        html: `<div class="port-icon"><i class="fas fa-${iconType} x-small"></i></div>`, 
-                                        className:'', 
-                                        iconSize:[30,30] 
-                                    })
-                                }).addTo(map).bindPopup(`<b>${label}:</b><br>${st.port_name}`);
-                                portMarkers.push(m);
-                            }
-                        });
 
-                        if (pathCoords.length >= 2) {
-                            voyagePlannedPath = L.polyline(pathCoords, {
-                                color: '#ffffff', weight: 1, dashArray: '10, 15', opacity: 0.3
-                            }).addTo(map);
-                            map.fitBounds(voyagePlannedPath.getBounds(), { padding: [80, 80] });
+                if (!data.success || !data.shipment) {
+                    addEvent({ status: 'Error', message: 'Shipment not found or access denied.' });
+                    return;
+                }
+
+                const s = data.shipment;
+                const tracking = data.tracking || {};
+
+                // ── INFO CARDS ──
+                document.getElementById('info-status').textContent = tracking.status || s.status || '—';
+                document.getElementById('info-vessel').textContent = tracking.vessel || s.ship_name || '—';
+                document.getElementById('info-port').textContent = tracking.livePosition?.port || '—';
+
+                // ── PLOT ROUTE STOPS ──
+                if (tracking.routeStops && tracking.routeStops.length > 0) {
+                    currentStops = tracking.routeStops;
+                    const pathCoords = [];
+
+                    tracking.routeStops.forEach((st, idx) => {
+                        if (st.lat && st.lng) {
+                            const lat = parseFloat(st.lat);
+                            const lng = parseFloat(st.lng);
+                            pathCoords.push([lat, lng]);
+
+                            let m;
+                            if (idx === 0) {
+                                m = createOriginMarker(lat, lng, st.port_name);
+                            } else if (idx === tracking.routeStops.length - 1) {
+                                m = createDestMarker(lat, lng, st.port_name);
+                            } else {
+                                m = createStopMarker(lat, lng, st.port_name, st.stop_order);
+                            }
+                            portMarkers.push(m);
+                        }
+                    });
+
+                    // Draw planned route
+                    if (pathCoords.length >= 2) {
+                        plannedLine.setLatLngs(pathCoords);
+                        map.fitBounds(L.latLngBounds(pathCoords), { padding: [80, 80] });
+                    }
+
+                    // LEFT PANEL: Voyage Timeline
+                    renderVoyageTimeline(tracking.routeStops, tracking.livePosition?.port, tracking.status);
+
+                } else {
+                    // ── FALLBACK: Resolve PORT_IDs for Source & Dest ──
+                    // When no vessel route exists, use PORT_ID or lat/lng from shipment
+                    let srcLat = s.origin_lat, srcLng = s.origin_lng, srcName = s.source_port || s.origin_address;
+                    let dstLat = s.dest_lat, dstLng = s.dest_lng, dstName = s.destination_port || s.destination_address;
+
+                    // Try PORT_ID resolution via shared ports-data.js
+                    if (typeof getPortById === 'function') {
+                        const srcPort = getPortById(s.source_port);
+                        const dstPort = getPortById(s.destination_port);
+                        if (srcPort) { srcLat = srcPort.lat; srcLng = srcPort.lng; srcName = srcPort.name; }
+                        if (dstPort) { dstLat = dstPort.lat; dstLng = dstPort.lng; dstName = dstPort.name; }
+                    }
+
+                    const fallbackStops = [];
+                    const fallbackCoords = [];
+
+                    if (srcLat && srcLng) {
+                        const m = createOriginMarker(parseFloat(srcLat), parseFloat(srcLng), srcName);
+                        portMarkers.push(m);
+                        fallbackCoords.push([parseFloat(srcLat), parseFloat(srcLng)]);
+                        fallbackStops.push({ port_name: srcName, lat: srcLat, lng: srcLng, stop_order: 1 });
+                    }
+                    if (dstLat && dstLng) {
+                        const m = createDestMarker(parseFloat(dstLat), parseFloat(dstLng), dstName);
+                        portMarkers.push(m);
+                        fallbackCoords.push([parseFloat(dstLat), parseFloat(dstLng)]);
+                        fallbackStops.push({ port_name: dstName, lat: dstLat, lng: dstLng, stop_order: 2 });
+                    }
+
+                    if (fallbackCoords.length >= 2) {
+                        plannedLine.setLatLngs(fallbackCoords);
+                        map.fitBounds(L.latLngBounds(fallbackCoords), { padding: [80, 80] });
+                    }
+
+                    if (fallbackStops.length > 0) {
+                        currentStops = fallbackStops;
+                        renderVoyageTimeline(fallbackStops, null, tracking.status || s.status);
+                    }
+                }
+
+                // ── PLOT SHIP MARKER (Live Position) ──
+                if (tracking.livePosition?.lat && tracking.livePosition?.lng) {
+                    const lp = tracking.livePosition;
+                    
+                    // Calculate heading towards next stop
+                    let heading = 0;
+                    if (currentStops.length > 0) {
+                        const currentPortName = lp.port || '';
+                        let nextStopIdx = currentStops.findIndex(s => 
+                            s.port_name.toLowerCase().includes(currentPortName.toLowerCase()) ||
+                            currentPortName.toLowerCase().includes(s.port_name.toLowerCase())
+                        );
+                        nextStopIdx = nextStopIdx >= 0 ? nextStopIdx + 1 : 1;
+                        if (nextStopIdx < currentStops.length && currentStops[nextStopIdx].lat) {
+                            heading = calcBearing(lp.lat, lp.lng, currentStops[nextStopIdx].lat, currentStops[nextStopIdx].lng);
                         }
                     }
 
-                    if (data.tracking?.livePosition) {
-                        const lp = data.tracking.livePosition;
-                        updateMapPin(lp.lat, lp.lng, `#${prefix}-${shipmentId}`, data.tracking.status);
-                    }
+                    updateShipMarker(lp.lat, lp.lng, heading, `#${prefix}-${shipmentId}`, tracking.status);
+                } else if (currentStops.length > 0 && currentStops[0].lat) {
+                    // No live position: Place ship at first stop
+                    updateShipMarker(currentStops[0].lat, currentStops[0].lng, 0, `#${prefix}-${shipmentId}`, tracking.status || 'Awaiting Departure');
                 }
-            } catch (err) { console.error(err); }
+
+                // ── POPULATE EVENTS FROM HISTORY ──
+                if (data.logs && data.logs.length > 0) {
+                    const feed = document.getElementById('event-feed');
+                    feed.innerHTML = '';
+                    data.logs.slice(0, 15).forEach(log => {
+                        addEvent({
+                            status: log.status || log.stage || 'Update',
+                            message: log.location_note || log.description || '',
+                            timestamp: log.timestamp || log.updated_at
+                        });
+                    });
+                }
+
+                // ── START SIMULATION (if In Transit and has stops) ──
+                if (['In Transit', 'Cargo Loaded'].includes(tracking.status) && currentStops.length >= 2) {
+                    startSimulation(shipmentId, prefix);
+                }
+
+                // ── CONNECT SOCKET.IO ──
+                connectSocket(shipmentId, prefix);
+
+            } catch (err) {
+                console.error('Tracking load error:', err);
+                addEvent({ status: 'Connection Error', message: 'Failed to load tracking data from server.' });
+            }
         }
 
+        // ═══════════════════════════════════════════════════════════
+        // 8. LIVE SIMULATION ENGINE
+        // ═══════════════════════════════════════════════════════════
+        function startSimulation(shipmentId, prefix) {
+            if (simInterval) clearInterval(simInterval);
+            if (currentStops.length < 2) return;
+
+            let simIdx = 0;
+            // Start from current known position
+            if (trackingPath.length > 0) {
+                const lastPos = trackingPath[trackingPath.length - 1];
+                for (let i = 0; i < currentStops.length - 1; i++) {
+                    if (currentStops[i].lat && currentStops[i].lng) {
+                        const d = Math.abs(parseFloat(currentStops[i].lat) - lastPos[0]) + Math.abs(parseFloat(currentStops[i].lng) - lastPos[1]);
+                        if (d < 2) { simIdx = i; break; }
+                    }
+                }
+            }
+
+            let simLat = parseFloat(currentStops[simIdx]?.lat || 0);
+            let simLng = parseFloat(currentStops[simIdx]?.lng || 0);
+            let targetIdx = simIdx + 1;
+
+            simInterval = setInterval(() => {
+                if (targetIdx >= currentStops.length) {
+                    clearInterval(simInterval);
+                    addEvent({ status: 'Arrived', message: `Vessel reached destination: ${currentStops[currentStops.length-1].port_name}`, timestamp: new Date() });
+                    return;
+                }
+
+                const target = currentStops[targetIdx];
+                if (!target?.lat || !target?.lng) { targetIdx++; return; }
+
+                const tLat = parseFloat(target.lat);
+                const tLng = parseFloat(target.lng);
+
+                // Move 8% toward target each tick
+                const speed = 0.08;
+                simLat += (tLat - simLat) * speed;
+                simLng += (tLng - simLng) * speed;
+
+                // Check if "arrived" at port (within 0.5 degrees)
+                if (Math.abs(simLat - tLat) < 0.5 && Math.abs(simLng - tLng) < 0.5) {
+                    simLat = tLat;
+                    simLng = tLng;
+                    addEvent({ status: 'At Port', message: `Vessel arrived at ${target.port_name}`, timestamp: new Date() });
+                    targetIdx++;
+                }
+
+                const heading = calcBearing(simLat, simLng, tLat, tLng);
+                updateShipMarker(simLat, simLng, heading, `#${prefix}-${shipmentId}`, 'In Transit');
+
+                // Update timeline
+                if (currentStops.length > 0) {
+                    renderVoyageTimeline(currentStops, target.port_name, 'In Transit');
+                }
+            }, 10000); // Every 10 seconds
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 9. SOCKET.IO REAL-TIME CONNECTION
+        // ═══════════════════════════════════════════════════════════
+        function connectSocket(shipmentId, prefix) {
+            if (socket) { socket.disconnect(); }
+
+            try {
+                socket = io(API_URL, {
+                    withCredentials: true,
+                    transports: ['websocket', 'polling']
+                });
+
+                socket.on('connect', () => {
+                    socket.emit('join_shipment', { shipmentId });
+                    addEvent({ status: 'Connected', message: 'WebSocket satellite link established', timestamp: new Date() });
+                });
+
+                // Real-time location from AIS engine
+                socket.on('tracking_event', (data) => {
+                    if (data.shipmentId != shipmentId) return;
+
+                    if (data.lat && data.lng) {
+                        const heading = data.bearing || calcBearing(
+                            trackingPath.length > 0 ? trackingPath[trackingPath.length-1][0] : data.lat,
+                            trackingPath.length > 0 ? trackingPath[trackingPath.length-1][1] : data.lng,
+                            data.lat, data.lng
+                        );
+                        updateShipMarker(data.lat, data.lng, heading, `#${prefix}-${shipmentId}`, data.status);
+                    }
+
+                    addEvent(data);
+
+                    // Update info cards
+                    if (data.status) document.getElementById('info-status').textContent = data.status;
+                    if (data.vessel) document.getElementById('info-vessel').textContent = data.vessel;
+                });
+
+                // Status change events
+                socket.on('shipment:status_update', (data) => {
+                    if (data.shipmentId != shipmentId) return;
+                    document.getElementById('info-status').textContent = data.status;
+                    addEvent({ status: data.status, message: 'Status updated by manager', timestamp: new Date() });
+
+                    if (data.status === 'Delivered') {
+                        if (simInterval) clearInterval(simInterval);
+                        renderVoyageTimeline(currentStops, null, 'Delivered');
+                    }
+                });
+
+                socket.on('disconnect', () => {
+                    addEvent({ status: 'Offline', message: 'Satellite link lost, reconnecting...', timestamp: new Date() });
+                });
+            } catch (e) {
+                console.error('Socket connection failed:', e);
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // 10. BOOT
+        // ═══════════════════════════════════════════════════════════
         document.addEventListener('DOMContentLoaded', async () => {
+            initMap();
             try {
                 const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
                 const auth = await res.json();
@@ -259,22 +709,29 @@
                 const listEl = document.getElementById('shipment-list');
                 
                 if (shipData.success && shipData.shipments?.length) {
-                    listEl.innerHTML = shipData.shipments.map(s => `
-                        <button class="shipment-btn btn btn-dark btn-sm text-start border border-secondary border-opacity-25 rounded-3 p-3 w-100 mb-2"
+                    listEl.innerHTML = shipData.shipments.map(s => {
+                        const statusColor = s.status === 'Delivered' ? '#22c55e' : (s.status === 'In Transit' ? '#6366f1' : '#64748b');
+                        return `
+                        <button class="shipment-btn btn btn-dark btn-sm text-start border border-secondary border-opacity-25 rounded-3 p-3 w-100"
+                                data-id="${s.id}"
                                 onclick="joinShipment(${s.id}, '${s.user_prefix || 'SS'}')">
-                            <div class="fw-bold text-white mb-1">#${s.user_prefix || 'SS'}-${s.id}</div>
-                            <div class="text-white-50 x-small text-truncate">${s.origin_address} ➔ ${s.destination_address}</div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="fw-bold text-white">#${s.user_prefix || 'SS'}-${s.id}</div>
+                                <span class="badge" style="background:${statusColor}15; color:${statusColor}; font-size:9px;">${s.status}</span>
+                            </div>
+                            <div class="text-white-50 mt-1" style="font-size:11px;">${s.origin_address || '—'} ➜ ${s.destination_address || '—'}</div>
                         </button>
-                    `).join('');
+                    `}).join('');
                 } else {
                     listEl.innerHTML = '<p class="text-white-50 x-small text-center py-3">No active shipments</p>';
                 }
 
+                // Auto-load from URL if ?id=XX
                 const urlParams = new URLSearchParams(window.location.search);
                 const queryId = urlParams.get('id');
                 if (queryId) {
                     document.getElementById('shipment-search-input').value = queryId;
-                    joinShipment(queryId, 'ID');
+                    joinShipment(queryId.includes('-') ? queryId.split('-').pop() : queryId, queryId.includes('-') ? queryId.split('-')[0] : 'ID');
                 }
             } catch (err) { window.location.href = 'auth.html'; }
         });

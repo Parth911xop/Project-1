@@ -10,7 +10,7 @@
     document.documentElement.style.display = 'none';
 
     async function getSession() {
-        const res = await fetch(`http://${window.location.hostname}:3000/api/auth/me`, {
+        const res = await fetch(`/api/auth/me`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -18,7 +18,7 @@
     }
 
     async function refreshSession() {
-        const res = await fetch(`http://${window.location.hostname}:3000/api/auth/refresh`, {
+        const res = await fetch(`/api/auth/refresh`, {
             method: 'POST',
             credentials: 'include'
         });
@@ -96,7 +96,7 @@ function routeUser(role) {
 // Global Logout Helper
 async function handleLogout() {
     try {
-        await fetch(`http://${window.location.hostname}:3000/api/auth/logout`, { method: 'POST', credentials: 'include' });
+        await fetch(`/api/auth/logout`, { method: 'POST', credentials: 'include' });
     } catch (e) { }
     localStorage.clear();
     window.location.href = 'auth.html';
@@ -117,7 +117,7 @@ window.fetch = async function () {
 
 const AuthGuard = {
     verifySession: async function () {
-        const res = await fetch(`http://${window.location.hostname}:3000/api/auth/me`, {
+        const res = await fetch(`/api/auth/me`, {
             method: 'GET',
             credentials: 'include'
         });
