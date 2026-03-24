@@ -180,15 +180,28 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
                     manager_notes = $5,
                     estimated_departure = $6,
                     estimated_arrival = $7,
+                    requested_documents = $8,
                     allocated_at = NOW(),
                     updated_at = NOW()
-                WHERE id = $8
+                WHERE id = $9
             `, [
                 shipId, managerId, ship.name || ship.type,
                 cargoDropPort || null, notes || null,
                 departureDate || null, arrivalDate || null,
+                JSON.stringify(docs || ["Government ID", "Commercial Invoice", "Packing List"]),
                 sid
             ]);
+
+            // Clear then Insert Quote Options if provided
+            if (quotes && Array.isArray(quotes)) {
+                await pool.query(`DELETE FROM shipment_quote_options WHERE shipment_id = $1`, [sid]);
+                for (const q of quotes) {
+                    await pool.query(`
+                        INSERT INTO shipment_quote_options (shipment_id, option_name, price, vessel_id, transit_time)
+                        VALUES ($1, $2, $3, $4, $5)
+                    `, [sid, q.name, q.price, shipId, q.transitTime || 'Standard']);
+                }
+            }
 
             // Increment used slots on the ship
             await pool.query(
@@ -351,6 +364,72 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
             });
         } catch (e) {
             res.status(500).json({ success: false, message: 'Check failed' });
+        }
+    });
+
+    /**
+     * GET /api/v3/shipment/:id/quotes
+     * Returns a list of quote options for this shipment
+     */
+    app.get('/api/v3/shipment/:id/quotes', ...anyAuth, async (req, res) => {
+        try {
+            const sid = parseInt(req.params.id);
+            const r = await pool.query(
+                `SELECT * FROM shipment_quote_options WHERE shipment_id = $1 ORDER BY id ASC`,
+                [sid]
+            );
+            res.json({ success: true, quotes: r.rows });
+        } catch (e) {
+            res.status(500).json({ success: false, message: 'Failed to fetch quotes' });
+        }
+    });
+
+    /**
+     * POST /api/v3/shipment/:id/select-quote
+     * User selects a quote, updates shipment's estimated cost
+     */
+    app.post('/api/v3/shipment/:id/select-quote', ...anyAuth, async (req, res) => {
+        const sid = parseInt(req.params.id);
+        const { quoteId } = req.body;
+        if (!quoteId) return res.status(400).json({ success: false, message: 'Quote ID is required' });
+
+        try {
+            // Find the quote
+            const qResult = await pool.query(
+                `SELECT * FROM shipment_quote_options WHERE id = $1 AND shipment_id = $2`,
+                [quoteId, sid]
+            );
+            if (qResult.rows.length === 0) return res.status(404).json({ success: false, message: 'Quote not found' });
+            
+            const quote = qResult.rows[0];
+
+            await pool.query('BEGIN');
+            
+            // Mark as selected in quotes table
+            await pool.query(
+                `UPDATE shipment_quote_options SET is_selected = FALSE WHERE shipment_id = $1`,
+                [sid]
+            );
+            await pool.query(
+                `UPDATE shipment_quote_options SET is_selected = TRUE WHERE id = $1`,
+                [quoteId]
+            );
+
+            // Update shipment with selected quote price and transit time
+            await pool.query(`
+                UPDATE shipments 
+                SET estimated_cost = $1, 
+                    transit_time = $2, 
+                    selected_quote_id = $3,
+                    updated_at = NOW() 
+                WHERE id = $4
+            `, [quote.price, quote.transit_time, quoteId, sid]);
+
+            await pool.query('COMMIT');
+            res.json({ success: true, message: `Option "${quote.option_name}" selected. Cost updated to ₹${Number(quote.price).toLocaleString()}.` });
+        } catch (e) {
+            await pool.query('ROLLBACK');
+            res.status(500).json({ success: false, message: 'Failed to select option' });
         }
     });
 

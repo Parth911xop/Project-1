@@ -141,6 +141,7 @@ module.exports = (pool, createNotification, io) => {
             return res.status(400).json({ success: false, message: "Missing required fields" });
         }
 
+        /* 
         // --- KYC STATUS CHECK ---
         const userKycRes = await pool.query('SELECT kyc_status FROM users WHERE id = $1', [userId]);
         const kycStatus = userKycRes.rows[0]?.kyc_status;
@@ -152,6 +153,7 @@ module.exports = (pool, createNotification, io) => {
                 kycStatus: kycStatus
             });
         }
+        */
 
         const initialStatus = 'Booked';
         const origin = originAddress || fromCountry || '';

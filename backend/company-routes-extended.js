@@ -72,7 +72,7 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
                        UPPER(LEFT(u.email, 2)) as user_prefix,
                        v.name as vessel_name,
                        v.current_port as vessel_current_port,
-                       (SELECT string_agg(port_name, ' → ' ORDER BY stop_order ASC) FROM ship_route_stops WHERE ship_id = s.allocated_ship_id) AS vessel_route,
+                       (SELECT string_agg(port_name, ' → ' ORDER BY stop_order ASC) FROM ship_route_stops WHERE ship_id = CAST(s.allocated_ship_id AS INTEGER)) AS vessel_route,
                        COALESCE(s.origin_lat, 
                            CASE 
                                WHEN LOWER(s.origin_address) LIKE '%india%' THEN 18.94
@@ -101,7 +101,7 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
                        ) as dest_lng
                 FROM shipments s 
                 LEFT JOIN users u ON s.customer_id = u.id
-                LEFT JOIN vehicles v ON s.allocated_ship_id = v.id
+                LEFT JOIN vehicles v ON CAST(s.allocated_ship_id AS INTEGER) = v.id
                 WHERE s.company_id=$1 AND s.status NOT IN ('Pending Manager Approval', 'Declined')
                 ORDER BY s.created_at DESC
             `, [id]);

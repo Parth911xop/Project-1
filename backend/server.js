@@ -134,7 +134,17 @@ const resolveDbConfigs = async () => {
             console.log(`✅ Resolved ${hostname} to ${addresses.map(entry => `${entry.address} (IPv${entry.family})`).join(', ')}`);
         }
     } catch (err) {
-        console.warn(`⚠️ DNS lookup failed for ${hostname}: ${err.message}. Falling back to hostname connection.`);
+        console.warn(`⚠️ Native DNS lookup failed for ${hostname}: ${err.message}. Trying public DNS fallback...`);
+        try {
+            // Fallback to Google and Cloudflare DNS if system DNS fails
+            const resolver = new dns.promises.Resolver();
+            resolver.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
+            const addresses = await resolver.resolve4(hostname);
+            addresses.forEach(addr => addCandidate(addr, `External-IPv4 ${addr}`));
+            console.log(`✅ Resolved via external DNS: ${hostname} to ${addresses.join(', ')}`);
+        } catch (fallbackErr) {
+            console.warn(`❌ External DNS fallback also failed: ${fallbackErr.message}`);
+        }
         addCandidate(hostname, `hostname ${hostname}`);
     }
 
@@ -242,6 +252,21 @@ const runMigrations = async () => {
             ALTER TABLE users ADD COLUMN IF NOT EXISTS company_status VARCHAR(20) DEFAULT 'pending';
             ALTER TABLE users ADD COLUMN IF NOT EXISTS kyc_status VARCHAR(20) DEFAULT 'Pending';
         `);
+
+        // 1.1 Core Vehicles Table (Must exist before V3/V4 migrations)
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS vehicles (
+                id SERIAL PRIMARY KEY,
+                company_id INTEGER REFERENCES users(id),
+                name VARCHAR(255),
+                type VARCHAR(100),
+                capacity_kg NUMERIC,
+                emission_factor NUMERIC,
+                registration_number VARCHAR(100),
+                status VARCHAR(50) DEFAULT 'Active',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
         // 2. Core Shipments Table (Must exist before admin/support tables)
         await pool.query(`
             CREATE TABLE IF NOT EXISTS shipments (
@@ -257,9 +282,51 @@ const runMigrations = async () => {
             ALTER TABLE shipments ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES users(id);
             ALTER TABLE shipments ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES users(id);
             ALTER TABLE shipments ADD COLUMN IF NOT EXISTS tracking_number VARCHAR(100);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_address TEXT;
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS destination_address TEXT;
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_country VARCHAR(100);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS destination_country VARCHAR(100);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS weight_kg DECIMAL(10, 2);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS volume_cbm DECIMAL(10, 2);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS cargo_value DECIMAL(10, 2);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS hs_code VARCHAR(50);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS description TEXT;
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS consignee_name VARCHAR(255);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS consignee_contact VARCHAR(255);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS iec_code VARCHAR(100);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS product_type VARCHAR(100);
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_lat NUMERIC;
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS origin_lng NUMERIC;
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lat NUMERIC;
+            ALTER TABLE shipments ADD COLUMN IF NOT EXISTS dest_lng NUMERIC;
         `);
 
-        // 3. Company Profiles & Other Legacy Tables
+        // Fix potential type mismatch for allocated_ship_id (ensure it is INTEGER)
+        try {
+            await pool.query(`
+                ALTER TABLE shipments 
+                ALTER COLUMN allocated_ship_id TYPE INTEGER 
+                USING CASE 
+                    WHEN allocated_ship_id ~ '^[0-9]+$' THEN allocated_ship_id::integer 
+                    ELSE NULL 
+                END;
+            `);
+        } catch (e) {
+            // If column doesn't exist yet, it's fine, V3 migration will handle it
+        }
+
+        // 3. Profiles, Events & Other Legacy Tables
+        await createCustomerProfilesTable();
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS shipment_events (
+                id SERIAL PRIMARY KEY,
+                shipment_id INTEGER,
+                status VARCHAR(100),
+                notes TEXT,
+                updated_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
         await createCompanyProfilesTable();
         await createAdminTables();
 
@@ -306,6 +373,27 @@ const createCompanyProfilesTable = async () => {
         console.log("✅ Table 'company_profiles' ready");
     } catch (err) {
         console.error("❌ Error creating/updating 'company_profiles' table:", err);
+    }
+};
+
+// Create Customer Profiles Table
+const createCustomerProfilesTable = async () => {
+    const query = `
+    CREATE TABLE IF NOT EXISTS customer_profiles (
+        user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        full_name VARCHAR(255),
+        company_name VARCHAR(255),
+        billing_address TEXT,
+        country VARCHAR(100),
+        phone VARCHAR(50),
+        default_currency VARCHAR(3) DEFAULT 'USD',
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );`;
+    try {
+        await pool.query(query);
+        console.log("✅ Table 'customer_profiles' ready");
+    } catch (err) {
+        console.error("❌ Error creating 'customer_profiles' table:", err);
     }
 };
 
@@ -1363,7 +1451,7 @@ const startServer = async () => {
                 const res = await pool.query(`
                     SELECT DISTINCT v.id, v.name, v.current_lat, v.current_lng, v.current_port, v.type
                     FROM vehicles v
-                    JOIN shipments s ON s.allocated_ship_id = v.id
+                    JOIN shipments s ON CAST(s.allocated_ship_id AS INTEGER) = v.id
                     WHERE s.status = 'In Transit' AND v.status = 'Active'
                 `);
 
@@ -1417,7 +1505,7 @@ const startServer = async () => {
                         );
 
                         // Real-time broadcast to relevant tracking rooms
-                        const sR = await pool.query(`SELECT id FROM shipments WHERE allocated_ship_id = $1`, [ship.id]);
+                        const sR = await pool.query(`SELECT id FROM shipments WHERE CAST(allocated_ship_id AS INTEGER) = $1`, [ship.id]);
                         sR.rows.forEach(s => {
                             io.to(`shipment:${s.id}`).emit('tracking_event', {
                                 shipmentId: s.id,
