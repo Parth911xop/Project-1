@@ -533,20 +533,31 @@ async function openPanel(id) {
     } else if (isAssigned) {
 
         // --- MULTI-QUOTE SELECTION logic ---
-        const quotes = s.negotiated_quotes || s.plan_options;
+        let quotes = s.plan_options;
+        if (!Array.isArray(quotes) && typeof s.plan_options === 'string') {
+            try { quotes = JSON.parse(s.plan_options); } catch { quotes = []; }
+        }
+        if ((!quotes || !Array.isArray(quotes) || !quotes.length) && s.negotiated_quotes) {
+            quotes = s.negotiated_quotes;
+            if (typeof quotes === 'string') {
+                try { quotes = JSON.parse(quotes); } catch { quotes = []; }
+            }
+        }
+        console.log('[UI] Plan options for shipment', s.id, ':', quotes);
         const hasSelected = !!(s.selected_service_level || s.selected_plan);
 
         if (quotes && Array.isArray(quotes) && !hasSelected) {
             let quotesHtml = `<div class="text-white small fw-bold mb-3"><i class="fas fa-tags me-2 text-primary"></i>Select Your Service Option:</div>`;
             quotesHtml += `<div class="d-grid gap-2 mb-4">`;
             quotes.forEach((q, idx) => {
-                const badge = q.badge || (idx === 0 ? 'AI Preferred' : idx === 1 ? 'Premium Fast' : 'Climate Neutral');
+                // Use manager-provided plan name/type for label
+                const planLabel = q.name || q.type || q.badge || `Plan ${idx + 1}`;
                 const cost = parseFloat(q.price || q.cost || 0) * 84;
                 quotesHtml += `
                 <button class="btn btn-outline-light text-start p-3 rounded-4 border-secondary border-opacity-25 position-relative hover-glow" 
-                        onclick="selectNegotiatedQuote(${s.id}, ${idx}, '${badge}', ${q.price || q.cost})">
+                        onclick="selectNegotiatedQuote(${s.id}, ${idx}, '${planLabel}', ${q.price || q.cost})">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span class="badge bg-primary bg-opacity-25 text-primary x-small">${badge}</span>
+                        <span class="badge bg-primary bg-opacity-25 text-primary x-small">${planLabel}</span>
                         <span class="text-success fw-bold">₹${cost.toLocaleString()}</span>
                     </div>
                     <div class="text-white small mb-1">${q.carrier || 'Global Logistics'} | ${q.mode || s.mode || 'Sea'}</div>
@@ -643,6 +654,7 @@ async function selectNegotiatedQuote(shipmentId, index, serviceLevel, price) {
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Selecting...`;
 
     try {
+        console.log('[UI] User selecting plan:', { shipmentId, index, serviceLevel, price });
         const res = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/select-quote`, {
             method: 'POST',
             credentials: 'include',

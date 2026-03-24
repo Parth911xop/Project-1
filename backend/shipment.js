@@ -359,11 +359,32 @@ module.exports = (pool, createNotification, io) => {
             if (shipCheck.rows.length === 0) return res.status(404).json({ success: false, message: 'Shipment not found' });
             
             const ship = shipCheck.rows[0];
-            // Ensure no null values for plan_options - fallback to negotiated_quotes
-            ship.plan_options = (ship.plan_options && ship.plan_options.length) ? ship.plan_options : (ship.negotiated_quotes || []);
-            ship.required_documents = (ship.required_documents && ship.required_documents.length) ? ship.required_documents : (ship.requested_documents || []);
+            // Always parse plan_options as array
+            let planOptions = [];
+            if (ship.plan_options && Array.isArray(ship.plan_options) && ship.plan_options.length) {
+                planOptions = ship.plan_options;
+            } else if (ship.plan_options && typeof ship.plan_options === 'string') {
+                try { planOptions = JSON.parse(ship.plan_options); } catch { planOptions = []; }
+            } else if (ship.negotiated_quotes && Array.isArray(ship.negotiated_quotes)) {
+                planOptions = ship.negotiated_quotes;
+            } else if (ship.negotiated_quotes && typeof ship.negotiated_quotes === 'string') {
+                try { planOptions = JSON.parse(ship.negotiated_quotes); } catch { planOptions = []; }
+            }
+            ship.plan_options = planOptions;
+            // Always parse required_documents as array
+            let reqDocs = [];
+            if (ship.required_documents && Array.isArray(ship.required_documents)) {
+                reqDocs = ship.required_documents;
+            } else if (ship.required_documents && typeof ship.required_documents === 'string') {
+                try { reqDocs = JSON.parse(ship.required_documents); } catch { reqDocs = []; }
+            } else if (ship.requested_documents && Array.isArray(ship.requested_documents)) {
+                reqDocs = ship.requested_documents;
+            } else if (ship.requested_documents && typeof ship.requested_documents === 'string') {
+                try { reqDocs = JSON.parse(ship.requested_documents); } catch { reqDocs = []; }
+            }
+            ship.required_documents = reqDocs;
 
-            console.log(`[API] Returning shipment ${id} details to user ${userId}`);
+            console.log(`[API] Returning shipment ${id} details to user ${userId}:`, { plan_options: planOptions });
 
             res.json({ success: true, shipment: ship });
         } catch (err) {
@@ -710,8 +731,17 @@ module.exports = (pool, createNotification, io) => {
             return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
+        // Robustly validate planOptions as array
+        let planArr = planOptions;
+        if (typeof planArr === 'string') {
+            try { planArr = JSON.parse(planArr); } catch { planArr = []; }
+        }
+        if (!Array.isArray(planArr) || planArr.length === 0) {
+            return res.status(400).json({ success: false, message: 'planOptions must be a non-empty array.' });
+        }
+
         try {
-            console.log(`[MANAGER] Assigning booking tools for shipment ${shipmentId}. Plans:`, planOptions);
+            console.log(`[MANAGER] Assigning booking tools for shipment ${shipmentId}. Plans:`, planArr);
 
             const result = await pool.query(
                 `UPDATE shipments 
@@ -725,7 +755,7 @@ module.exports = (pool, createNotification, io) => {
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = $4
                  RETURNING *`,
-                [JSON.stringify(planOptions), JSON.stringify(requiredDocuments), vesselId, shipmentId]
+                [JSON.stringify(planArr), JSON.stringify(requiredDocuments), vesselId, shipmentId]
             );
 
             if (result.rowCount === 0) {
@@ -736,9 +766,15 @@ module.exports = (pool, createNotification, io) => {
             await pool.query(
                 `INSERT INTO shipment_events (shipment_id, status, notes, updated_by)
                  VALUES ($1, $2, $3, $4)`,
-
                 [shipmentId, 'assigned', 'Manager approved booking and assigned resources', managerId]
             );
+
+            // Log the saved plan_options
+            let savedPlans = result.rows[0].plan_options;
+            if (typeof savedPlans === 'string') {
+                try { savedPlans = JSON.parse(savedPlans); } catch { }
+            }
+            console.log(`[MANAGER] Saved plan_options for shipment ${shipmentId}:`, savedPlans);
 
             res.json({ success: true, message: 'Booking approved and resources assigned', shipment: result.rows[0] });
         } catch (err) {
