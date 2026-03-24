@@ -60,7 +60,7 @@ module.exports = (pool) => {
                 FROM invoices i 
                 JOIN shipments s ON i.shipment_id = s.id 
                 WHERE i.user_id = $1 ORDER BY i.created_at DESC`, [userId]);
-            
+
             // 2. Fetch Transactions (Payment History)
             const transRes = await pool.query(`
                 SELECT t.*, s.origin_address, s.destination_address 

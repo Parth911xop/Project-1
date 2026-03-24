@@ -1,4 +1,4 @@
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = ''; // Relative path for automatic port matching
 const defaultShipmentId = 32;
 let CURRENT_SHIPMENT = null;
 let USER_ROLE = null;
@@ -63,6 +63,37 @@ async function fetchKYCStatus() {
                     'bg-warning text-dark'
                 }`;
             }
+
+            // Update filename display
+            const nameMap = {
+                'ID Proof': 'kyc-file-id-name',
+                'PAN': 'kyc-file-pan-name',
+                'Address Proof': 'kyc-file-address-name'
+            };
+            const nameEl = document.getElementById(nameMap[doc.doc_type]);
+            if (nameEl) {
+                if (doc.file_name) {
+                    nameEl.innerHTML = `<i class="fas fa-file-alt me-1 text-primary"></i>${doc.file_name}`;
+                    nameEl.classList.remove('text-white-50');
+                    nameEl.classList.add('text-primary', 'fw-bold');
+                } else if (doc.status === 'Pending' || doc.status === 'Approved') {
+                    nameEl.innerHTML = `<i class="fas fa-file-check me-1 text-success"></i>Document Uploaded`;
+                    nameEl.classList.remove('text-white-50');
+                    nameEl.classList.add('text-success-emphasis', 'fw-medium');
+                }
+            }
+            
+            const btnMap = {
+                'ID Proof': 'kyc-btn-id',
+                'PAN': 'kyc-btn-pan',
+                'Address Proof': 'kyc-btn-address'
+            };
+            const btn = document.getElementById(btnMap[doc.doc_type]);
+            if (btn && (doc.status === 'Pending' || doc.status === 'Approved')) {
+                btn.innerHTML = `<i class="fas fa-redo me-1"></i> Update Document`;
+                btn.classList.replace('btn-outline-primary', 'btn-outline-success');
+            }
+            
             if (doc.status !== 'Approved') allApproved = false;
             if (doc.status === 'Rejected') {
                 hasRejected = true;
@@ -95,8 +126,8 @@ async function uploadKYC(type, input) {
     if (!input.files || !input.files[0]) return;
     const file = input.files[0];
     const formData = new FormData();
-    formData.append('docFile', file);
-    formData.append('type', type);
+    formData.append('kycFile', file);
+    formData.append('docType', type);
 
     const btn = input.nextElementSibling;
     const originalText = btn.innerHTML;

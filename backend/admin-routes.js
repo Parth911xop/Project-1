@@ -144,12 +144,12 @@ module.exports = function registerAdminRoutes(app, pool, authenticateToken, auth
         } catch (e) { res.status(500).json({ success: false, message: 'Failed to fetch ports' }); }
     });
 
-    // Public port list for User/Company selection
-    app.get('/api/ports', async (req, res) => {
+    // Public port list — served from master ports-data.js (PORT_IDs + coordinates)
+    app.get('/api/ports', (req, res) => {
         try {
-            const r = await pool.query('SELECT name, country, state, code FROM ports ORDER BY country, state, name');
-            res.json({ success: true, ports: r.rows });
-        } catch (e) { res.status(500).json({ success: false, message: 'Failed to fetch ports' }); }
+            const { PORTS } = require('../ports-data');
+            res.json({ success: true, ports: PORTS });
+        } catch (e) { res.status(500).json({ success: false, message: 'Failed to load ports: ' + e.message }); }
     });
 
     app.post('/api/admin/ports', authenticateToken, authorizeRole(['admin']), async (req, res) => {

@@ -16,7 +16,23 @@
 
 <body class="booking-page">
 
-  <!-- KYC Blocker Disabled -->
+  <!-- KYC Blocker Overlay -->
+  <div id="kyc-blocker" style="position:fixed; inset:0; background:rgba(12,17,32,0.9); z-index:9999; display:none; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+    <div class="card bg-dark border-secondary p-5 text-center shadow-lg" style="max-width:500px; border-radius:24px;">
+      <div class="bg-warning text-dark rounded-circle mx-auto mb-4 d-flex align-items-center justify-content-center" style="width:80px; height:80px;">
+        <i class="fas fa-user-shield fa-3x"></i>
+      </div>
+      <h3 class="text-white fw-bold mb-3">Verification Required</h3>
+      <p class="text-white-50 mb-4">To comply with international shipping regulations, we require a one-time identity verification (KYC) before you can book shipments.</p>
+      <div class="d-grid gap-3">
+        <a href="documents.html" class="btn btn-warning btn-lg rounded-pill fw-bold py-3"><i class="fas fa-id-card me-2"></i>Complete KYC Now</a>
+        <a href="shipments.html" class="btn btn-outline-light btn-lg rounded-pill py-3">Cancel & Back</a>
+      </div>
+      <div class="mt-4 pt-3 border-top border-secondary border-opacity-20">
+        <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill x-small">One-time process • Quick approval • Secure data</span>
+      </div>
+    </div>
+  </div>
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark fixed-top glass-nav">
     <div class="container-fluid px-4">
@@ -77,47 +93,25 @@
             </div>
           </div>
 
-          <!-- 1. Route Input -->
+                    <!-- 1. Route Input (Port Dropdowns) -->
           <div class="bg-dark bg-opacity-25 p-3 rounded-4 mb-4 border border-secondary border-opacity-10">
             <div class="d-flex align-items-center gap-3">
               <div class="flex-grow-1">
-                <label class="small text-muted fw-bold mb-1" id="originLabel">ORIGIN (Your Location)</label>
-                <div class="input-group">
-                  <span class="input-group-text bg-transparent border-0 text-primary ps-0"><i
-                      class="fas fa-map-marker-alt"></i></span>
-                  <input type="text" id="originInput" list="ports"
-                    class="form-control bg-transparent border-0 text-white shadow-none" placeholder="City or Port"
-                    value="Singapore (SG SIN)">
-                </div>
+                <label class="small text-muted fw-bold mb-1" id="originLabel"><i class="fas fa-map-marker-alt text-success me-1"></i>ORIGIN PORT</label>
+                <select id="originInput" class="form-select bg-dark border-secondary text-white">
+                  <option value="">Loading ports...</option>
+                </select>
               </div>
-              <div class="route-swap-btn shadow-sm" style="cursor: pointer;">
+              <div class="route-swap-btn shadow-sm" style="cursor: pointer;" onclick="swapPorts()">
                 <i class="fas fa-exchange-alt"></i>
               </div>
-              <div class="flex-grow-1 text-end">
-                <label class="small text-muted fw-bold mb-1" id="destLabel">DESTINATION (Buyer's Location)</label>
-                <div class="input-group justify-content-end">
-                  <input type="text" id="destInput" list="ports"
-                    class="form-control bg-transparent border-0 text-white text-end shadow-none"
-                    placeholder="City or Port" value="Los Angeles (US LAX)">
-                  <span class="input-group-text bg-transparent border-0 text-danger pe-0"><i
-                      class="fas fa-map-marker-alt"></i></span>
-                </div>
+              <div class="flex-grow-1">
+                <label class="small text-muted fw-bold mb-1" id="destLabel"><i class="fas fa-map-marker-alt text-danger me-1"></i>DESTINATION PORT</label>
+                <select id="destInput" class="form-select bg-dark border-secondary text-white">
+                  <option value="">Loading ports...</option>
+                </select>
               </div>
             </div>
-
-            <!-- Dynamic Ports List -->
-            <datalist id="ports">
-              <option value="Singapore (SG SIN)">
-              <option value="Los Angeles (US LAX)">
-              <option value="Mumbai (IN BOM)">
-              <option value="Le Havre (FR LEH)">
-              <option value="Shanghai (CN PVG)">
-              <option value="Rotterdam (NL RTM)">
-              <option value="Dubai (AE DXB)">
-              <option value="New York (US NYC)">
-              <option value="Hamburg (DE HAM)">
-              <option value="Tokyo (JP TYO)">
-            </datalist>
           </div>
 
           <!-- 2. Date & Mode -->
@@ -329,7 +323,41 @@
                 </div>
               </div>
 
-              <!-- Identity Verification (KYC) Removed -->
+              <!-- 2. Identity Verification (KYC) -->
+              <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-user-shield me-2"></i>2.
+                Identity Verification (KYC)</h6>
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">IDENTITY PROOF TYPE <span
+                      class="text-danger">*</span></label>
+                  <select id="kycType" class="form-select bg-dark text-white border-secondary">
+                    <option value="Aadhaar Card">Aadhaar Card</option>
+                    <option value="PAN Card">PAN Card</option>
+                    <option value="Passport">Passport</option>
+                    <option value="Driving Licence">Driving Licence</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">UPLOAD IDENTITY DOC <span
+                      class="text-danger">*</span></label>
+                  <input type="file" id="kycFile" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">ADDRESS PROOF TYPE <span
+                      class="text-danger">*</span></label>
+                  <select id="addrType" class="form-select bg-dark text-white border-secondary">
+                    <option value="Aadhaar Card">Aadhaar Card</option>
+                    <option value="Voter ID Card">Voter ID Card</option>
+                    <option value="Utility Bill">Utility Bill</option>
+                    <option value="Bank Statement">Bank Statement</option>
+                  </select>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label text-white-50 small fw-bold">UPLOAD ADDRESS PROOF <span
+                      class="text-danger">*</span></label>
+                  <input type="file" id="addrFile" class="form-control bg-dark text-white border-secondary" required>
+                </div>
+              </div>
 
               <!-- 3. Trade Documentation -->
               <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-passport me-2"></i>3. Trade
@@ -443,8 +471,25 @@
     <script src="notifications.js"></script>
     <script src="wizard.js"></script>
 <script>
-    // KYC Gate Disabled
-</script>
+    // KYC Gate
+    async function checkKYC() {
+        try {
+            const r = await fetch(`/api/kyc/my-status`, { credentials: 'include' });
+            const d = await r.json();
+            // Allow both Approved and Pending to book
+            if (d.success && d.kycStatus !== 'Approved' && d.kycStatus !== 'Pending') {
+                const blocker = document.getElementById('kyc-blocker');
+                if (blocker) blocker.style.display = 'flex';
+            } else {
+                const blocker = document.getElementById('kyc-blocker');
+                if (blocker) blocker.style.display = 'none';
+            }
+        } catch (e) {
+            console.error('KYC Gate error:', e);
+        }
+    }
+    document.addEventListener('DOMContentLoaded', checkKYC);
+    </script>
 </body>
 
 </html>

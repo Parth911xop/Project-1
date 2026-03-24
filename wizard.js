@@ -1,4 +1,4 @@
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = ''; // Matches active server port automatically
 let currentUser = null; // populated from JWT session
 let currentQuotes = [];
 let selectedQuoteIdx = 0;
@@ -49,17 +49,14 @@ function setTradeType(type, el) {
     }
   }
 
-  // Swap default origin/dest for import
+  // Swap origin/dest for import mode
   const originInput = document.getElementById('originInput');
   const destInput = document.getElementById('destInput');
   if (originInput && destInput) {
-    if (isImport) {
-      originInput.value = 'Los Angeles (US LAX)';
-      destInput.value = 'Mumbai (IN BOM)';
-    } else {
-      originInput.value = 'Singapore (SG SIN)';
-      destInput.value = 'Los Angeles (US LAX)';
-    }
+    // Simply swap the two selections
+    const tmp = originInput.value;
+    originInput.value = destInput.value;
+    destInput.value = tmp;
   }
 }
 
@@ -88,27 +85,61 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
+// Master port cache (keyed by PORT_ID)
+window.PORTS_CACHE = {};
+
 async function loadPortsToDatalist() {
-  const list = document.getElementById('ports');
-  if (!list) return;
+  const originSel = document.getElementById('originInput');
+  const destSel = document.getElementById('destInput');
+  if (!originSel || !destSel) return;
 
   try {
     const res = await fetch(`${API_URL}/api/ports`);
     const data = await res.json();
     if (data.success && data.ports.length > 0) {
-      // Clear existing hardcoded options
-      list.innerHTML = '';
+      // Cache all ports by ID
       data.ports.forEach(p => {
-        const opt = document.createElement('option');
-        // Format: Port Name (Country - State) [Code]
-        const stateStr = p.state ? ` - ${p.state}` : '';
-        opt.value = `${p.name} (${p.country}${stateStr}) [${p.code}]`;
-        list.appendChild(opt);
+        window.PORTS_CACHE[p.id] = p;
       });
+
+      // Build dropdown options — value = PORT_ID, text = Name (Country)
+      const optionsHtml = data.ports.map(p => 
+        `<option value="${p.id}">${p.name} (${p.country})</option>`
+      ).join('');
+
+      originSel.innerHTML = '<option value="">— Select Origin Port —</option>' + optionsHtml;
+      destSel.innerHTML = '<option value="">— Select Destination Port —</option>' + optionsHtml;
+
+      // Set smart defaults
+      originSel.value = 'PORT_SINGAPORE';
+      destSel.value = 'PORT_LA';
     }
   } catch (e) {
-    console.warn("Failed to load ports for datalist:", e);
+    console.warn("Failed to load ports:", e);
+    originSel.innerHTML = '<option value="">Port data unavailable</option>';
+    destSel.innerHTML = '<option value="">Port data unavailable</option>';
   }
+}
+
+function swapPorts() {
+  const o = document.getElementById('originInput');
+  const d = document.getElementById('destInput');
+  const tmp = o.value;
+  o.value = d.value;
+  d.value = tmp;
+}
+
+// Resolve PORT_ID → coordinates
+function getPortCoords(portId) {
+  const port = window.PORTS_CACHE[portId];
+  if (port) return { lat: port.lat, lng: port.lng, name: port.name };
+  return null;
+}
+
+// Get display name for a PORT_ID
+function getPortDisplayName(portId) {
+  const port = window.PORTS_CACHE[portId];
+  return port ? `${port.name} (${port.country})` : portId;
 }
 
 function initBookingForm() {
@@ -155,13 +186,28 @@ async function submitQuickRequest() {
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Submitting to Manager...';
 
   try {
+    // Resolve port coordinates and display names from PORT_ID
+    const originCoords = getPortCoords(origin);   // origin = PORT_ID like "PORT_LA"
+    const destCoords = getPortCoords(dest);       // dest = PORT_ID like "PORT_CHENNAI"
+    const originDisplay = getPortDisplayName(origin);
+    const destDisplay = getPortDisplayName(dest);
+
     const payload = {
       type: tradeType,
-      fromCountry: origin,
-      toCountry: dest,
+      // PORT_IDs stored in DB for tracking (IMPORTANT!)
+      sourcePort: origin,           // e.g. "PORT_LA"
+      destinationPort: dest,        // e.g. "PORT_CHENNAI"
+      // Display names for human-readable fields
+      fromCountry: originDisplay,   // "Port of Los Angeles (USA)"
+      toCountry: destDisplay,       // "Chennai Port (India)"
       weight,
       mode,
       productType: type,
+      // GPS coordinates for instant map tracking
+      originLat: originCoords?.lat || null,
+      originLng: originCoords?.lng || null,
+      destLat: destCoords?.lat || null,
+      destLng: destCoords?.lng || null,
       cargoDetails: {
         shippingMethod: method,
         isHazardous: document.getElementById('hazardToggle').checked,
