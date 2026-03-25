@@ -1,5 +1,5 @@
 // company-dashboard.js — All logic for the Company Partner Hub (12 sections)
-const API = `http://${location.hostname}:3000`;
+const API = ''; // Matches active server port automatically
 
 let CURRENT_USER = null;
 let ALL_SHIPMENTS = [];
@@ -473,7 +473,7 @@ function renderShipments(list) {
             <td>${stBadge(s.status)}</td>
             <td>
                 <div class="d-flex gap-1 justify-content-end">
-                    ${s.status === 'Ship Allocated' ? `<button class="btn btn-sm btn-success border-success bg-success bg-opacity-10 text-success fw-bold" onclick="quickConfirmShipment(${s.id})" title="Start Logistics Flow"><i class="fas fa-check-circle me-1"></i>Confirm</button>` : ''}
+                    ${s.status === 'Cargo Ready' ? `<button class="btn btn-sm btn-success border-success bg-success bg-opacity-10 text-success fw-bold" onclick="quickConfirmShipment(${s.id})" title="Verify & Confirm Booking"><i class="fas fa-check-circle me-1"></i>Confirm</button>` : ''}
                     <button class="btn btn-sm btn-dark border-secondary text-primary" title="Manage Logistics" onclick="openShipmentManagement(${s.id})"><i class="fas fa-tasks"></i></button>
                     <button class="btn btn-sm btn-dark border-secondary text-white-50" title="View Details" onclick="openDetailsModal(${s.id})"><i class="fas fa-eye"></i></button>
                     <button class="btn btn-sm btn-dark border-secondary text-info" title="Invoice" onclick="generateInvoice(${s.id})"><i class="fas fa-file-invoice"></i></button>
@@ -486,7 +486,7 @@ function renderShipments(list) {
 let ALL_PENDING_REQUESTS = [];
 
 async function quickConfirmShipment(id) {
-    if(!confirm("Are you sure you want to Override and verify this Shipment for Live Tracking?")) return;
+    if(!confirm("Are you sure you want to officially Confirm this shipment? Ensure you have verified the uploaded documents first.")) return;
     try {
         const res = await fetch(`${API}/api/company/shipments/${id}/status`, {
             method: 'PATCH',
@@ -1390,10 +1390,15 @@ async function submitIntegratedAccept() {
 
     if (!shipId || !q2) { toast('Assign a vessel and at least Standard Price', 'error'); return; }
 
+    // Normalize prices (Convert INR input to internal USD base / 84)
+    const p1 = parseFloat(q1 || 0) / 84;
+    const p2 = parseFloat(q2 || 0) / 84;
+    const p3 = parseFloat(q3 || 0) / 84;
+
     const planOptions = [
-        { name: 'Economy', price: q1 || (q2 * 0.8), transitTime: 'Slow/Ocean' },
-        { name: 'Standard', price: q2, transitTime: 'Direct Sea' },
-        { name: 'Premium', price: q3 || (q2 * 1.4), transitTime: 'Fast/Priority' }
+        { name: 'Economy', price: p1 || (p2 * 0.8), transitTime: 'Slow/Ocean' },
+        { name: 'Standard', price: p2, transitTime: 'Direct Sea' },
+        { name: 'Premium', price: p3 || (p2 * 1.4), transitTime: 'Fast/Priority' }
     ];
 
     try {

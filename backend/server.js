@@ -1343,6 +1343,7 @@ const startServer = async () => {
     try {
         // 1. Initialize Database
         pool = await connectToDatabase();
+        global.dbPool = pool;
 
         // 2. Run Unified Migration Engine (Covers Users, Companies, Admin, V3)
         await runMigrations();

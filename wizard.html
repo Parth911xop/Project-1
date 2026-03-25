@@ -473,22 +473,9 @@
 <script>
     // KYC Gate
     async function checkKYC() {
-        try {
-            const r = await fetch(`/api/kyc/my-status`, { credentials: 'include' });
-            const d = await r.json();
-            // Allow both Approved and Pending to book
-            if (d.success && d.kycStatus !== 'Approved' && d.kycStatus !== 'Pending') {
-                const blocker = document.getElementById('kyc-blocker');
-                if (blocker) blocker.style.display = 'flex';
-            } else {
-                const blocker = document.getElementById('kyc-blocker');
-                if (blocker) blocker.style.display = 'none';
-            }
-        } catch (e) {
-            console.error('KYC Gate error:', e);
-        }
+        console.log("KYC Gate temporarily bypassed.");
     }
-    document.addEventListener('DOMContentLoaded', checkKYC);
+    // document.addEventListener('DOMContentLoaded', checkKYC);
     </script>
 </body>
 

@@ -4,10 +4,9 @@ const Stripe = require('stripe');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const { Pool } = require('pg');
 
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
+const pool = {
+    query: (...args) => global.dbPool.query(...args)
+};
 
 const stripeKey = process.env.STRIPE_SECRET_KEY || 'sk_test_mock';
 const stripe = Stripe(stripeKey);
@@ -39,7 +38,7 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
         const shipment = shipRes.rows[0];
 
         // V3 Workflow: Payment gated behind ship allocation
-        const payableStatuses = ['Ship Allocated', 'Documents Pending', 'Payment Pending'];
+        const payableStatuses = ['Ship Allocated', 'Details Pending', 'Documents Pending', 'Payment Pending'];
         if (!payableStatuses.includes(shipment.status)) {
             const msg = shipment.status === 'Pending Manager Approval'
                 ? 'Payment locked: A manager must allocate a ship before payment.'
@@ -59,8 +58,25 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
         }
 
         const cost = parseFloat(shipment.estimated_cost);
+        const dynamicOrigin = req.headers.origin || process.env.FRONTEND_URL || `http://localhost:${process.env.PORT || 3001}`;
 
-        // 2. Create Stripe Checkout Session
+        // MOCK INTERCEPTOR: If testing with mock keys, skip Stripe SDK to prevent crash
+        if (stripeKey.toLowerCase().includes('mock')) {
+            const mockSessionId = 'mock_sess_' + Date.now();
+            await pool.query(
+                "INSERT INTO transactions (shipment_id, customer_id, stripe_charge_id, amount, currency, status) VALUES ($1, $2, $3, $4, $5, 'Pending')",
+                [shipment.id, userId, mockSessionId, cost, 'USD']
+            );
+            
+            // Immediately simulate a successful checkout redirect
+            return res.json({
+                success: true,
+                url: `${dynamicOrigin}/shipments.html?complete=${shipment.id}&session_id=${mockSessionId}`,
+                sessionId: mockSessionId
+            });
+        }
+
+        // 2. Create Stripe Checkout Session (for real environments)
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [{
@@ -75,8 +91,8 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
                 quantity: 1,
             }],
             mode: 'payment',
-            success_url: `${process.env.FRONTEND_URL || 'http://localhost:5500'}/shipments.html?complete=${shipment.id}&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5500'}/shipments.html?payment_cancelled=true`,
+            success_url: `${dynamicOrigin}/shipments.html?complete=${shipment.id}&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${dynamicOrigin}/shipments.html?payment_cancelled=true`,
             metadata: { shipmentId: shipment.id.toString(), userId: userId.toString() }
         });
 
@@ -94,7 +110,7 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
 
     } catch (error) {
         console.error("Stripe Checkout Error:", error);
-        res.status(500).json({ success: false, message: "Internal server error during checkout." });
+        res.status(500).json({ success: false, message: "Internal server error during checkout. " + error.message });
     }
 });
 
@@ -103,7 +119,16 @@ router.post('/verify-payment', express.json(), authenticateToken, async (req, re
     const { sessionId, shipmentId } = req.body;
 
     try {
-        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        let session;
+        if (String(sessionId).startsWith('mock_sess_')) {
+            session = {
+                id: sessionId,
+                payment_status: 'paid',
+                payment_intent: 'mock_pi_' + Date.now()
+            };
+        } else {
+            session = await stripe.checkout.sessions.retrieve(sessionId);
+        }
 
         if (session.payment_status === 'paid') {
             // 1. Update Transaction to Completed

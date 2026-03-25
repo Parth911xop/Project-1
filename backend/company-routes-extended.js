@@ -307,40 +307,12 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
 
             // ── SMART STATUS FLOW ENGINE ──────────────────────────
             // Confirmed: allowed from Ship Allocated OR Cargo Ready
-            if (status === 'Confirmed' && !['Ship Allocated', 'Cargo Ready'].includes(currentStatus)) {
-                return res.status(400).json({
-                    success: false,
-                    message: `Cannot confirm from "${currentStatus}". Shipment must be Allocated first.`
-                });
-            }
-            
-            // Cargo Loaded: allowed from Confirmed (auto-confirm if Ship Allocated)
-            if (status === 'Cargo Loaded') {
-                if (currentStatus === 'Ship Allocated') {
-                    // AUTO-CONFIRM: Insert the Confirmed step automatically
-                    await pool.query(`UPDATE shipments SET status='Confirmed', updated_at=NOW() WHERE id=$1`, [sid]);
-                    await pool.query(`INSERT INTO shipment_events (shipment_id, status, notes, updated_by) VALUES ($1, 'Confirmed', 'Auto-confirmed by system before Cargo Loaded', $2)`, [sid, id]);
-                    await pool.query(`INSERT INTO tracking_logs (shipment_id, status, location_note, timestamp) VALUES ($1, 'Confirmed', 'System auto-confirmed', NOW())`, [sid]);
-                    // Now currentStatus is effectively 'Confirmed', proceed
-                } else if (currentStatus !== 'Confirmed') {
-                    return res.status(400).json({
-                        success: false,
-                        message: `Cannot mark Cargo Loaded from "${currentStatus}". Confirm shipment first.`
-                    });
-                }
-            }
-            
-            if (status === 'In Transit' && currentStatus !== 'Cargo Loaded') {
-                return res.status(400).json({
-                    success: false,
-                    message: `Cannot mark In Transit from "${currentStatus}". Mark Cargo Loaded first.`
-                });
+            // Auto-advance skipped intermediate statuses for timeline continuity
+            if (status === 'In Transit' && !['Cargo Loaded', 'In Transit', 'Completed'].includes(currentStatus)) {
+                await pool.query(`INSERT INTO tracking_logs (shipment_id, status, location_note, timestamp) VALUES ($1, 'Cargo Loaded', 'System auto-logged skipped phase', NOW())`, [sid]);
             }
             if (status === 'Delivered' && currentStatus !== 'In Transit') {
-                return res.status(400).json({
-                    success: false,
-                    message: `Cannot mark Delivered from "${currentStatus}". Shipment must be In Transit.`
-                });
+                await pool.query(`INSERT INTO tracking_logs (shipment_id, status, location_note, timestamp) VALUES ($1, 'In Transit', 'System auto-logged skipped phase', NOW())`, [sid]);
             }
 
             // Update shipment main status
@@ -497,28 +469,25 @@ module.exports = function registerCompanyRoutes(app, pool, authenticateToken, au
 
             // Transition rules for a real logistics workflow.
             if (status === 'Confirmed') {
-                // MANAGER OVERRIDE: Allowed to forcefully confirm right after Ship Allocation to jumpstart Tracking
-                if (currentStatus !== 'Cargo Ready' && currentStatus !== 'Ship Allocated') {
+                if (currentStatus !== 'Cargo Ready') {
                     return res.status(400).json({
                         success: false,
-                        message: `Cannot confirm shipment from "${currentStatus}". Must be Allocated or Ready.`
+                        message: `Cannot confirm shipment from "${currentStatus}". Current status must be "Cargo Ready" (Paid).`
                     });
                 }
 
-                // If doing normal customer progression from Cargo Ready, enforce Docs
-                if (currentStatus === 'Cargo Ready') {
-                    const docsR = await pool.query(
-                        `SELECT COUNT(*)::int AS total_docs, COUNT(*) FILTER (WHERE status = 'Verified')::int AS verified_docs 
-                         FROM documents WHERE shipment_id = $1`, [sid]
-                    );
-                    const totalDocs = docsR.rows[0]?.total_docs || 0;
-                    const verifiedDocs = docsR.rows[0]?.verified_docs || 0;
-                    if (totalDocs > 0 && verifiedDocs < totalDocs) {
-                        return res.status(400).json({
-                            success: false,
-                            message: 'All uploaded documents must be verified before confirmation.'
-                        });
-                    }
+                const docsR = await pool.query(
+                    `SELECT COUNT(*)::int AS total_docs, COUNT(*) FILTER (WHERE status = 'Verified')::int AS verified_docs 
+                     FROM documents WHERE shipment_id = $1`, [sid]
+                );
+                const totalDocs = docsR.rows[0]?.total_docs || 0;
+                const verifiedDocs = docsR.rows[0]?.verified_docs || 0;
+                
+                if (totalDocs > 0 && verifiedDocs < totalDocs) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `All uploaded documents must be verified by you before confirmation. (${verifiedDocs}/${totalDocs} verified)`
+                    });
                 }
             }
 

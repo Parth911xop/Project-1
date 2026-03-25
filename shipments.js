@@ -4,7 +4,7 @@
 //           Notification Bell, KPI counters, Activity Feed,
 //           Support Tickets widget, Slide-in Detail Panel
 // ─────────────────────────────────────────────────────────────────
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = ''; // Matches active server port automatically
 window.ALL_SHIPMENTS = [];
 window.NOTIFICATIONS = [];
 
@@ -648,33 +648,33 @@ async function openPanel(id) {
 }
 
 async function selectNegotiatedQuote(shipmentId, index, serviceLevel, price) {
+    const sid = String(shipmentId).includes('-') ? String(shipmentId).split('-').pop() : shipmentId;
     const btn = event.currentTarget;
     const originalContent = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span> Selecting...`;
 
     try {
-        console.log('[UI] User selecting plan:', { shipmentId, index, serviceLevel, price });
-        const res = await fetch(`${API_URL}/api/v3/shipment/${shipmentId}/select-quote`, {
+        console.log('[UI] User selecting plan:', { sid, index, serviceLevel, price });
+        const res = await fetch(`${API_URL}/api/v3/shipment/${sid}/select-quote`, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ serviceLevel })
+            body: JSON.stringify({ quoteIdx: index, serviceLevel: serviceLevel })
         });
         const data = await res.json();
 
         if (data.success) {
-            toast('Service Plan Selected', 'success');
             await fetchShipments();
-            openPanel(shipmentId);
+            openCompleteShipmentModal(shipmentId);
         } else {
-            alert("Selection failed: " + data.message);
+            alert("Selection failed: " + (data.message || "Unknown error"));
             btn.disabled = false;
             btn.innerHTML = originalContent;
         }
     } catch (e) {
-        console.error(e);
-        alert("Server error during selection.");
+        console.error('Selection Error:', e);
+        alert("Server connection error during selection: " + e.message);
         btn.disabled = false;
         btn.innerHTML = originalContent;
     }
@@ -747,13 +747,12 @@ async function openCompleteShipmentModal(id) {
                 </div>
                 <div class="modal-body pb-1 px-0">
                     <!-- Step Progress Bar -->
-                    <div class="d-flex justify-content-between mb-5 mt-3 px-5 position-relative mx-auto" style="max-width: 800px;">
+                    <div class="d-flex justify-content-between mb-5 mt-3 px-5 position-relative mx-auto" style="max-width: 600px;">
                         <div style="position:absolute; top:14px; left:10%; right:10%; height:2px; background:rgba(255,255,255,0.05); z-index:0;"></div>
                         <div style="position:absolute; top:14px; left:10%; width:0%; height:2px; background:#3b82f6; z-index:0; transition:width 0.4s ease;" id="comp-progress-line"></div>
-                        <div id="step-dot-0" class="step-dot active">0<br><small>Select Plan</small></div>
-                        <div id="step-dot-1" class="step-dot">1<br><small>Details</small></div>
-                        <div id="step-dot-2" class="step-dot">2<br><small>Documents</small></div>
-                        <div id="step-dot-3" class="step-dot">3<br><small>Payment</small></div>
+                        <div id="step-dot-0" class="step-dot active">0<br><small>Service Plan</small></div>
+                        <div id="step-dot-1" class="step-dot">1<br><small>Details & Docs</small></div>
+                        <div id="step-dot-2" class="step-dot">2<br><small>Payment</small></div>
                     </div>
 
                     <div class="px-5">
@@ -765,10 +764,10 @@ async function openCompleteShipmentModal(id) {
                             </div>
                         </div>
 
-                        <!-- Step 1: Details -->
+                        <!-- Step 1: Details & Documents -->
                         <div id="comp-step-1" style="display:none;">
-                            <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-info-circle me-2"></i>1. Shipment & Consignee Information</h6>
-                            <div class="row g-3">
+                            <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-info-circle me-2"></i>1. Shipment Information & Document Upload</h6>
+                            <div class="row g-3 mb-4">
                                 <div class="col-md-6">
                                     <label class="small text-white-50 mb-1">HS Code *</label>
                                     <input type="text" id="comp-hs-code" class="form-control bg-dark border-secondary text-white" placeholder="e.g. 8703">
@@ -790,15 +789,8 @@ async function openCompleteShipmentModal(id) {
                                     <input type="number" id="comp-value" class="form-control bg-dark border-secondary text-white">
                                 </div>
                             </div>
-                            <div class="mt-5 d-flex justify-content-between">
-                                <button class="btn btn-outline-light rounded-pill px-4" onclick="goToStep(0)"><i class="fas fa-arrow-left me-2"></i> Change Plan</button>
-                                <button class="btn btn-primary px-4 rounded-pill" onclick="updateShipmentDetails(${sid})">Next: Documents <i class="fas fa-arrow-right ms-2"></i></button>
-                            </div>
-                        </div>
-
-                        <!-- Step 2: Documents -->
-                        <div id="comp-step-2" style="display:none;">
-                            <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-file-upload me-2"></i>2. Upload Mandatory Documents</h6>
+                            
+                            <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-file-upload me-2"></i>Mandatory Documents</h6>
                             <div class="row g-3" id="comp-docs-container">
                                  <!-- Dynamic docs here -->
                             </div>
@@ -818,14 +810,15 @@ async function openCompleteShipmentModal(id) {
                                     </div>
                                  </div>
                             </div>
+
                             <div class="mt-5 d-flex justify-content-between">
-                                <button class="btn btn-outline-light rounded-pill px-4" onclick="goToStep(1)"><i class="fas fa-arrow-left me-2"></i> Back</button>
+                                <button class="btn btn-outline-light rounded-pill px-4" onclick="goToStep(0)"><i class="fas fa-arrow-left me-2"></i> Change Plan</button>
                                 <button class="btn btn-primary px-4 rounded-pill" id="uploadAllBtn">Upload & Continue <i class="fas fa-cloud-upload-alt ms-2"></i></button>
                             </div>
                         </div>
 
-                        <!-- Step 3: Payment -->
-                        <div id="comp-step-3" style="display:none;">
+                        <!-- Step 2: Payment -->
+                        <div id="comp-step-2" style="display:none;">
                             <h6 class="text-primary small fw-bold text-uppercase mb-3"><i class="fas fa-credit-card me-2"></i>3. Final Review & Payment</h6>
                             <div class="bg-dark bg-opacity-50 p-4 rounded-4 border border-secondary mb-4 mx-auto" style="max-width: 500px;">
                                  <div class="d-flex justify-content-between mb-2">
@@ -843,7 +836,7 @@ async function openCompleteShipmentModal(id) {
                                 </div>
                             </div>
                             <div class="mt-5 d-flex justify-content-between">
-                                <button class="btn btn-outline-light rounded-pill px-4" onclick="goToStep(2)"><i class="fas fa-arrow-left me-2"></i> Back</button>
+                                <button class="btn btn-outline-light rounded-pill px-4" onclick="goToStep(1)"><i class="fas fa-arrow-left me-2"></i> Back</button>
                                 <button class="btn btn-success px-5 rounded-pill fw-bold btn-lg shadow" id="payProceedBtn">Pay Securely <i class="fas fa-shield-alt ms-2"></i></button>
                             </div>
                         </div>
@@ -878,7 +871,7 @@ async function openCompleteShipmentModal(id) {
                     <div class="card-body p-4 text-center">
                         <div class="badge bg-primary bg-opacity-15 text-primary mb-3 px-3 py-2 rounded-pill">${badge}</div>
                         <h2 class="fw-bold mb-1 text-white">₹${cost.toLocaleString()}</h2>
-                        <p class="text-white-50 small mb-4">Transit: <strong>${q.days || s.transit_time || 26}</strong> Days</p>
+                        <p class="text-white-50 small mb-4">Transit: <strong>${q.days || q.transitTime || s.transit_time || 26}</strong></p>
                         <div class="d-grid mt-auto">
                             <button class="btn btn-${isSelected ? 'primary' : 'outline-primary'} rounded-pill py-2 fw-bold shadow-sm">
                                 ${isSelected ? '<i class="fas fa-check me-2"></i>Selected' : 'Select Plan'}
@@ -896,6 +889,10 @@ async function openCompleteShipmentModal(id) {
     const docsContainer = document.getElementById('comp-docs-container');
     if (docsContainer) {
         if (requestedDocs && requestedDocs.length > 0) {
+            // Hotfix: Ensure IEC Certificate is always requested even if old allocated shipment missed it
+            if (!requestedDocs.includes('IEC Certificate')) {
+                requestedDocs.push('IEC Certificate');
+            }
             docsContainer.innerHTML = requestedDocs.map(docName => {
                 const id = 'comp-' + docName.toLowerCase().replace(/ /g, '-').replace(/[^a-z-]/g, '');
                 return `
@@ -916,11 +913,12 @@ async function openCompleteShipmentModal(id) {
 
     // Auto-detect starting step
     let startStep = 0;
-    if (s.selected_plan) {
+    if (s.selected_service_level || s.selected_quote_id) {
         const stats = (s.status || '').toLowerCase();
-        if (stats.includes('detail')) startStep = 2;
-        else if (stats.includes('doc')) startStep = 3;
-        else startStep = 1;
+        if (stats.includes('detail')) startStep = 1;
+        else if (stats.includes('doc')) startStep = 2;
+        else if (stats.includes('payment') || stats.includes('ready')) startStep = 3;
+        else startStep = 1; // Fallback if plan is selected but status is unmapped
     }
 
     goToStep(startStep);
@@ -980,7 +978,7 @@ async function updateShipmentDetails(shipmentId) {
 }
 
 function goToStep(n) {
-    ['0', '1', '2', '3'].forEach(s => {
+    ['0', '1', '2'].forEach(s => {
         const el = document.getElementById(`comp-step-${s}`);
         if (el) el.style.display = (s == n) ? 'block' : 'none';
     });
@@ -988,9 +986,8 @@ function goToStep(n) {
     const progressLine = document.getElementById('comp-progress-line');
     if (progressLine) {
         let width = 0;
-        if (n == 1) width = 33;
-        if (n == 2) width = 66;
-        if (n == 3) width = 100;
+        if (n == 1) width = 50;
+        if (n == 2) width = 100;
         progressLine.style.width = width + '%';
     }
 
@@ -1057,7 +1054,7 @@ async function uploadAllShipmentDocs(shipmentId) {
     };
 
     if (!details.hsCode || !details.consigneeName) {
-        alert("Please ensure Consignee name and HS code are filled in Step 1.");
+        alert("Please ensure Consignee name and HS code are filled.");
         goToStep(1);
         return;
     }
@@ -1069,12 +1066,17 @@ async function uploadAllShipmentDocs(shipmentId) {
 
     try {
         // Save details first
-        await fetch(`${API_URL}/api/v3/shipment/${sid}/update-details`, {
+        const detRes = await fetch(`${API_URL}/api/v3/shipment/${sid}/update-details`, {
             method: 'PATCH',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(details)
         });
+        const detData = await detRes.json();
+        
+        if (!detData.success) {
+            throw new Error(detData.message || "Failed to update shipment details.");
+        }
 
         // Loop through all inputs with data-type (dynamic docs)
         const inputs = document.querySelectorAll('#comp-docs-container input[type="file"]');
@@ -1105,7 +1107,7 @@ async function uploadAllShipmentDocs(shipmentId) {
             }
         }
 
-        goToStep(3);
+        goToStep(2);
     } catch (e) {
         console.error(e);
         alert('Upload failed. Please check your connection.');
@@ -1175,7 +1177,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (data.success) {
                 // Finalize the booking status to 'completed'
                 await fetch(`${API_URL}/api/v3/shipment/${sid}/complete-booking`, { method: 'POST', credentials: 'include' });
-                toast('Booking Completed Successfully!', 'success');
+                alert('Booking Completed Successfully!');
                 window.history.replaceState({}, document.title, window.location.pathname);
                 fetchShipments();
             }
