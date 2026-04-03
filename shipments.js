@@ -517,7 +517,7 @@ async function openPanel(id) {
 
     // Check status
     const isWaiting = ['pending', 'booked', 'pending manager approval'].includes(s.status.toLowerCase());
-    const isAssigned = ['assigned', 'ship allocated', 'details filled', 'documents pending'].includes(s.status.toLowerCase());
+    const isAssigned = ['assigned', 'ship allocated', 'details filled', 'documents pending', 'payment pending'].includes(s.status.toLowerCase());
 
     if (isWaiting) {
         gatedArea.innerHTML = `
@@ -640,7 +640,7 @@ async function openPanel(id) {
         <h6 class="text-white-50 x-small fw-bold text-uppercase mt-2 mb-2">Shipment Actions</h6>
         <button class="btn btn-outline-primary btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='track.html?id=${s.id}'"><i class="fas fa-map-marker-alt w-5 me-2 text-primary"></i>Live Track Shipment</button>
         <button class="btn btn-outline-info btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='documents.html?shipmentId=${s.id}'"><i class="fas fa-folder-open w-5 me-2 text-info"></i>Manage Documents</button>
-        <button class="btn btn-outline-success btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='finance.html?shipmentId=${s.id}'"><i class="fas fa-file-invoice-dollar w-5 me-2 text-success"></i>Billing & Payments</button>
+        <button class="btn btn-outline-success btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="${s.status.toLowerCase().includes('payment') ? `openCompleteShipmentModal(${s.id})` : `window.location.href='finance.html?shipmentId=${s.id}'`}"><i class="fas fa-file-invoice-dollar w-5 me-2 text-success"></i>${s.status.toLowerCase().includes('payment') ? 'Complete Payment' : 'Billing & Payments'}</button>
         <button class="btn btn-outline-warning btn-sm rounded-pill text-start px-3 py-2 fw-semibold" onclick="window.location.href='support.html?shipmentId=${s.id}'"><i class="fas fa-headset w-5 me-2 text-warning"></i>Open Support Ticket</button>
     `;
 
@@ -915,9 +915,8 @@ async function openCompleteShipmentModal(id) {
     let startStep = 0;
     if (s.selected_service_level || s.selected_quote_id) {
         const stats = (s.status || '').toLowerCase();
-        if (stats.includes('detail')) startStep = 1;
-        else if (stats.includes('doc')) startStep = 2;
-        else if (stats.includes('payment') || stats.includes('ready')) startStep = 3;
+        if (stats.includes('detail') || stats.includes('doc')) startStep = 1;
+        else if (stats.includes('payment') || stats.includes('ready')) startStep = 2;
         else startStep = 1; // Fallback if plan is selected but status is unmapped
     }
 

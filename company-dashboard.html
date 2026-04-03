@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="dist/leaflet.css">
     <script src="dist/leaflet.js"></script>
     <script src="auth-guard.js"></script>
+    <script src="export-tools.js"></script>
     <style>
         :root {
             --co-accent: #3b82f6;
@@ -1051,9 +1052,21 @@
         <section class="co-section" id="section-documents">
             <div class="section-header">
                 <h2><i class="fas fa-file-check me-2 text-warning"></i> Document Management Center</h2>
-                <button class="btn-co btn-primary" data-bs-toggle="modal" data-bs-target="#managerDocUploadModal">
-                    <i class="fas fa-cloud-upload-alt me-2"></i>Upload Logistics Document
-                </button>
+                <div>
+                    <div class="dropdown d-inline-block me-2">
+                        <button class="btn-co btn-success outline dropdown-toggle" type="button" data-bs-toggle="dropdown" style="padding: 10px 16px; border-radius: 8px;">
+                            <i class="fas fa-download me-2"></i>Download Transactions
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark shadow">
+                            <li><a class="dropdown-item" href="#" onclick="exportManagerTransactions('csv')"><i class="fas fa-file-csv me-2 text-success"></i>Export CSV</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportManagerTransactions('pdf')"><i class="fas fa-file-pdf me-2 text-danger"></i>Export PDF</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportManagerTransactions('docx')"><i class="fas fa-file-word me-2 text-primary"></i>Export DOCX</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn-co btn-primary" data-bs-toggle="modal" data-bs-target="#managerDocUploadModal" style="padding: 10px 16px; border-radius: 8px;">
+                        <i class="fas fa-cloud-upload-alt me-2"></i>Upload Logistics Document
+                    </button>
+                </div>
             </div>
 
             <!-- Documents KPI Grid -->

@@ -198,7 +198,6 @@ body.home-page::-webkit-scrollbar {
 .card-enterprise:hover {
   border-color: rgba(59, 130, 246, 0.3);
   box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
 }
 
 /* Navbar Styling */
@@ -762,7 +761,6 @@ body.home-page::-webkit-scrollbar {
 }
 
 .card-enterprise:hover {
-  transform: translateY(-5px);
   box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.4);
   border-color: var(--primary);
 }

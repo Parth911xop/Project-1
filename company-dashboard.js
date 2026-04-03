@@ -1979,3 +1979,24 @@ async function updateTicketStatus(id, newStatus) {
         }
     } catch (e) { showToast('Update failed', 'error'); }
 }
+
+// ── EXPORT ────────────────────────────────────────────────────────
+function exportManagerTransactions(type) {
+    if (!window.ALL_SHIPMENTS || !window.ALL_SHIPMENTS.length) return alert('No shipments data available to export.');
+    
+    // Format data for export
+    const exportData = window.ALL_SHIPMENTS.map(s => ({
+        'Shipment ID': s.id,
+        'User/Customer': s.customer_name || 'N/A',
+        'Type': s.type || 'Export',
+        'Status': s.status,
+        'Origin': s.origin_address || s.from_country || 'N/A',
+        'Destination': s.destination_address || s.to_country || 'N/A',
+        'Estimated Cost (INR)': s.estimated_cost ? (parseFloat(s.estimated_cost) * 84).toFixed(2) : '0.00',
+        'Created Date': s.created_at ? new Date(s.created_at).toLocaleDateString() : 'N/A'
+    }));
+
+    if (type === 'csv') ExportTools.downloadCSV(exportData, 'Manager_Transactions_Report');
+    else if (type === 'pdf') ExportTools.downloadPDF(exportData, 'Manager_Transactions_Report', 'Manager Transactions Report');
+    else if (type === 'docx') ExportTools.downloadDOCX(exportData, 'Manager_Transactions_Report', 'Manager Transactions Report');
+}

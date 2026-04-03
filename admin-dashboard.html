@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="dashboard.css">
     <link rel="stylesheet" href="backend/notifications.css">
     <script src="auth-guard.js"></script>
+    <script src="export-tools.js"></script>
     <style>
         :root {
             --admin-accent: #ef4444;
@@ -922,8 +923,20 @@
         <section class="admin-section active" id="section-dashboard">
             <div class="section-header">
                 <h2><i class="fas fa-th-large me-2 text-danger"></i> Platform Overview</h2>
-                <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="loadDashboard()"><i
-                        class="fas fa-sync me-1"></i>Refresh</button>
+                <div>
+                    <div class="dropdown d-inline-block me-2">
+                        <button class="btn btn-sm btn-outline-success rounded-pill px-3 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-download me-1"></i>System Report
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-dark shadow">
+                            <li><a class="dropdown-item" href="#" onclick="exportAdminTransactions('csv')"><i class="fas fa-file-csv me-2 text-success"></i>Export CSV</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportAdminTransactions('pdf')"><i class="fas fa-file-pdf me-2 text-danger"></i>Export PDF</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportAdminTransactions('docx')"><i class="fas fa-file-word me-2 text-primary"></i>Export DOCX</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="loadDashboard()"><i
+                            class="fas fa-sync me-1"></i>Refresh</button>
+                </div>
             </div>
 
             <div class="kpi-grid" id="kpi-grid">

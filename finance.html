@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="dashboard.css">
     <script src="auth-guard.js"></script>
+    <script src="export-tools.js"></script>
 </head>
 
 <body>
@@ -57,7 +58,16 @@
                 <h2 class="text-white fw-bold mb-1">MyFinance</h2>
                 <p class="text-white-50 small">Manage invoices, payments, and disputes.</p>
             </div>
-            <button class="btn btn-primary rounded-pill"><i class="fas fa-download me-2"></i>Statement of Account</button>
+            <div class="dropdown">
+                <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-2"></i>Statement of Account
+                </button>
+                <ul class="dropdown-menu dropdown-menu-dark shadow">
+                    <li><a class="dropdown-item" href="#" onclick="exportFinanceData('csv')"><i class="fas fa-file-csv me-2 text-success"></i>Download CSV</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportFinanceData('pdf')"><i class="fas fa-file-pdf me-2 text-danger"></i>Download PDF</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportFinanceData('docx')"><i class="fas fa-file-word me-2 text-primary"></i>Download DOCX</a></li>
+                </ul>
+            </div>
         </div>
 
         <!-- Summary Cards -->
@@ -160,6 +170,8 @@
                 const res = await fetch(`${API_URL}/api/finance/overview`, { credentials: 'include' });
                 const data = await res.json();
                 if (!data.success) return;
+                
+                window.FINANCE_INVOICES = data.invoices;
 
                 // 1. Update Summary
                 document.getElementById('summary-total-paid').innerText = `₹${data.summary.totalPaid.toLocaleString('en-IN')}`;
@@ -225,6 +237,24 @@
 
         function viewReceipt(shipmentId) {
             window.location.href = `documents.html?shipmentId=${shipmentId}`;
+        }
+
+        function exportFinanceData(type) {
+            if (!window.FINANCE_INVOICES || !window.FINANCE_INVOICES.length) return alert('No data to export.');
+            
+            // Format data for export
+            const exportData = window.FINANCE_INVOICES.map(i => ({
+                'Invoice Ref': i.invoice_number,
+                'Shipment ID': i.shipment_id,
+                'Amount (INR)': parseFloat(i.amount).toFixed(2),
+                'Status': i.status,
+                'Date Issued': new Date(i.created_at).toLocaleDateString(),
+                'Due Date': i.due_date ? new Date(i.due_date).toLocaleDateString() : 'N/A'
+            }));
+
+            if (type === 'csv') ExportTools.downloadCSV(exportData, 'Finance_Statement');
+            else if (type === 'pdf') ExportTools.downloadPDF(exportData, 'Finance_Statement', 'Statement of Account');
+            else if (type === 'docx') ExportTools.downloadDOCX(exportData, 'Finance_Statement', 'Statement of Account');
         }
     </script>
 </body>

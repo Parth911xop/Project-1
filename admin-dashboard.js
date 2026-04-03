@@ -1120,3 +1120,34 @@ function promptKYCReject(id) {
     if (reason === null) return;
     verifyKYC(id, 'Rejected', reason);
 }
+
+// ── EXPORT ────────────────────────────────────────────────────────
+async function exportAdminTransactions(type) {
+    // If not loaded, load first
+    if (!window.ALL_ADMIN_SHIPMENTS || !window.ALL_ADMIN_SHIPMENTS.length) {
+        try {
+            const r = await fetch(`${API}/api/admin/shipments`, { credentials: 'include' });
+            const d = await r.json();
+            if (d.success) window.ALL_ADMIN_SHIPMENTS = d.shipments;
+        } catch(e) {}
+    }
+
+    if (!window.ALL_ADMIN_SHIPMENTS || !window.ALL_ADMIN_SHIPMENTS.length) return alert('No system shipments available to export.');
+    
+    // Format data for export
+    const exportData = window.ALL_ADMIN_SHIPMENTS.map(s => ({
+        'Shipment ID': s.id,
+        'Booking User': s.customer_name || s.user_name || 'N/A',
+        'Manager / Company': s.company_name || 'Unassigned',
+        'Type': s.type || 'Export',
+        'Status': s.status,
+        'Origin': s.origin_address || s.from_country || 'N/A',
+        'Destination': s.destination_address || s.to_country || 'N/A',
+        'Total Cost (INR)': s.estimated_cost ? (parseFloat(s.estimated_cost) * 84).toFixed(2) : '0.00',
+        'System Date': s.created_at ? new Date(s.created_at).toLocaleDateString() : 'N/A'
+    }));
+
+    if (type === 'csv') ExportTools.downloadCSV(exportData, 'Admin_System_Report');
+    else if (type === 'pdf') ExportTools.downloadPDF(exportData, 'Admin_System_Report', 'Admin System Report - All Transactions');
+    else if (type === 'docx') ExportTools.downloadDOCX(exportData, 'Admin_System_Report', 'Admin System Report - All Transactions');
+}

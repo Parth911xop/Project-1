@@ -27,6 +27,8 @@ async function fetchInvoices() {
         const data = await res.json();
 
         if (data.success) {
+            // Store globally for exports
+            window.FINANCE_DATA = data;
             renderFinanceDashboard(data.invoices, data.summary);
         } else {
             renderFinanceDashboard([], { totalDue: 0, overdue: 0, openCount: 0, disputeCount: 0 });

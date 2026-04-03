@@ -86,7 +86,8 @@ router.post('/create-checkout-session', express.json(), authenticateToken, autho
                         name: `Shipment #${shipment.id}`,
                         description: `Freight booking for ${shipment.product_type}`
                     },
-                    unit_amount: Math.round(cost * 100),
+                    // Ensure minimum viable charge for Stripe (at least $0.50 USD)
+                    unit_amount: Math.max(50, Math.round(cost * 100)),
                 },
                 quantity: 1,
             }],

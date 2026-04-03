@@ -348,3 +348,12 @@ body.dashboard-page {
         margin-left: 0;
     }
 }
+/* Provide a stable generic enterprise hover for Document list rows */
+.hover-glow {
+    transition: all 0.3s ease;
+}
+.hover-glow:hover {
+    background-color: rgba(59, 130, 246, 0.08) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    transform: none !important; /* ensure no flickering via movement */
+}
