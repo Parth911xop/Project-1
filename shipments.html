@@ -24,8 +24,22 @@
             .then(res => res.json())
             .then(data => {
                 console.log(data);
-                document.getElementById("output").innerText =
-                    JSON.stringify(data, null, 2);
+
+                let output = "";
+
+                data.shipments.forEach(item => {
+                    output += `
+        <div style="border:1px solid #ccc; margin:10px; padding:10px;">
+          <h3>Shipment ID: ${item.id}</h3>
+          <p><b>Type:</b> ${item.type}</p>
+          <p><b>From:</b> ${item.origin_address}</p>
+          <p><b>To:</b> ${item.destination_address}</p>
+          <p><b>Status:</b> ${item.status}</p>
+        </div>
+      `;
+                });
+
+                document.getElementById("output").innerHTML = output;
             })
             .catch(err => console.error(err));
     </script>
@@ -1294,7 +1308,7 @@
         }
     </script>
 
-    <pre id="output"></pre>
+    <div id="output"></div>
 
 </body>
 
