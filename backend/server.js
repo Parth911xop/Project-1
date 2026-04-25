@@ -17,6 +17,16 @@ const multer = require('multer');
 
 const { authenticateToken, authorizeRole, JWT_SECRET } = require('./middleware/auth');
 
+
+
+
+
+
+
+
+
+
+
 // Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'demo',
@@ -639,7 +649,7 @@ const createAdminTables = async () => {
                 UNIQUE(user_id, doc_type)
         );`);
         // Migration: Ensure file_name column exists
-        try { await pool.query("ALTER TABLE user_kyc_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);"); } catch(e) {}
+        try { await pool.query("ALTER TABLE user_kyc_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);"); } catch (e) { }
 
 
         await pool.query(`
