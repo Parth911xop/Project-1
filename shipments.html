@@ -16,6 +16,20 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
+
+    <script>
+        const API_URL = "https://project-1-igtl.onrender.com";
+
+        fetch(`${API_URL}/api/shipment/list`)
+            .then(res => res.json())
+            .then(data => {
+                console.log(data);
+                document.getElementById("output").innerText =
+                    JSON.stringify(data, null, 2);
+            })
+            .catch(err => console.error(err));
+    </script>
+
     <style>
         /* ── Search & Filter Bar ──────────────────────────────── */
         .filter-bar {
@@ -1279,6 +1293,8 @@
             </div>`).join('');
         }
     </script>
+
+    <pre id="output"></pre>
 
 </body>
 
