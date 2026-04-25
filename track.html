@@ -11,7 +11,6 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="dist/leaflet.css">
     <link rel="stylesheet" href="dashboard.css">
-    <script src="config.js"></script>
     <style>
         /* ── MAP ─────────────────────────────────────── */
         #map { height: 500px; width: 100%; border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
@@ -201,7 +200,7 @@
     <script src="dist/leaflet.js"></script>
     <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
     <script>
-        const API_URL = window.API_BASE_URL || ''; // Matches active server port automatically
+        const API_URL = ''; // Matches active server port automatically
         let map, shipMarker, plannedLine, traveledLine, socket, activeShipmentId;
         let trackingPath = [];
         let portMarkers = [];

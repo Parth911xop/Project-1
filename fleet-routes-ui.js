@@ -13,7 +13,7 @@
  * - POST /api/v3/manager/ship/:shipId/mark-current-stop
  */
 
-const API_URL = window.API_BASE_URL || '';
+const API_URL = `http://${window.location.hostname}:3000`;
 let routeModal, selectedShipId;
 let allPorts = []; // Cached port list
 

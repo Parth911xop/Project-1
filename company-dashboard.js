@@ -1,5 +1,5 @@
 // company-dashboard.js — All logic for the Company Partner Hub (12 sections)
-const API = window.API_BASE_URL || ''; // Centralized API config
+const API = ''; // Matches active server port automatically
 
 let CURRENT_USER = null;
 let ALL_SHIPMENTS = [];
