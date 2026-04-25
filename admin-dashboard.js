@@ -1,5 +1,5 @@
 // admin-dashboard.js — Full Admin Panel Logic
-const API = `http://${location.hostname}:3000`;
+const API = window.API_BASE_URL||"";
 let ALL_PORTS = [];
 
 // ── INIT ──────────────────────────────────────────────────────────

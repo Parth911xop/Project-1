@@ -13,7 +13,7 @@
  * ✅ Error recovery and fallback display
  */
 
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = window.API_BASE_URL||"";
 const userId = localStorage.getItem('userId');
 
 let currentShipmentId = null;

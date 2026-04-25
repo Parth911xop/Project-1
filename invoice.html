@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+    <script src="config.js"></script>
     <meta charset="UTF-8">
     <title>Commercial Invoice</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -312,7 +313,7 @@
             }
 
             try {
-                const res = await fetch(`http://${window.location.hostname}:3000/api/shipment/${shipmentId}`, { credentials: 'include' });
+                const res = await fetch(`${window.API_BASE_URL||""}/api/shipment/${shipmentId}`, { credentials: 'include' });
                 const data = await res.json();
 
                 if (data.success) {

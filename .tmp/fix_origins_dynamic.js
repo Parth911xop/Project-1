@@ -15,12 +15,12 @@ function processDir(dir) {
             let originalContent = content;
             
             // Fix auth-guard.js, tracking.js, etc fetches
-            content = content.replace(/fetch\('\/api\//g, "fetch(`http://${window.location.hostname}:3000/api/");
-            content = content.replace(/fetch\(`\/api\//g, "fetch(`http://${window.location.hostname}:3000/api/");
+            content = content.replace(/fetch\('\/api\//g, "fetch(`${window.API_BASE_URL||""}/api/");
+            content = content.replace(/fetch\(`\/api\//g, "fetch(`${window.API_BASE_URL||""}/api/");
             
             // Auth.js specific endpoints
-            content = content.replace(/fetch\(`\/request-otp'/g, "fetch(`http://${window.location.hostname}:3000/request-otp`");
-            content = content.replace(/fetch\(`\/verify-otp'/g, "fetch(`http://${window.location.hostname}:3000/verify-otp`");
+            content = content.replace(/fetch\(`\/request-otp'/g, "fetch(`${window.API_BASE_URL||""}/request-otp`");
+            content = content.replace(/fetch\(`\/verify-otp'/g, "fetch(`${window.API_BASE_URL||""}/verify-otp`");
 
             if (content !== originalContent) {
                 fs.writeFileSync(fullPath, content);

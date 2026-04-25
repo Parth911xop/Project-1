@@ -15,10 +15,10 @@ function processDir(dir) {
             let originalContent = content;
             
             // Replace hardcoded localhost API constants
-            content = content.replace(/const API_URL = 'http:\/\/localhost:3000';/g, "const API_URL = `http://${window.location.hostname}:3000`;");
-            content = content.replace(/const API_BASE = 'http:\/\/localhost:3000';/g, "const API_BASE = `http://${window.location.hostname}:3000`;");
-            content = content.replace(/const SOCKET_URL = 'http:\/\/localhost:3000';/g, "const SOCKET_URL = `http://${window.location.hostname}:3000`;");
-            content = content.replace(/fetch\('http:\/\/localhost:3000\/api\//g, "fetch(`http://${window.location.hostname}:3000/api/");
+            content = content.replace(/const API_URL = 'http:\/\/localhost:3000';/g, "const API_URL = window.API_BASE_URL||"";");
+            content = content.replace(/const API_BASE = 'http:\/\/localhost:3000';/g, "const API_BASE = window.API_BASE_URL||"";");
+            content = content.replace(/const SOCKET_URL = 'http:\/\/localhost:3000';/g, "const SOCKET_URL = window.API_BASE_URL||"";");
+            content = content.replace(/fetch\('http:\/\/localhost:3000\/api\//g, "fetch(`${window.API_BASE_URL||""}/api/");
             content = content.replace(/fetch\(`http:\/\/localhost:3000\//g, "fetch('/");
             content = content.replace(/fetch\(`http:\/\/localhost:3000\//g, "fetch(`/");
 

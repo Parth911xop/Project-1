@@ -15,11 +15,11 @@ function processDir(dir) {
             let originalContent = content;
             
             // Fix auth-guard.js format `.../api/...' -> `.../api/...`
-            // Specifically, looking for: fetch(`http://${window.location.hostname}:3000/api/something`,
-            // or fetch(`http://${window.location.hostname}:3000/request-otp`,
+            // Specifically, looking for: fetch(`${window.API_BASE_URL||""}/api/something`,
+            // or fetch(`${window.API_BASE_URL||""}/request-otp`,
             
-            // Re-run regex globally looking for `http://${window.location.hostname}:3000 ... '
-            content = content.replace(/fetch\(`http:\/\/\$\{window\.location\.hostname\}:3000([^']+)'/g, "fetch(`http://${window.location.hostname}:3000$1`");
+            // Re-run regex globally looking for window.API_BASE_URL + " ... '
+            content = content.replace(/fetch\(`http:\/\/\$\{window\.location\.hostname\}:3000([^']+)'/g, "fetch(window.API_BASE_URL + "$1`");
 
             if (content !== originalContent) {
                 fs.writeFileSync(fullPath, content);

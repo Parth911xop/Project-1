@@ -206,7 +206,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const res = await fetch(`http://${window.location.hostname}:3000/api/auth/me`, { credentials: 'include' });
+                const res = await fetch(`${window.API_BASE_URL||""}/api/auth/me`, { credentials: 'include' });
                 const data = await res.json();
                 if (data.success && data.user) {
                     const name = data.user.name || 'User';

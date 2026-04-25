@@ -25,7 +25,7 @@ const RECEIPT_CONFIG = {
 async function downloadReceipt(shipmentId, userPrefix = 'SS') {
     try {
         // 1. Fetch receipt data from backend
-        const res = await fetch(`http://${window.location.hostname}:3000/api/v3/payment/receipt/${shipmentId}`, {
+        const res = await fetch(`${window.API_BASE_URL||""}/api/v3/payment/receipt/${shipmentId}`, {
             credentials: 'include'
         });
         
@@ -156,8 +156,13 @@ async function downloadReceipt(shipmentId, userPrefix = 'SS') {
                 pdf.setFillColor(...RECEIPT_CONFIG.colors.primary);
                 pdf.rect(RECEIPT_CONFIG.margin, payY - 4, pageWidth, 6, 'F');
             } else {
-                pdf.setFont(idx === paymentData.length - 1 ? 'bold' : 'normal');
-                pdf.setTextColor(idx === paymentData.length - 1 ? ...RECEIPT_CONFIG.colors.primary : ...RECEIPT_CONFIG.colors.text);
+            if (idx === paymentData.length - 1) {
+                pdf.setFont(undefined, 'bold');
+                pdf.setTextColor(...RECEIPT_CONFIG.colors.primary);
+            } else {
+                pdf.setFont(undefined, 'normal');
+                pdf.setTextColor(...RECEIPT_CONFIG.colors.text);
+            }
             }
             
             pdf.text(row[0], RECEIPT_CONFIG.margin + 3, payY);

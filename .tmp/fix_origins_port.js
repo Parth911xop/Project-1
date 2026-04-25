@@ -15,16 +15,16 @@ function processDir(dir) {
             let originalContent = content;
             
             // Define dynamic backend URL
-            const dynamicUrl = "`http://${window.location.hostname}:3000`";
+            const dynamicUrl = "window.API_BASE_URL||""";
             
             // Fix API_URL, API_BASE, SOCKET_URL
-            content = content.replace(/const API_URL = `http://${window.location.hostname}:3000`;/g, `const API_URL = ${dynamicUrl};`);
-            content = content.replace(/const API_BASE = `http://${window.location.hostname}:3000`;/g, `const API_BASE = ${dynamicUrl};`);
-            content = content.replace(/const SOCKET_URL = `http://${window.location.hostname}:3000`;/g, `const SOCKET_URL = ${dynamicUrl};`);
+            content = content.replace(/const API_URL = window.API_BASE_URL||"";/g, `const API_URL = ${dynamicUrl};`);
+            content = content.replace(/const API_BASE = window.API_BASE_URL||"";/g, `const API_BASE = ${dynamicUrl};`);
+            content = content.replace(/const SOCKET_URL = window.API_BASE_URL||"";/g, `const SOCKET_URL = ${dynamicUrl};`);
             
-            // Fix hardcoded fetch(`http://${window.location.hostname}:3000/api/... or fetch(`http://${window.location.hostname}:3000/request-otp` that I might have broken
-            content = content.replace(/fetch\(`\/request-otp'/g, "fetch(`http://${window.location.hostname}:3000/request-otp`");
-            content = content.replace(/fetch\(`\/verify-otp'/g, "fetch(`http://${window.location.hostname}:3000/verify-otp`");
+            // Fix hardcoded fetch(`${window.API_BASE_URL||""}/api/... or fetch(`${window.API_BASE_URL||""}/request-otp` that I might have broken
+            content = content.replace(/fetch\(`\/request-otp'/g, "fetch(`${window.API_BASE_URL||""}/request-otp`");
+            content = content.replace(/fetch\(`\/verify-otp'/g, "fetch(`${window.API_BASE_URL||""}/verify-otp`");
 
             if (content !== originalContent) {
                 fs.writeFileSync(fullPath, content);

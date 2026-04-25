@@ -11,19 +11,37 @@
     document.documentElement.style.display = 'none';
 
     async function getSession() {
-        const res = await fetch(`${API}/api/auth/me`, {
-            method: 'GET',
-            credentials: 'include'
-        });
-        return res.json();
+        try {
+            const res = await fetch(`${API}/api/auth/me`, {
+                method: 'GET',
+                credentials: 'include'
+            });
+            if (!res.ok) return { success: false };
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                return await res.json();
+            }
+            return { success: false };
+        } catch (e) {
+            return { success: false };
+        }
     }
 
     async function refreshSession() {
-        const res = await fetch(`${API}/api/auth/refresh`, {
-            method: 'POST',
-            credentials: 'include'
-        });
-        return res.json();
+        try {
+            const res = await fetch(`${API}/api/auth/refresh`, {
+                method: 'POST',
+                credentials: 'include'
+            });
+            if (!res.ok) return { success: false };
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                return await res.json();
+            }
+            return { success: false };
+        } catch (e) {
+            return { success: false };
+        }
     }
 
     try {
