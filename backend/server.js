@@ -1334,9 +1334,9 @@ app.get('/api/tracking/search', async (req, res) => {
 });
 
 app.get("/api/shipments", (req, res) => {
-    res.json({ 
-        success: true, 
-        message: "API is working", 
+    res.json({
+        success: true,
+        message: "API is working",
         info: "To fetch shipments, use /api/shipment/list (requires authentication)",
         timestamp: new Date()
     });
