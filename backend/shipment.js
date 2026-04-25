@@ -287,7 +287,7 @@ module.exports = (pool, createNotification, io) => {
     });
 
     // Get shipments for the currently authenticated user (JWT-based)
-    router.get('/list', async (req, res) => {
+    router.get(['/list', '/'], async (req, res) => {
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 

@@ -3,7 +3,7 @@
 
 (function () {
     const currentPage = location.pathname.split('/').pop() || 'index.html';
-    const API_BASE = `http://${window.location.hostname}:3000`;
+    const API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? `http://${location.hostname}:3000` : '';
 
     // Helper: mark active link
     function isActive(href) {

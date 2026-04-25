@@ -17,16 +17,6 @@ const multer = require('multer');
 
 const { authenticateToken, authorizeRole, JWT_SECRET } = require('./middleware/auth');
 
-
-
-
-
-
-
-
-
-
-
 // Configure Cloudinary
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'demo',
@@ -1342,6 +1332,16 @@ app.get('/api/tracking/search', async (req, res) => {
         res.status(500).json({ success: false, message: "Internal error" });
     }
 });
+
+app.get("/api/shipments", (req, res) => {
+    res.json({ 
+        success: true, 
+        message: "API is working", 
+        info: "To fetch shipments, use /api/shipment/list (requires authentication)",
+        timestamp: new Date()
+    });
+});
+
 
 
 

@@ -1134,7 +1134,7 @@
 
         async function checkKYCStatus() {
             try {
-                const r = await fetch(`http://${location.hostname}:3000/api/kyc/my-status`, { credentials: 'include' });
+                const r = await fetch(`${API_URL}/api/kyc/my-status`, { credentials: 'include' });
                 const d = await r.json();
                 if (d.success) {
                     const alert = document.getElementById('kyc-dashboard-alert');
@@ -1278,18 +1278,6 @@
                 </div>
             </div>`).join('');
         }
-
-        const API_URL = "https://project-1-igtl.onrender.com";
-
-        fetch(`${API_URL}/api/shipments`)
-            .then(res => res.json())
-            .then(data => {
-                console.log(data);
-
-                // OPTIONAL: show on page
-                document.getElementById("output").innerText = JSON.stringify(data, null, 2);
-            })
-            .catch(err => console.error(err));
     </script>
 
 </body>
