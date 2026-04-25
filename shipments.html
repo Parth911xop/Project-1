@@ -15,6 +15,7 @@
     <!-- jsPDF for invoice/receipt generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     <style>
         /* ── Search & Filter Bar ──────────────────────────────── */
         .filter-bar {
@@ -499,18 +500,24 @@
         </header>
 
         <!-- KYC Alert -->
-        <div id="kyc-dashboard-alert" class="alert d-none border-0 mx-4 mt-3" style="background: rgba(245, 158, 11, 0.08); border-radius: 12px; border-left: 4px solid #f59e0b !important; padding: 12px 20px;">
+        <div id="kyc-dashboard-alert" class="alert d-none border-0 mx-4 mt-3"
+            style="background: rgba(245, 158, 11, 0.08); border-radius: 12px; border-left: 4px solid #f59e0b !important; padding: 12px 20px;">
             <div class="d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                    <div class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center"
+                        style="width: 38px; height: 38px;">
                         <i class="fas fa-id-card-alt"></i>
                     </div>
                     <div>
-                        <h6 class="text-white fw-bold mb-0" style="font-size:0.9rem;">Identity Verification Required</h6>
-                        <p class="text-white-50 small mb-0" style="font-size:0.75rem;">Please complete your KYC to unlock new bookings. Status: <span id="kyc-status-text" class="fw-bold text-warning text-uppercase">Pending</span></p>
+                        <h6 class="text-white fw-bold mb-0" style="font-size:0.9rem;">Identity Verification Required
+                        </h6>
+                        <p class="text-white-50 small mb-0" style="font-size:0.75rem;">Please complete your KYC to
+                            unlock new bookings. Status: <span id="kyc-status-text"
+                                class="fw-bold text-warning text-uppercase">Pending</span></p>
                     </div>
                 </div>
-                <a href="documents.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold shadow-sm" style="font-size:0.75rem;">Complete KYC <i class="fas fa-chevron-right ms-1 x-small"></i></a>
+                <a href="documents.html" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold shadow-sm"
+                    style="font-size:0.75rem;">Complete KYC <i class="fas fa-chevron-right ms-1 x-small"></i></a>
             </div>
         </div>
 
@@ -1268,6 +1275,18 @@
                 </div>
             </div>`).join('');
         }
+
+        const API_URL = "https://project-1-igtl.onrender.com";
+
+        fetch(`${API_URL}/shipments`)
+            .then(res => res.json())
+            .then(data => {
+                console.log(data);
+
+                // OPTIONAL: show on page
+                document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+            })
+            .catch(err => console.error(err));
     </script>
 
 </body>
