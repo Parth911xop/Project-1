@@ -9,7 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <link rel="stylesheet" href="style.css">
-  <script src="auth-guard.js"></script>
+  <script src="config.js"></script>
+    <script src="auth-guard.js"></script>
   <!-- jsPDF for receipt generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="dashboard.css">
@@ -205,7 +206,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const res = await fetch(`http://${window.location.hostname}:3000/api/auth/me`, { credentials: 'include' });
+                const res = await fetch(`${window.API_BASE_URL || ''}/api/auth/me`, { credentials: 'include' });
                 const data = await res.json();
                 if (data.success && data.user) {
                     const name = data.user.name || 'User';

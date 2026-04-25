@@ -25,7 +25,7 @@ const RECEIPT_CONFIG = {
 async function downloadReceipt(shipmentId, userPrefix = 'SS') {
     try {
         // 1. Fetch receipt data from backend
-        const res = await fetch(`http://${window.location.hostname}:3000/api/v3/payment/receipt/${shipmentId}`, {
+        const res = await fetch(`${window.API_BASE_URL || ''}/api/v3/payment/receipt/${shipmentId}`, {
             credentials: 'include'
         });
         

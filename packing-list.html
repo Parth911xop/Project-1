@@ -212,6 +212,7 @@
             }
         }
     </style>
+    <script src="config.js"></script>
 </head>
 
 <body>
@@ -313,11 +314,11 @@
 
             try {
                 // Fetch Base Shipment Info
-                const shipRes = await fetch(`http://${window.location.hostname}:3000/api/shipment/${shipmentId}`, { credentials: 'include' });
+                const shipRes = await fetch(`${window.API_BASE_URL || ''}/api/shipment/${shipmentId}`, { credentials: 'include' });
                 const shipData = await shipRes.json();
 
                 // Fetch Real Packing List Info
-                const packRes = await fetch(`http://${window.location.hostname}:3000/api/packing-list/${shipmentId}`, { credentials: 'include' });
+                const packRes = await fetch(`${window.API_BASE_URL || ''}/api/packing-list/${shipmentId}`, { credentials: 'include' });
                 const packData = await packRes.json();
 
                 if (shipData.success) {

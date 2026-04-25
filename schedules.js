@@ -1,5 +1,5 @@
 // Schedules Frontend Logic
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = window.API_BASE_URL || '';
 
 document.getElementById('schedules-form').addEventListener('submit', async function (e) {
     e.preventDefault();

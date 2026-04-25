@@ -54,22 +54,31 @@ const corsOrigins = [
     'http://localhost:5500',
     'http://127.0.0.1:5500',
     'http://localhost:5173',
-    'http://127.0.0.1:5173'
-];
+    'http://127.0.0.1:5173',
+    // Production frontend (Vercel) — add your actual Vercel URL(s) here
+    process.env.FRONTEND_URL,
+].filter(Boolean); // Remove undefined entries
 
-const io = new Server(httpServer, {
-    cors: {
-        origin: corsOrigins,
-        methods: ['GET', 'POST'],
-        credentials: true
-    }
-});
-
-app.use(cors({
-    origin: corsOrigins,
+// Also allow any *.vercel.app subdomain dynamically
+const corsOptions = {
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
+        if (!origin) return callback(null, true);
+        if (corsOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            return callback(null, true);
+        }
+        console.warn(`⚠️ CORS blocked origin: ${origin}`);
+        callback(null, false);
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
-}));
+};
+
+const io = new Server(httpServer, {
+    cors: corsOptions
+});
+
+app.use(cors(corsOptions));
 
 // cookieParser MUST run before any route that needs JWT cookie auth
 app.use(cookieParser());

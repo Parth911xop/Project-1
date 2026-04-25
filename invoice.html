@@ -203,6 +203,7 @@
             }
         }
     </style>
+    <script src="config.js"></script>
 </head>
 
 <body>
@@ -312,7 +313,7 @@
             }
 
             try {
-                const res = await fetch(`http://${window.location.hostname}:3000/api/shipment/${shipmentId}`, { credentials: 'include' });
+                const res = await fetch(`${window.API_BASE_URL || ''}/api/shipment/${shipmentId}`, { credentials: 'include' });
                 const data = await res.json();
 
                 if (data.success) {

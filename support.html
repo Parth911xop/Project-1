@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="notifications.css">
+    <script src="config.js"></script>
     <script src="auth-guard.js"></script>
     
     <link rel="stylesheet" href="dashboard.css">
@@ -192,7 +193,7 @@
             };
 
             try {
-                const API_URL = `http://${location.hostname}:3000`; // Standardize API URL
+                const API_URL = window.API_BASE_URL || ''; // Standardize API URL
                 const r = await fetch(`${API_URL}/api/support/create`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -221,7 +222,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const res = await fetch(`http://${window.location.hostname}:3000/api/auth/me`, { credentials: 'include' });
+                const res = await fetch(`${window.API_BASE_URL || ''}/api/auth/me`, { credentials: 'include' });
                 const data = await res.json();
                 if (data.success && data.user) {
                     const name = data.user.name || 'User';

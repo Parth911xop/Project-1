@@ -1,4 +1,4 @@
-const API_URL = ''; // Relative path for automatic port matching
+const API_URL = window.API_BASE_URL || ''; // Centralized API URL matching
 const defaultShipmentId = 32;
 let CURRENT_SHIPMENT = null;
 let USER_ROLE = null;

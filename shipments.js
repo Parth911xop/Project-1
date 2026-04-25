@@ -4,7 +4,7 @@
 //           Notification Bell, KPI counters, Activity Feed,
 //           Support Tickets widget, Slide-in Detail Panel
 // ─────────────────────────────────────────────────────────────────
-const API_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? `http://${location.hostname}:3000` : '';
+const API_URL = window.API_BASE_URL || '';
 window.ALL_SHIPMENTS = [];
 window.NOTIFICATIONS = [];
 

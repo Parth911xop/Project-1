@@ -1,4 +1,4 @@
-const API_URL = `http://${window.location.hostname}:3000`;
+const API_URL = window.API_BASE_URL || '';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Fetch session from JWT cookie — localStorage.userId is no longer used

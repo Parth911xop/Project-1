@@ -1,5 +1,5 @@
 // socket-client.js — Real-time event bridge for Smart Shipping
-const SOCKET_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? `http://${location.hostname}:3000` : '';
+const SOCKET_URL = window.SOCKET_BASE_URL || '';
 
 class ShippingSocket {
     constructor() {

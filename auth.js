@@ -37,7 +37,8 @@ async function requestOTP() {
         btn.innerText = "Requesting...";
         btn.disabled = true;
 
-        const res = await fetch(`/request-otp`, {
+        const API = window.API_BASE_URL || '';
+        const res = await fetch(`${API}/request-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -126,7 +127,8 @@ async function handleFinalSubmit(e) {
     if (!otp) return showToast("Please enter the OTP", 'error');
 
     try {
-        const res = await fetch(`/verify-otp`, {
+        const API = window.API_BASE_URL || '';
+        const res = await fetch(`${API}/verify-otp`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include', // Receive and send HttpOnly cookie

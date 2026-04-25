@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
+    <script src="config.js"></script>
     <script src="auth-guard.js"></script>
 </head>
 
@@ -209,7 +210,7 @@
     </main>
 
     <script>
-        const API_URL = `http://${window.location.hostname}:3000`;
+        const API_URL = window.API_BASE_URL || '';
         let currentUser = null;
         let currentProfile = null;
 

@@ -15,11 +15,12 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="notifications.css">
 
+    <script src="config.js"></script>
     <!-- ⚡ SESSION GUARD: Redirect logged-in users to their dashboard immediately -->
     <script>
         (async function () {
             try {
-                const res = await fetch(`http://${location.hostname}:3000/api/auth/me`, { credentials: 'include' });
+                const res = await fetch(`${window.API_BASE_URL || ''}/api/auth/me`, { credentials: 'include' });
                 const data = await res.json();
                 if (data.success && data.user) {
                     // User is logged in — skip the landing page entirely
@@ -328,7 +329,7 @@
 
             // Make "Start Exporting" smart:
             // Guest → auth.html | Logged in → wizard.html
-            const API_URL = `http://${window.location.hostname}:3000`;
+            const API_URL = window.API_BASE_URL || '';
             fetch(`${API_URL}/api/auth/me`, { credentials: 'include' })
                 .then(r => r.json())
                 .then(data => {

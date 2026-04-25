@@ -1,6 +1,7 @@
 // Auth Guard - Checks if user session via JWT is valid, with auto-refresh
 (async function checkAuth() {
     const path = window.location.pathname;
+    const API = window.API_BASE_URL || '';
 
     // Whitelist (public pages that don't need auth)
     const publicPages = ['/', 'index.html', 'prices.html', 'services.html', 'company.html'];
@@ -10,7 +11,7 @@
     document.documentElement.style.display = 'none';
 
     async function getSession() {
-        const res = await fetch(`/api/auth/me`, {
+        const res = await fetch(`${API}/api/auth/me`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -18,7 +19,7 @@
     }
 
     async function refreshSession() {
-        const res = await fetch(`/api/auth/refresh`, {
+        const res = await fetch(`${API}/api/auth/refresh`, {
             method: 'POST',
             credentials: 'include'
         });
@@ -95,8 +96,9 @@ function routeUser(role) {
 
 // Global Logout Helper
 async function handleLogout() {
+    const API = window.API_BASE_URL || '';
     try {
-        await fetch(`/api/auth/logout`, { method: 'POST', credentials: 'include' });
+        await fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' });
     } catch (e) { }
     localStorage.clear();
     window.location.href = 'auth.html';
@@ -117,7 +119,8 @@ window.fetch = async function () {
 
 const AuthGuard = {
     verifySession: async function () {
-        const res = await fetch(`/api/auth/me`, {
+        const API = window.API_BASE_URL || '';
+        const res = await fetch(`${API}/api/auth/me`, {
             method: 'GET',
             credentials: 'include'
         });
