@@ -18,15 +18,18 @@
             border-radius: 16px;
             padding: 20px;
         }
+
         .schedule-item {
             border-left: 4px solid #0d6efd;
             background: rgba(13, 110, 253, 0.05);
             transition: all 0.3s ease;
         }
+
         .schedule-item:hover {
             background: rgba(13, 110, 253, 0.1);
             transform: translateX(5px);
         }
+
         .date-badge {
             width: 60px;
             height: 60px;
@@ -37,18 +40,75 @@
             background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
             line-height: 1;
+            flex-shrink: 0;
         }
 
-        /* Dark Mode Select Options Fix */
-        .modal-content select.form-select {
-            background-color: #1a1d2d !important;
-            color: #ffffff !important;
-            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        /* Search bar */
+        .search-bar-wrap {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 40px;
+            padding: 4px 6px 4px 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: border-color 0.3s;
+            max-width: 420px;
         }
 
-        .modal-content select.form-select option {
-            background-color: #1a1d2d !important;
-            color: #ffffff !important;
+        .search-bar-wrap:focus-within {
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .search-bar-wrap input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #fff;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-bar-wrap input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .search-bar-wrap .search-btn {
+            background: #3b82f6;
+            border: none;
+            color: #fff;
+            border-radius: 30px;
+            padding: 6px 18px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.2s;
+        }
+
+        .search-bar-wrap .search-btn:hover {
+            background: #2563eb;
+        }
+
+        /* Filter banner */
+        .filter-banner {
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 10px;
+            padding: 8px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-6px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -62,21 +122,21 @@
             <span class="text-xs text-white-50">ENTERPRISE</span>
         </div>
         <nav class="d-flex flex-column gap-1">
-            <a href="shipments.html" class="nav-item-dash">
-                <i class="fas fa-th-large w-5"></i> Dashboard
-            </a>
+            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
             <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
             <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
             <a href="documents.html" class="nav-item-dash"><i class="fas fa-folder-open w-5"></i> Documents</a>
             <a href="schedules.html" class="nav-item-dash active"><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
             <hr class="border-secondary opacity-25 my-3">
             <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
-            <a href="support.html" class="nav-item-dash "><i class="fas fa-headset w-5"></i> Support</a>
+            <a href="support.html" class="nav-item-dash"><i class="fas fa-headset w-5"></i> Support</a>
             <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
         <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
             <div class="d-flex align-items-center gap-2">
-                <div id="user-avatar" class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width:32px;height:32px;">U</div>
+                <div id="user-avatar"
+                    class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                    style="width:32px;height:32px;">U</div>
                 <div class="d-grid">
                     <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
                 </div>
@@ -86,91 +146,86 @@
 
     <main class="dashboard-main h-100 p-4 overflow-auto">
         <div class="container-fluid">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <!-- Page Header — single search bar instead of two buttons -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
                 <div>
-                    <h2 class="fw-bold text-white">Schedules & Planning</h2>
-                    <p class="text-white-50">Track pickup dates and estimated delivery timelines.</p>
+                    <h2 class="fw-bold text-white mb-1">Schedules & Planning</h2>
+                    <p class="text-white-50 mb-0 small">Track pickup dates and estimated delivery timelines.</p>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary rounded-pill px-4" onclick="location.reload()"><i class="fas fa-sync-alt me-2"></i> Refresh</button>
-                    <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#searchModal"><i class="fas fa-search me-2"></i> Find Vessel</button>
+                <div class="search-bar-wrap">
+                    <i class="fas fa-search text-white-50" style="font-size:0.85rem;"></i>
+                    <input type="text" id="search-input" placeholder="Search by Shipment ID (e.g. 89 or PA-93)..."
+                        onkeydown="if(event.key==='Enter') doSearch()">
+                    <button class="search-btn" onclick="doSearch()">
+                        <i class="fas fa-ship me-1"></i>Find Vessel
+                    </button>
                 </div>
             </div>
 
             <div class="row g-4">
-                <!-- Upcoming Milestone / Column 1 -->
+                <!-- Main List Column -->
                 <div class="col-lg-8">
                     <div class="calendar-card mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h5 class="fw-bold text-white mb-0"><i class="fas fa-clock me-2 text-warning"></i> Active Shipment Timelines</h5>
-                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">Auto-Synced</span>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="fw-bold text-white mb-0"><i class="fas fa-clock me-2 text-warning"></i> Active
+                                Shipment Timelines</h5>
+                            <span
+                                class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25"
+                                id="shipment-count-badge">Loading...</span>
                         </div>
-                        
-                        <div id="active-schedules-list" class="d-flex flex-column gap-3">
-                            <!-- Populated by JS -->
+
+                        <!-- Filter Active Banner (hidden by default) -->
+                        <div id="filter-banner" class="filter-banner mb-3 d-none">
+                            <span class="text-info small fw-bold">
+                                <i class="fas fa-filter me-1"></i><span id="filter-label">Filtered</span>
+                            </span>
+                            <button class="btn btn-sm btn-outline-info rounded-pill px-3" onclick="clearSearch()"
+                                style="font-size:0.72rem;">
+                                <i class="fas fa-times me-1"></i>Show All
+                            </button>
+                        </div>
+
+                        <div id="schedule-list" class="d-flex flex-column gap-2">
                             <div class="text-center py-5 opacity-50">
                                 <div class="spinner-border text-primary spinner-border-sm mb-3"></div>
                                 <p class="small">Fetching your shipment schedules...</p>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Vessel Search Results (hidden by default) -->
-                    <div id="search-results-section" class="calendar-card d-none">
-                        <h5 class="fw-bold text-white mb-4">Available Vessel Routes</h5>
-                        <div id="vessel-results-list" class="d-flex flex-column gap-2"></div>
-                    </div>
                 </div>
 
-                <!-- Calendar View / Column 2 -->
+                <!-- Sidebar Column -->
                 <div class="col-lg-4">
                     <div class="calendar-card text-center py-5">
                         <i class="fas fa-calendar-check fa-3x text-primary mb-3"></i>
                         <h5 class="text-white fw-bold">Calendar Sync</h5>
-                        <p class="text-white-50 x-small px-4">Integrate your shipment milestones directly with Google Calendar or Outlook.</p>
+                        <p class="text-white-50 x-small px-4">Integrate your shipment milestones directly with Google
+                            Calendar or Outlook.</p>
                         <button class="btn btn-sm btn-outline-light rounded-pill px-4 mt-2">Connect Calendar</button>
                     </div>
 
                     <div class="calendar-card mt-4">
                         <h6 class="text-white fw-bold mb-3 small uppercase">Planning Tips</h6>
                         <ul class="list-unstyled small text-white-50 d-flex flex-column gap-2">
-                            <li><i class="fas fa-info-circle text-info me-2"></i> Book at least 7 days before pickup.</li>
-                            <li><i class="fas fa-info-circle text-info me-2"></i> International routes average 20-30 days.</li>
-                            <li><i class="fas fa-info-circle text-info me-2"></i> You can reschedule up to 48h before.</li>
+                            <li><i class="fas fa-info-circle text-info me-2"></i> Book at least 7 days before pickup.
+                            </li>
+                            <li><i class="fas fa-info-circle text-info me-2"></i> International routes average 20-30
+                                days.</li>
+                            <li><i class="fas fa-info-circle text-info me-2"></i> You can reschedule up to 48h before.
+                            </li>
                         </ul>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Search Modal -->
-        <div class="modal fade" id="searchModal" tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content bg-dark border border-secondary text-white">
-                    <div class="modal-header border-secondary">
-                        <h5 class="modal-title">Search Vessel Schedules</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label text-white-50 small">User ID (UID)</label>
-                            <input type="text" class="form-control bg-dark text-white border-secondary" id="uidInput" placeholder="Enter User ID (Optional)">
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-white-50 small">Origin Port</label>
-                            <select class="form-select bg-dark text-white border-secondary" id="originInput">
-                                <option value="">Select Origin Port</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label text-white-50 small">Destination Port</label>
-                            <select class="form-select bg-dark text-white border-secondary" id="destInput">
-                                <option value="">Select Destination Port</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer border-secondary">
-                        <button class="btn btn-primary w-100 rounded-pill" onclick="searchSchedules()">Search Best Routes</button>
+                    <!-- Search Tips Card -->
+                    <div class="calendar-card mt-4">
+                        <h6 class="text-white fw-bold mb-3 small uppercase"><i
+                                class="fas fa-lightbulb text-warning me-2"></i>Search Tips</h6>
+                        <ul class="list-unstyled small text-white-50 d-flex flex-column gap-2">
+                            <li><code class="text-info">89</code> — find shipment #89</li>
+                            <li><code class="text-info">PA-93</code> — find shipment #93</li>
+                            <li><code class="text-info">Tokyo</code> — all shipments to/from Tokyo</li>
+                            <li><code class="text-info">Delivered</code> — filter by status</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -179,33 +234,15 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
         <script>
             const API_URL = `http://${window.location.hostname}:3000`;
+            let allShipments = [];
 
             document.addEventListener('DOMContentLoaded', () => {
-                fetchUserStats();
-                fetchUserSchedules();
-                fetchPorts(); // New call to populate dropdowns
+                loadUser();
+                loadSchedules();
             });
 
-            async function fetchPorts() {
-                try {
-                    const res = await fetch(`${API_URL}/api/ports`);
-                    const data = await res.json();
-                    if (data.success && data.ports) {
-                        const originSelect = document.getElementById('originInput');
-                        const destSelect = document.getElementById('destInput');
-                        
-                        data.ports.forEach(port => {
-                            const opt = `<option value="${port.name}">${port.name} (${port.country})</option>`;
-                            originSelect.insertAdjacentHTML('beforeend', opt);
-                            destSelect.insertAdjacentHTML('beforeend', opt);
-                        });
-                    }
-                } catch (e) {
-                    console.error("Failed to load ports", e);
-                }
-            }
-
-            async function fetchUserStats() {
+            // ─── Load User Info ───
+            async function loadUser() {
                 try {
                     const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
                     const data = await res.json();
@@ -214,155 +251,168 @@
                         document.getElementById('user-name-display').innerText = name;
                         document.getElementById('user-avatar').innerText = name[0].toUpperCase();
                     }
-                } catch (e) {}
+                } catch (e) { }
             }
 
-            async function fetchUserSchedules() {
-                const list = document.getElementById('active-schedules-list');
+            // ─── Load All Shipments ───
+            async function loadSchedules() {
+                const list = document.getElementById('schedule-list');
                 try {
                     const res = await fetch(`${API_URL}/api/shipment/list`, { credentials: 'include' });
                     const data = await res.json();
-                    
-                    if (data.success && data.shipments.length > 0) {
-                        list.innerHTML = data.shipments.map(s => {
-                            const date = new Date(s.preferred_shipping_date || s.created_at);
-                            const day = date.getDate();
-                            const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
-                            const statusColor = s.status === 'Delivered' ? 'success' : 'primary';
 
-                            return `
-                                <div class="schedule-item p-3 rounded-3 mb-2 d-flex align-items-center justify-content-between">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="date-badge fw-bold">
-                                            <span class="text-primary small">${month}</span>
-                                            <h4 class="mb-0 text-white">${day}</h4>
-                                        </div>
-                                        <div>
-                                            <h6 class="text-white mb-1 fw-bold">#${s.id} - ${s.origin_address} ➔ ${s.destination_address}</h6>
-                                            <p class="x-small text-white-50 mb-0">
-                                                <i class="fas fa-truck-loading me-1"></i> Pickup: ${date.toLocaleDateString()} 
-                                                <span class="mx-2">|</span>
-                                                <i class="fas fa-flag-checkered me-1"></i> Mode: ${s.mode || 'SEA'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="text-end">
-                                        <div class="badge bg-${statusColor} bg-opacity-10 text-${statusColor} border border-${statusColor} border-opacity-25 px-3 mb-2">${s.status}</div>
-                                        <div>
-                                            <button class="btn btn-sm btn-link text-white-50 p-0 x-small text-decoration-none" onclick="reschedule(${s.id})">
-                                                <i class="fas fa-calendar-alt me-1"></i> Reschedule
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
+                    if (data.success && data.shipments && data.shipments.length > 0) {
+                        allShipments = data.shipments;
+                        renderList(allShipments);
                     } else {
+                        allShipments = [];
                         list.innerHTML = `
                             <div class="text-center py-5 text-white-50">
                                 <i class="fas fa-calendar-times mb-3 fa-2x"></i>
                                 <p>No active shipment schedules found.</p>
                                 <a href="wizard.html" class="btn btn-sm btn-primary rounded-pill px-4">Create First Booking</a>
-                            </div>
-                        `;
+                            </div>`;
+                        document.getElementById('shipment-count-badge').innerText = '0 shipments';
                     }
                 } catch (e) {
-                    list.innerHTML = '<div class="alert alert-danger mx-4">Could not load schedules</div>';
+                    list.innerHTML = '<div class="alert alert-danger">Could not load schedules. Check your connection.</div>';
                 }
             }
 
+            // ─── Render Schedule List ───
+            function renderList(shipments, filterLabel = null) {
+                const list = document.getElementById('schedule-list');
+                const banner = document.getElementById('filter-banner');
+                const badge = document.getElementById('shipment-count-badge');
+
+                // Show/hide filter banner
+                if (filterLabel) {
+                    banner.classList.remove('d-none');
+                    document.getElementById('filter-label').innerText = filterLabel;
+                } else {
+                    banner.classList.add('d-none');
+                }
+
+                // Update count badge
+                if (filterLabel) {
+                    badge.innerText = `${shipments.length} of ${allShipments.length}`;
+                    badge.className = 'badge bg-info bg-opacity-10 text-info border border-info border-opacity-25';
+                } else {
+                    badge.innerText = `${shipments.length} shipment${shipments.length !== 1 ? 's' : ''}`;
+                    badge.className = 'badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25';
+                }
+
+                if (shipments.length === 0) {
+                    list.innerHTML = `
+                        <div class="text-center py-5 text-white-50">
+                            <i class="fas fa-search mb-3 fa-2x"></i>
+                            <p>No shipments match your search.</p>
+                            <button class="btn btn-sm btn-outline-primary rounded-pill px-4" onclick="clearSearch()">Show All Shipments</button>
+                        </div>`;
+                    return;
+                }
+
+                list.innerHTML = shipments.map(s => {
+                    const date = new Date(s.preferred_shipping_date || s.created_at);
+                    const day = date.getDate();
+                    const month = date.toLocaleString('default', { month: 'short' }).toUpperCase();
+                    const statusMap = { 'Delivered': 'success', 'In Transit': 'info', 'Cargo Ready': 'warning', 'Cancelled': 'danger', 'rejected': 'danger', 'Details Pending': 'secondary' };
+                    const color = statusMap[s.status] || 'primary';
+                    const prefix = s.user_prefix || 'SS';
+
+                    return `
+                        <div class="schedule-item p-3 rounded-3 d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="date-badge fw-bold">
+                                    <span class="text-primary small">${month}</span>
+                                    <h4 class="mb-0 text-white">${day}</h4>
+                                </div>
+                                <div>
+                                    <h6 class="text-white mb-1 fw-bold">
+                                        <span class="text-info">#${prefix}-${s.id}</span> — ${s.origin_address || '—'} ➔ ${s.destination_address || '—'}
+                                    </h6>
+                                    <p class="x-small text-white-50 mb-0">
+                                        <i class="fas fa-truck-loading me-1"></i> Pickup: ${date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        <span class="mx-2">|</span>
+                                        <i class="fas fa-ship me-1"></i> Mode: ${s.mode || 'Sea'}
+                                        ${s.ship_name ? `<span class="mx-2">|</span><i class="fas fa-anchor me-1"></i> ${s.ship_name}` : ''}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="badge bg-${color} bg-opacity-10 text-${color} border border-${color} border-opacity-25 px-3 mb-2">${s.status}</div>
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <a href="track.html?id=${prefix}-${s.id}" class="btn btn-sm btn-link text-info p-0 x-small text-decoration-none">
+                                        <i class="fas fa-map-marker-alt me-1"></i>Track
+                                    </a>
+                                    <button class="btn btn-sm btn-link text-white-50 p-0 x-small text-decoration-none" onclick="reschedule(${s.id})">
+                                        <i class="fas fa-calendar-alt me-1"></i>Reschedule
+                                    </button>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join('');
+            }
+
+            // ─── SEARCH: The main "Find Vessel" logic ───
+            function doSearch() {
+                const raw = document.getElementById('search-input').value.trim();
+                if (!raw) {
+                    clearSearch();
+                    return;
+                }
+
+                // 1. Try to extract a numeric shipment ID
+                let numericId = raw;
+                // Handle formats: "89", "PA-89", "#PA-89", "SS-89", "#89"
+                if (raw.includes('-')) {
+                    numericId = raw.split('-').pop();
+                }
+                numericId = numericId.replace(/[^0-9]/g, '');
+
+                // If the entire input was a number (or prefix-number), search by ID
+                const isIdSearch = numericId && (raw === numericId || raw.includes('-') || raw.startsWith('#'));
+
+                if (isIdSearch && numericId) {
+                    const filtered = allShipments.filter(s => String(s.id) === numericId);
+                    renderList(filtered, `Shipment #${numericId}${filtered.length === 0 ? ' — not found' : ''}`);
+                    return;
+                }
+
+                // 2. Otherwise, text search across all fields
+                const q = raw.toLowerCase();
+                const filtered = allShipments.filter(s => {
+                    const haystack = [
+                        String(s.id),
+                        s.origin_address,
+                        s.destination_address,
+                        s.status,
+                        s.mode,
+                        s.ship_name,
+                        s.user_prefix,
+                        s.tracking_number
+                    ].filter(Boolean).join(' ').toLowerCase();
+                    return haystack.includes(q);
+                });
+
+                renderList(filtered, `"${raw}" — ${filtered.length} result${filtered.length !== 1 ? 's' : ''}`);
+            }
+
+            // ─── Clear Search ───
+            function clearSearch() {
+                document.getElementById('search-input').value = '';
+                renderList(allShipments);
+            }
+
+            // ─── Reschedule ───
             function reschedule(id) {
                 const newDate = prompt("Enter new preferred pickup date (YYYY-MM-DD):");
                 if (newDate) {
                     alert("Reschedule request for shipment #" + id + " submitted to manager approval.");
                 }
             }
-
-            async function searchSchedules() {
-                const uid = document.getElementById('uidInput').value;
-                const origin = document.getElementById('originInput');
-                const dest = document.getElementById('destInput');
-
-                const section = document.getElementById('search-results-section');
-                const list = document.getElementById('vessel-results-list');
-                
-                if (!uid && (!origin.value || !dest.value)) {
-                    alert("Please select Ports OR enter a User ID (UID).");
-                    return;
-                }
-
-                const modal = bootstrap.Modal.getInstance(document.getElementById('searchModal'));
-                // Don't hide modal immediately if we want to show results below, 
-                // but usually it's better to show them and close modal to interact.
-                modal.hide();
-                
-                section.classList.remove('d-none');
-                list.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="mt-2 small text-white-50">Searching vessels...</p></div>`;
-
-                // ── UID ONLY: FETCH USER SHIPMENTS AS "MY VESSELS" ──
-                if (uid && (!origin.value || !dest.value)) {
-                    try {
-                        const res = await fetch(`${API_URL}/api/shipment/all?userId=${uid}`, { credentials: 'include' });
-                        const data = await res.json();
-                        
-                        if (data.success && data.shipments.length > 0) {
-                            list.innerHTML = data.shipments.map(s => `
-                                <div class="p-3 bg-dark bg-opacity-50 rounded border border-warning border-opacity-25 d-flex justify-content-between align-items-center mb-2 hover-glow pointer" onclick="selectMyVessel('${s.origin_address}', '${s.destination_address}')">
-                                    <div>
-                                        <h6 class="text-white mb-0 fw-bold"><i class="fas fa-ship me-2 text-warning"></i>My Vessel (Shipment #${s.id})</h6>
-                                        <small class="text-white-50">${s.origin_address} ➔ ${s.destination_address}</small>
-                                    </div>
-                                    <div class="text-end">
-                                        <span class="badge bg-warning text-dark px-3 rounded-pill">Click to select route</span>
-                                    </div>
-                                </div>
-                            `).join('');
-                        } else {
-                            list.innerHTML = `<div class="text-center py-4 text-white-50">No active vessels found for UID: ${uid}</div>`;
-                        }
-                    } catch (e) {
-                        list.innerHTML = `<div class="text-center py-4 text-danger">Error fetching user vessels</div>`;
-                    }
-                    return;
-                }
-
-                // ── NORMAL PORT SEARCH ──
-                setTimeout(() => {
-                    list.innerHTML = `
-                        <div class="p-3 bg-dark bg-opacity-50 rounded border border-primary border-opacity-25 d-flex justify-content-between align-items-center mb-2 hover-glow">
-                            <div>
-                                <h6 class="text-white mb-0 fw-bold">Ever Given - MSC Loop 3</h6>
-                                <small class="text-white-50">${origin.value} to ${dest.value} | Direct | 18 Days</small>
-                            </div>
-                            <div class="text-end">
-                                <div class="text-primary fw-bold mb-1">Available Now</div>
-                                <button class="btn btn-sm btn-primary px-3 rounded-pill">Book Space</button>
-                            </div>
-                        </div>
-                    `;
-                }, 1000);
-            }
-
-            function selectMyVessel(origin, dest) {
-                // Fill the select inputs
-                const originSelect = document.getElementById('originInput');
-                const destSelect = document.getElementById('destInput');
-
-                if (originSelect && destSelect) {
-                    // Try to match value
-                    originSelect.value = origin;
-                    destSelect.value = dest;
-                }
-                
-                // Show modal again to confirm/proceed
-                const modalEl = document.getElementById('searchModal');
-                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-                modal.show();
-                
-                // Show a small toast/flash
-                alert(`Selected route for your vessel: ${origin} ➔ ${dest}. Click 'Search Best Routes' to refresh vessel options.`);
-            }
         </script>
     </main>
 </body>
+
 </html>

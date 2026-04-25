@@ -52,7 +52,8 @@ function showSection(name, el) {
         companies: '🏢 Company Management', shipments: '📦 Shipment Management',
         ports: '⚓ Port Management', routes: '🛣️ Routes & Pricing',
         mapping: '🗺️ Route Mapping',
-        kyc: '🛡️ KYC Verifications', documents: '📄 Document Verification', tracking: '🗺️ Tracking Management',
+        kyc: '🛡️ KYC Verifications', documents: '📄 Document Verification', finance: '💰 Collections & Payments',
+        tracking: '🗺️ Tracking Management',
         analytics: '📈 Analytics & Reports', notifications: '🔔 Notifications',
         support: '🎫 Support Tickets', roles: '🛡️ Role Management',
         logs: '📋 System Logs', settings: '⚙️ System Settings'
@@ -63,7 +64,7 @@ function showSection(name, el) {
     // Lazy load data when section opens
     const loaders = {
         users: loadUsers, companies: loadCompanies, shipments: loadAdminShipments,
-        kyc: loadPendingKYC, documents: loadDocuments, tracking: loadTrackingLogs, analytics: loadAnalytics,
+        kyc: loadPendingKYC, documents: loadDocuments, finance: loadFinance, tracking: loadTrackingLogs, analytics: loadAnalytics,
         notifications: loadNotifications, roles: loadRoles, logs: loadLogs,
         ports: loadPorts, routes: loadRoutes, mapping: initRouteMap, support: loadTickets, settings: loadSettings
     };
@@ -74,7 +75,7 @@ function showSection(name, el) {
 // ── DASHBOARD ─────────────────────────────────────────────────────
 async function loadDashboard() {
     try {
-        const r = await fetch(`${API}/api/admin/dashboard`, { credentials: 'include' });
+        const r = await fetch(`${API}/api/admin/stats/detailed`, { credentials: 'include' });
         if (!r.ok) { console.error("Dashboard data fetch failed"); return; }
         const d = await r.json();
         if (!d.success) return;
@@ -83,6 +84,8 @@ async function loadDashboard() {
         setV('kpi-delivered', d.delivered);
         setV('kpi-docs', d.pendingDocs);
         setV('kpi-pending-bookings', d.pendingBookings);
+        setV('kpi-users', d.users);
+        setV('kpi-companies', d.companies);
 
         const cur = document.getElementById('set-currency')?.value || 'INR';
         const symbol = cur === 'INR' ? '₹' : cur === 'USD' ? '$' : cur === 'EUR' ? '€' : cur + ' ';
@@ -1064,6 +1067,43 @@ async function initRouteMap() {
             }
         } catch (err) { console.error("Map fleet & initialization error:", err); }
     }, 100);
+}
+
+// ── COLLECTIONS / FINANCE ─────────────────────────────────────────
+async function loadFinance() {
+    const tbody = document.getElementById('finance-body');
+    if (!tbody) return;
+    tbody.innerHTML = loadingRow(5);
+    try {
+        const r = await fetch(`${API}/api/admin/shipments`, { credentials: 'include' });
+        const d = await r.json();
+        if (!d.success) { tbody.innerHTML = errorRow(5, 'Failed to load financial data'); return; }
+
+        const shipments = d.shipments || [];
+        const totalRevenue = shipments.reduce((sum, s) => sum + (parseFloat(s.estimated_cost) || 0), 0);
+        const paid = shipments.filter(s => s.status === 'Delivered' || s.payment_status === 'paid');
+        const pending = shipments.filter(s => s.status !== 'Delivered' && s.payment_status !== 'paid');
+        const avgCollection = paid.length ? (totalRevenue / paid.length) : 0;
+
+        const cur = document.getElementById('set-currency')?.value || 'INR';
+        const symbol = cur === 'INR' ? '₹' : cur === 'USD' ? '$' : cur === 'EUR' ? '€' : cur + ' ';
+        const factor = cur === 'INR' ? 84 : 1;
+
+        setV('fin-revenue', `${symbol}${(totalRevenue * factor).toLocaleString('en-IN', {maximumFractionDigits:0})}`);
+        setV('fin-paid', paid.length);
+        setV('fin-pending', pending.length);
+        setV('fin-avg', `${symbol}${(avgCollection * factor).toLocaleString('en-IN', {maximumFractionDigits:0})}`);
+
+        if (!shipments.length) { tbody.innerHTML = errorRow(5, 'No transactions found.'); return; }
+        tbody.innerHTML = shipments.map(s => `
+            <tr>
+                <td class="fw-bold font-monospace text-accent">${s.user_prefix || 'SS'}-${s.id}</td>
+                <td class="text-white">${esc(s.customer_name || '—')}</td>
+                <td class="text-success fw-bold">${symbol}${((parseFloat(s.estimated_cost) || 0) * factor).toLocaleString('en-IN', {maximumFractionDigits:0})}</td>
+                <td>${statusBadge(s.status === 'Delivered' ? 'Delivered' : s.payment_status === 'paid' ? 'approved' : 'pending')}</td>
+                <td class="text-white-50 small">${fmtDate(s.created_at)}</td>
+            </tr>`).join('');
+    } catch (e) { tbody.innerHTML = errorRow(5, 'Server error'); }
 }
 
 // ── KYC APPROVALS ────────────────────────────────────────────────

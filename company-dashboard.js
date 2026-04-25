@@ -107,6 +107,49 @@ function showSection(name, el) {
     return false;
 }
 
+// ── CHART HELPERS ──────────────────────────────────────────────────
+const _charts = {};
+function drawBar(canvasId, labels, data, label = 'Shipments', color = '#3b82f6') {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    if (_charts[canvasId]) { _charts[canvasId].destroy(); }
+    _charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{ label, data, backgroundColor: color + '99', borderColor: color, borderWidth: 1, borderRadius: 4 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+function drawDoughnut(canvasId, labels, data) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+    if (_charts[canvasId]) { _charts[canvasId].destroy(); }
+    const palette = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316'];
+    _charts[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels,
+            datasets: [{ data, backgroundColor: palette.slice(0, labels.length), borderWidth: 0, hoverOffset: 6 }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false, cutout: '65%',
+            plugins: {
+                legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 10 }, boxWidth: 10, padding: 8 } }
+            }
+        }
+    });
+}
+
 // ── DASHBOARD ─────────────────────────────────────────────────────
 async function loadDashboard() {
     try {

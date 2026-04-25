@@ -6,9 +6,186 @@
     <title>Settings | Smart Shipping Enterprise</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="dashboard.css">
+    <script src="auth-guard.js"></script>
+    <style>
+        .settings-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .settings-card:hover {
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+
+        .settings-card h6 {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .settings-card h6 i {
+            font-size: 0.9rem;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .setting-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .setting-row .label {
+            font-size: 0.88rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+
+        .setting-row .sublabel {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 2px;
+        }
+
+        .setting-row select,
+        .setting-row input[type="text"],
+        .setting-row input[type="email"],
+        .setting-row input[type="tel"] {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.82rem;
+            min-width: 180px;
+            transition: border-color 0.2s;
+        }
+
+        .setting-row select:focus,
+        .setting-row input:focus {
+            outline: none;
+            border-color: rgba(59, 130, 246, 0.5);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .setting-row select option {
+            background: #1a2035;
+            color: #fff;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #fff;
+            left: 3px;
+            top: 3px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: #3b82f6;
+        }
+
+        .toggle-switch input:checked+.toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .address-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .address-card:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .danger-zone {
+            border-color: rgba(239, 68, 68, 0.2) !important;
+        }
+
+        .danger-zone:hover {
+            border-color: rgba(239, 68, 68, 0.4) !important;
+        }
+
+        .save-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            background: rgba(34, 197, 94, 0.12);
+            color: #22c55e;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .save-indicator.show {
+            opacity: 1;
+        }
+    </style>
 </head>
 
 <body class="dashboard-page">
@@ -19,20 +196,18 @@
             <a href="index.html" class="text-decoration-none">
                 <h4 class="fw-bold text-white mb-0"><i class="fas fa-ship me-2 text-primary"></i>SmartShip</h4>
             </a>
-            <span class="text-xs text-muted">ENTERPRISE</span>
+            <span class="text-xs text-white-50">ENTERPRISE</span>
         </div>
 
         <nav class="d-flex flex-column gap-1">
-            <a href="shipments.html" class="nav-item-dash ">
-                <i class="fas fa-th-large w-5"></i> Dashboard
-            </a>
+            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
             <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
-            <a href="track.html" class="nav-item-dash "><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
-            <a href="documents.html" class="nav-item-dash "><i class="fas fa-folder-open w-5"></i> Documents</a>
-            <a href="schedules.html" class="nav-item-dash "><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
+            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="documents.html" class="nav-item-dash"><i class="fas fa-folder-open w-5"></i> Documents</a>
+            <a href="schedules.html" class="nav-item-dash"><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
             <hr class="border-secondary opacity-25 my-3">
-            <a href="finance.html" class="nav-item-dash "><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
-            <a href="support.html" class="nav-item-dash "><i class="fas fa-headset w-5"></i> Support</a>
+            <a href="finance.html" class="nav-item-dash"><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
+            <a href="support.html" class="nav-item-dash"><i class="fas fa-headset w-5"></i> Support</a>
             <a href="settings.html" class="nav-item-dash active"><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
 
@@ -40,10 +215,10 @@
             <div class="d-flex align-items-center gap-2">
                 <div id="user-avatar"
                     class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                    style="width: 32px; height: 32px;">U</div>
+                    style="width:32px;height:32px;font-size:0.85rem;">U</div>
                 <div class="d-grid">
                     <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
-
+                    <span id="user-email-display" class="text-white-50" style="font-size:0.68rem;">loading...</span>
                 </div>
             </div>
         </div>
@@ -52,99 +227,411 @@
     <!-- MAIN CONTENT -->
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <h4 class="text-white fw-bold mb-0">Settings</h4>
+            <div>
+                <h4 class="text-white fw-bold mb-0"><i class="fas fa-cog me-2 text-white-50"></i>Settings</h4>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <span class="save-indicator" id="save-indicator"><i class="fas fa-check-circle"></i>Changes saved</span>
+                <button class="btn btn-sm btn-primary rounded-pill px-4" onclick="saveAllSettings()">
+                    <i class="fas fa-save me-1"></i>Save All
+                </button>
+            </div>
         </header>
 
-        <div class="p-4">
+        <div class="p-4" style="overflow-y: auto; flex: 1;">
             <div class="row g-4">
+                <!-- LEFT COLUMN -->
                 <div class="col-lg-8">
-                    <!-- General Settings -->
-                    <div class="card-enterprise p-4 mb-4">
-                        <h5 class="text-white fw-bold mb-3">General Preferences</h5>
-                        <form>
-                            <div class="mb-3">
-                                <label class="form-label text-muted small">Default Currency</label>
-                                <select class="form-select bg-dark text-white border-secondary">
-                                    <option>USD ($)</option>
-                                    <option selected>INR (₹)</option>
-                                    <option>EUR (€)</option>
-                                </select>
+                    <!-- Profile Info -->
+                    <div class="settings-card mb-4">
+                        <h6><i class="fas fa-user-circle text-primary"></i> Profile Information</h6>
+                        <div class="d-flex align-items-center gap-4 mb-4 pb-4" style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+                            <div class="profile-avatar" id="profile-avatar-big">U</div>
+                            <div>
+                                <h5 class="text-white fw-bold mb-1" id="profile-name-display">User</h5>
+                                <p class="text-white-50 small mb-1" id="profile-email-display">loading...</p>
+                                <span class="badge bg-primary bg-opacity-15 text-primary border border-primary border-opacity-25 px-3" id="profile-role-badge">User</span>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label text-muted small">Time Zone</label>
-                                <select class="form-select bg-dark text-white border-secondary">
-                                    <option>UTC</option>
-                                    <option selected>IST (GMT+5:30)</option>
-                                    <option>PST (GMT-8:00)</option>
-                                </select>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="text-white-50 small fw-bold d-block mb-1">Full Name</label>
+                                <input type="text" id="set-name" class="form-control bg-dark text-white border-secondary" placeholder="Your name">
                             </div>
-                        </form>
+                            <div class="col-md-6">
+                                <label class="text-white-50 small fw-bold d-block mb-1">Email Address</label>
+                                <input type="email" id="set-email" class="form-control bg-dark text-white border-secondary" placeholder="email@company.com" readonly
+                                    style="opacity: 0.6; cursor: not-allowed;">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-white-50 small fw-bold d-block mb-1">Phone Number</label>
+                                <input type="tel" id="set-phone" class="form-control bg-dark text-white border-secondary" placeholder="+91 98765 43210">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="text-white-50 small fw-bold d-block mb-1">Company Name</label>
+                                <input type="text" id="set-company" class="form-control bg-dark text-white border-secondary" placeholder="Your company">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preferences -->
+                    <div class="settings-card mb-4">
+                        <h6><i class="fas fa-sliders-h text-info"></i> General Preferences</h6>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">Default Currency</div>
+                                <div class="sublabel">Used across invoices, billing, and cost estimates</div>
+                            </div>
+                            <select id="set-currency">
+                                <option value="INR" selected>INR (₹)</option>
+                                <option value="USD">USD ($)</option>
+                                <option value="EUR">EUR (€)</option>
+                                <option value="GBP">GBP (£)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">Time Zone</div>
+                                <div class="sublabel">Controls date/time display for shipment schedules</div>
+                            </div>
+                            <select id="set-timezone">
+                                <option value="Asia/Kolkata" selected>IST (GMT+5:30)</option>
+                                <option value="UTC">UTC (GMT+0)</option>
+                                <option value="America/New_York">EST (GMT-5)</option>
+                                <option value="America/Los_Angeles">PST (GMT-8)</option>
+                                <option value="Europe/London">GMT (London)</option>
+                                <option value="Asia/Dubai">GST (GMT+4)</option>
+                                <option value="Asia/Singapore">SGT (GMT+8)</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">Language</div>
+                                <div class="sublabel">Interface language preference</div>
+                            </div>
+                            <select id="set-language">
+                                <option value="en" selected>English</option>
+                                <option value="hi">Hindi</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                            </select>
+                        </div>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">Weight Unit</div>
+                                <div class="sublabel">Default unit for cargo weight in bookings</div>
+                            </div>
+                            <select id="set-weight">
+                                <option value="kg" selected>Kilograms (kg)</option>
+                                <option value="lb">Pounds (lb)</option>
+                                <option value="ton">Metric Ton (ton)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Notifications -->
-                    <div class="card-enterprise p-4 mb-4">
-                        <h5 class="text-white fw-bold mb-3">Notifications</h5>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="emailNotif" checked>
-                            <label class="form-check-label text-white" for="emailNotif">Email Alerts</label>
-                            <p class="text-muted x-small mb-0">Receive updates on shipment exceptions.</p>
+                    <div class="settings-card mb-4">
+                        <h6><i class="fas fa-bell text-warning"></i> Notification Preferences</h6>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">Email Notifications</div>
+                                <div class="sublabel">Shipment status changes, billing alerts, document updates</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="notif-email" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="smsNotif">
-                            <label class="form-check-label text-white" for="smsNotif">SMS Alerts</label>
-                            <p class="text-muted x-small mb-0">Receive critical updates via SMS.</p>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">SMS Alerts</div>
+                                <div class="sublabel">Critical shipment updates via text message</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="notif-sms">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">Marketing Emails</div>
+                                <div class="sublabel">Route promotions, pricing updates, new features</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="notif-marketing">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-row">
+                            <div>
+                                <div class="label">Browser Push Notifications</div>
+                                <div class="sublabel">Desktop alerts for real-time tracking events</div>
+                            </div>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="notif-push" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
                         </div>
                     </div>
 
                     <!-- Saved Addresses -->
-                    <div class="card-enterprise p-4">
+                    <div class="settings-card mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h5 class="text-white fw-bold mb-0">Saved Addresses</h5>
-                            <button class="btn btn-sm btn-outline-primary"><i class="fas fa-plus me-1"></i> Add New</button>
+                            <h6 class="mb-0"><i class="fas fa-map-marker-alt text-success"></i> Saved Addresses</h6>
+                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="addAddress()">
+                                <i class="fas fa-plus me-1"></i>Add New
+                            </button>
                         </div>
-                        <div class="border border-secondary border-opacity-25 rounded p-3 mb-2 bg-dark">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="text-white small fw-bold mb-1">Main Warehouse</h6>
-                                    <p class="text-white-50 x-small mb-0">123 Logistics Park, Mumbai, Maharashtra 400001</p>
-                                </div>
-                                <div>
-                                    <button class="btn btn-sm btn-link text-white-50"><i class="fas fa-edit"></i></button>
-                                    <button class="btn btn-sm btn-link text-danger"><i class="fas fa-trash"></i></button>
+                        <div id="addresses-list">
+                            <div class="address-card">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <div class="d-flex align-items-center gap-2 mb-1">
+                                            <h6 class="text-white small fw-bold mb-0">Main Warehouse</h6>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25" style="font-size:0.6rem;">DEFAULT</span>
+                                        </div>
+                                        <p class="text-white-50 mb-0" style="font-size:0.78rem;">123 Logistics Park, Marine Drive, Mumbai, Maharashtra 400001</p>
+                                        <span class="text-white-50" style="font-size:0.68rem;"><i class="fas fa-phone me-1"></i>+91 22 2345 6789</span>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-link text-white-50 p-0"><i class="fas fa-edit"></i></button>
+                                        <button class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-trash"></i></button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="border border-secondary border-opacity-25 rounded p-3 bg-dark">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="text-white small fw-bold mb-1">Delhi Distribution Center</h6>
-                                    <p class="text-white-50 x-small mb-0">Sector 15, Industrial Area, New Delhi 110015</p>
-                                </div>
-                                <div>
-                                    <button class="btn btn-sm btn-link text-white-50"><i class="fas fa-edit"></i></button>
-                                    <button class="btn btn-sm btn-link text-danger"><i class="fas fa-trash"></i></button>
+                            <div class="address-card">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="text-white small fw-bold mb-1">Delhi Distribution Center</h6>
+                                        <p class="text-white-50 mb-0" style="font-size:0.78rem;">Sector 15, Industrial Area, Phase-I, New Delhi 110015</p>
+                                        <span class="text-white-50" style="font-size:0.68rem;"><i class="fas fa-phone me-1"></i>+91 11 4567 8901</span>
+                                    </div>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-link text-white-50 p-0"><i class="fas fa-edit"></i></button>
+                                        <button class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-trash"></i></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
+                <!-- RIGHT COLUMN -->
                 <div class="col-lg-4">
-                    <div class="card-enterprise p-4">
-                        <h5 class="text-white fw-bold mb-3">Account</h5>
-                        <a href="profile.html" class="btn btn-outline-primary w-100 mb-2">Edit Profile</a>
-                        <button class="btn btn-outline-danger w-100">Change Password</button>
+                    <!-- Account Security -->
+                    <div class="settings-card mb-4">
+                        <h6><i class="fas fa-shield-alt text-success"></i> Account & Security</h6>
+                        <div class="d-flex flex-column gap-3">
+                            <a href="profile.html" class="btn btn-outline-primary w-100 rounded-pill text-start d-flex align-items-center gap-2">
+                                <i class="fas fa-user-edit" style="width: 20px;"></i>Edit Full Profile
+                            </a>
+                            <button class="btn btn-outline-warning w-100 rounded-pill text-start d-flex align-items-center gap-2" onclick="changePassword()">
+                                <i class="fas fa-key" style="width: 20px;"></i>Change Password
+                            </button>
+                            <button class="btn btn-outline-info w-100 rounded-pill text-start d-flex align-items-center gap-2" onclick="setup2FA()">
+                                <i class="fas fa-mobile-alt" style="width: 20px;"></i>Two-Factor Auth
+                                <span class="ms-auto badge bg-warning text-dark" style="font-size:0.6rem;">OFF</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- KYC Status -->
+                    <div class="settings-card mb-4">
+                        <h6><i class="fas fa-id-card text-warning"></i> Verification Status</h6>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="d-flex justify-content-between align-items-center py-2">
+                                <span class="text-white-50 small">ID Proof</span>
+                                <span class="badge bg-secondary" style="font-size:0.68rem;" id="kyc-id">Not Uploaded</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center py-2" style="border-top: 1px solid rgba(255,255,255,0.04);">
+                                <span class="text-white-50 small">PAN Card</span>
+                                <span class="badge bg-secondary" style="font-size:0.68rem;" id="kyc-pan">Not Uploaded</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center py-2" style="border-top: 1px solid rgba(255,255,255,0.04);">
+                                <span class="text-white-50 small">Address Proof</span>
+                                <span class="badge bg-secondary" style="font-size:0.68rem;" id="kyc-address">Not Uploaded</span>
+                            </div>
+                            <a href="documents.html" class="btn btn-sm btn-outline-warning rounded-pill w-100 mt-2">
+                                <i class="fas fa-arrow-right me-1"></i>Go to Documents
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Shipment Stats -->
+                    <div class="settings-card mb-4">
+                        <h6><i class="fas fa-chart-bar text-info"></i> Account Overview</h6>
+                        <div class="d-flex flex-column gap-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-white-50 small">Total Shipments</span>
+                                <span class="text-white fw-bold" id="stat-total">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-white-50 small">Active / In Transit</span>
+                                <span class="text-info fw-bold" id="stat-active">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-white-50 small">Completed</span>
+                                <span class="text-success fw-bold" id="stat-completed">--</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-white-50 small">Member Since</span>
+                                <span class="text-white-50 small" id="stat-joined">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Danger Zone -->
+                    <div class="settings-card danger-zone">
+                        <h6><i class="fas fa-exclamation-triangle text-danger"></i> Danger Zone</h6>
+                        <p class="text-white-50 small mb-3">Irreversible actions. Proceed with extreme caution.</p>
+                        <button class="btn btn-outline-danger btn-sm w-100 rounded-pill mb-2" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt me-1"></i>Sign Out of All Devices
+                        </button>
+                        <button class="btn btn-danger btn-sm w-100 rounded-pill opacity-75" onclick="deleteAccount()">
+                            <i class="fas fa-trash me-1"></i>Delete Account
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
-    <script src="script.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Simple User Init
-        const name = localStorage.getItem('userName') || 'User';
-        document.getElementById('user-name-display').innerText = name;
-        document.getElementById('user-avatar').innerText = name.charAt(0);
+        const API = `http://${window.location.hostname}:3000`;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
+                const data = await res.json();
+                if (!data.success) { window.location.href = 'auth.html'; return; }
+
+                const u = data.user;
+                const name = u.name || 'User';
+                const email = u.email || '';
+
+                // Sidebar
+                document.getElementById('user-name-display').innerText = name;
+                document.getElementById('user-email-display').innerText = email;
+                document.getElementById('user-avatar').innerText = name[0].toUpperCase();
+
+                // Profile section
+                document.getElementById('profile-avatar-big').innerText = name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                document.getElementById('profile-name-display').innerText = name;
+                document.getElementById('profile-email-display').innerText = email;
+                document.getElementById('profile-role-badge').innerText = u.role || 'User';
+                document.getElementById('set-name').value = name;
+                document.getElementById('set-email').value = email;
+                document.getElementById('set-phone').value = u.phone || '';
+                document.getElementById('set-company').value = u.company_name || '';
+
+                // Join date
+                if (u.created_at) {
+                    document.getElementById('stat-joined').innerText = new Date(u.created_at).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                }
+
+                // Load preferences from localStorage
+                loadSavedPreferences();
+
+                // Load stats
+                loadShipmentStats();
+
+                // Load KYC status
+                loadKYCStatus();
+
+            } catch (e) {
+                window.location.href = 'auth.html';
+            }
+        });
+
+        function loadSavedPreferences() {
+            const prefs = JSON.parse(localStorage.getItem('smartship_settings') || '{}');
+            if (prefs.currency) document.getElementById('set-currency').value = prefs.currency;
+            if (prefs.timezone) document.getElementById('set-timezone').value = prefs.timezone;
+            if (prefs.language) document.getElementById('set-language').value = prefs.language;
+            if (prefs.weight) document.getElementById('set-weight').value = prefs.weight;
+            if (prefs.notifEmail !== undefined) document.getElementById('notif-email').checked = prefs.notifEmail;
+            if (prefs.notifSms !== undefined) document.getElementById('notif-sms').checked = prefs.notifSms;
+            if (prefs.notifMarketing !== undefined) document.getElementById('notif-marketing').checked = prefs.notifMarketing;
+            if (prefs.notifPush !== undefined) document.getElementById('notif-push').checked = prefs.notifPush;
+        }
+
+        function saveAllSettings() {
+            const prefs = {
+                currency: document.getElementById('set-currency').value,
+                timezone: document.getElementById('set-timezone').value,
+                language: document.getElementById('set-language').value,
+                weight: document.getElementById('set-weight').value,
+                notifEmail: document.getElementById('notif-email').checked,
+                notifSms: document.getElementById('notif-sms').checked,
+                notifMarketing: document.getElementById('notif-marketing').checked,
+                notifPush: document.getElementById('notif-push').checked
+            };
+            localStorage.setItem('smartship_settings', JSON.stringify(prefs));
+
+            // Show save indicator
+            const indicator = document.getElementById('save-indicator');
+            indicator.classList.add('show');
+            setTimeout(() => indicator.classList.remove('show'), 2500);
+        }
+
+        async function loadShipmentStats() {
+            try {
+                const res = await fetch(`${API}/api/shipment/list`, { credentials: 'include' });
+                const data = await res.json();
+                if (data.success) {
+                    const s = data.shipments || [];
+                    document.getElementById('stat-total').innerText = s.length;
+                    document.getElementById('stat-active').innerText = s.filter(x => ['In Transit', 'At Origin Port', 'Booked', 'Cargo Ready'].includes(x.status)).length;
+                    document.getElementById('stat-completed').innerText = s.filter(x => x.status === 'Delivered').length;
+                }
+            } catch (e) { }
+        }
+
+        async function loadKYCStatus() {
+            try {
+                const res = await fetch(`${API}/api/kyc/status`, { credentials: 'include' });
+                const data = await res.json();
+                if (data.success && data.documents) {
+                    data.documents.forEach(doc => {
+                        const colors = { Approved: 'bg-success', Pending: 'bg-warning', Rejected: 'bg-danger' };
+                        const cls = colors[doc.status] || 'bg-secondary';
+                        let targetId = '';
+                        if (doc.doc_type.includes('ID')) targetId = 'kyc-id';
+                        else if (doc.doc_type.includes('PAN')) targetId = 'kyc-pan';
+                        else if (doc.doc_type.includes('Address')) targetId = 'kyc-address';
+                        if (targetId) {
+                            const el = document.getElementById(targetId);
+                            el.className = `badge ${cls}`;
+                            el.style.fontSize = '0.68rem';
+                            el.innerText = doc.status;
+                        }
+                    });
+                }
+            } catch (e) { }
+        }
+
+        function changePassword() {
+            alert('Password change functionality will redirect to your authentication provider.');
+        }
+
+        function setup2FA() {
+            alert('Two-Factor Authentication setup will be available in the next update.');
+        }
+
+        function addAddress() {
+            alert('Address book management coming soon. Currently supports up to 5 saved locations.');
+        }
+
+        function handleLogout() {
+            if (!confirm('Sign out of all devices? You will need to log in again.')) return;
+            fetch(`${API}/api/auth/logout`, { method: 'POST', credentials: 'include' })
+                .then(() => window.location.href = 'auth.html');
+        }
+
+        function deleteAccount() {
+            alert('Account deletion requires contacting support. Email: support@smartship.com');
+        }
     </script>
 </body>
 

@@ -3,48 +3,162 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>MyFinance | Smart Shipping</title>
+    <title>Billing & Invoices | Smart Shipping</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="dashboard.css">
     <script src="auth-guard.js"></script>
-    <script src="export-tools.js"></script>
+    <style>
+        .finance-kpi {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 20px 24px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .finance-kpi:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .finance-kpi .kpi-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .finance-kpi .kpi-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.45);
+            margin-bottom: 4px;
+        }
+
+        .finance-kpi .kpi-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .invoice-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .invoice-table th {
+            background: rgba(10, 22, 38, 0.5);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .invoice-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            vertical-align: middle;
+            font-size: 0.88rem;
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        .invoice-table tr:hover td {
+            background: rgba(59, 130, 246, 0.04);
+        }
+
+        .history-item {
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            padding: 12px;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .history-dot {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: rgba(255, 255, 255, 0.35);
+        }
+
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+    </style>
 </head>
 
-<body>
+<body class="dashboard-page">
 
-    <!-- Enterprise Sidebar -->
-    <aside class="sidebar" style="position: fixed; left: 0; top: 0; bottom: 0; width: 250px; z-index: 1000;">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
         <div class="brand-section">
             <a href="index.html" class="text-decoration-none">
                 <h4 class="fw-bold text-white mb-0"><i class="fas fa-ship me-2 text-primary"></i>SmartShip</h4>
             </a>
-            <span class="text-xs text-muted">ENTERPRISE</span>
+            <span class="text-xs text-white-50">ENTERPRISE</span>
         </div>
 
         <nav class="d-flex flex-column gap-1">
-            <a href="shipments.html" class="nav-item-dash ">
-                <i class="fas fa-th-large w-5"></i> Dashboard
-            </a>
+            <a href="shipments.html" class="nav-item-dash"><i class="fas fa-th-large w-5"></i> Dashboard</a>
             <a href="wizard.html" class="nav-item-dash"><i class="fas fa-plus-circle w-5"></i> New Booking</a>
-            <a href="track.html" class="nav-item-dash "><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
-            <a href="documents.html" class="nav-item-dash "><i class="fas fa-folder-open w-5"></i> Documents</a>
-            <a href="schedules.html" class="nav-item-dash "><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
+            <a href="track.html" class="nav-item-dash"><i class="fas fa-map-marked-alt w-5"></i> Live Tracking</a>
+            <a href="documents.html" class="nav-item-dash"><i class="fas fa-folder-open w-5"></i> Documents</a>
+            <a href="schedules.html" class="nav-item-dash"><i class="fas fa-calendar-alt w-5"></i> Schedules</a>
             <hr class="border-secondary opacity-25 my-3">
-            <a href="finance.html" class="nav-item-dash active"><i class="fas fa-file-invoice-dollar w-5"></i> Billing</a>
-            <a href="support.html" class="nav-item-dash "><i class="fas fa-headset w-5"></i> Support</a>
-            <a href="settings.html" class="nav-item-dash "><i class="fas fa-cog w-5"></i> Settings</a>
+            <a href="finance.html" class="nav-item-dash active"><i class="fas fa-file-invoice-dollar w-5"></i>
+                Billing</a>
+            <a href="support.html" class="nav-item-dash"><i class="fas fa-headset w-5"></i> Support</a>
+            <a href="settings.html" class="nav-item-dash"><i class="fas fa-cog w-5"></i> Settings</a>
         </nav>
 
         <div class="mt-auto pt-4 border-top border-secondary border-opacity-10">
             <div class="d-flex align-items-center gap-2">
                 <div id="user-avatar"
                     class="bg-primary rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
-                    style="width: 32px; height: 32px;">U</div>
+                    style="width:32px;height:32px;">U</div>
                 <div class="d-grid">
                     <span id="user-name-display" class="text-white text-sm fw-bold">User</span>
                 </div>
@@ -52,210 +166,428 @@
         </div>
     </aside>
 
-    <div class="container-fluid px-4 py-5" style="margin-left: 250px; width: auto;">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- MAIN CONTENT -->
+    <main class="dashboard-main">
+        <header class="dashboard-header">
             <div>
-                <h2 class="text-white fw-bold mb-1">MyFinance</h2>
-                <p class="text-white-50 small">Manage invoices, payments, and disputes.</p>
+                <h4 class="text-white fw-bold mb-0"><i class="fas fa-file-invoice-dollar me-2 text-success"></i>Billing
+                    & Payments</h4>
             </div>
-            <div class="dropdown">
-                <button class="btn btn-primary rounded-pill dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-download me-2"></i>Statement of Account
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="loadFinanceData()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
                 </button>
-                <ul class="dropdown-menu dropdown-menu-dark shadow">
-                    <li><a class="dropdown-item" href="#" onclick="exportFinanceData('csv')"><i class="fas fa-file-csv me-2 text-success"></i>Download CSV</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportFinanceData('pdf')"><i class="fas fa-file-pdf me-2 text-danger"></i>Download PDF</a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportFinanceData('docx')"><i class="fas fa-file-word me-2 text-primary"></i>Download DOCX</a></li>
-                </ul>
+                <button class="btn btn-sm btn-primary rounded-pill px-3" onclick="exportStatement()">
+                    <i class="fas fa-download me-1"></i>Download Statement
+                </button>
             </div>
-        </div>
+        </header>
 
-        <!-- Summary Cards -->
-        <div class="row g-4 mb-5">
-            <div class="col-md-3">
-                <div class="card-enterprise p-4">
-                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Total Paid</h6>
-                    <h2 class="text-white fw-bold mb-0" id="summary-total-paid">Loading...</h2>
-                    <p class="text-success small mt-2 mb-0"><i class="fas fa-check-circle me-1"></i> Completed</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card-enterprise p-4">
-                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Pending Due</h6>
-                    <h2 class="text-warning fw-bold mb-0" id="summary-total-due">--</h2>
-                    <p class="text-white-50 small mt-2 mb-0">Action Required</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card-enterprise p-4">
-                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Total Invoices</h6>
-                    <h2 class="text-white fw-bold mb-0" id="summary-invoice-count">--</h2>
-                    <p class="text-white-50 small mt-2 mb-0">All Time</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card-enterprise p-4">
-                    <h6 class="text-white-50 text-uppercase small ls-1 mb-2">Active Disputes</h6>
-                    <h2 class="text-white fw-bold mb-0" id="summary-dispute-count">0</h2>
-                    <p id="dispute-status" class="text-success small mt-2 mb-0"><i class="fas fa-check-circle me-1"></i> All clear</p>
-                </div>
-            </div>
-        </div>
+        <div class="p-4" style="overflow-y: auto; flex: 1;">
 
-        <div class="row g-4">
-            <!-- Invoices Table -->
-            <div class="col-lg-8">
-                <div class="card-enterprise p-4 mb-4">
-                    <h5 class="text-white fw-bold mb-4">Invoices & Billing</h5>
-                    <div class="table-responsive">
-                        <table class="table table-dark table-hover mb-0 align-middle">
-                            <thead class="bg-dark text-white-50 small text-uppercase">
-                                <tr>
-                                    <th>Ref #</th>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                    <th class="text-end">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="invoices-body">
-                                <tr><td colspan="5" class="text-center py-4">Loading Invoices...</td></tr>
-                            </tbody>
-                        </table>
+            <!-- KPI Cards -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3">
+                    <div class="finance-kpi">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="kpi-label">Total Paid</div>
+                                <div class="kpi-value text-success" id="kpi-total-paid">--</div>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(34,197,94,0.12);">
+                                <i class="fas fa-check-circle text-success"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-success" style="font-size: 0.72rem; font-weight: 600;">
+                            <i class="fas fa-check me-1"></i>Completed payments
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="finance-kpi">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="kpi-label">Pending Due</div>
+                                <div class="kpi-value text-warning" id="kpi-pending-due">--</div>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(245,158,11,0.12);">
+                                <i class="fas fa-clock text-warning"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-warning" style="font-size: 0.72rem; font-weight: 600;">
+                            <i class="fas fa-exclamation-circle me-1"></i>Action required
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="finance-kpi">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="kpi-label">Total Invoices</div>
+                                <div class="kpi-value text-info" id="kpi-invoice-count">--</div>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(59,130,246,0.12);">
+                                <i class="fas fa-file-invoice text-info"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-white-50" style="font-size: 0.72rem; font-weight: 600;">All time
+                            records</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="finance-kpi">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="kpi-label">Active Disputes</div>
+                                <div class="kpi-value" style="color: #a78bfa;" id="kpi-dispute-count">0</div>
+                            </div>
+                            <div class="kpi-icon" style="background: rgba(167,139,250,0.12);">
+                                <i class="fas fa-gavel" style="color: #a78bfa;"></i>
+                            </div>
+                        </div>
+                        <div class="mt-2" id="dispute-label"
+                            style="font-size: 0.72rem; font-weight: 600; color: #22c55e;">
+                            <i class="fas fa-check-circle me-1"></i>All clear
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- History Section -->
-            <div class="col-lg-4">
-                <div class="card-enterprise p-4">
-                    <h5 class="text-white fw-bold mb-4">Financial History</h5>
-                    <div id="history-timeline" class="d-flex flex-column gap-3">
-                        <div class="text-center py-5 text-white-50 small">Loading History...</div>
+            <div class="row g-4">
+                <!-- Invoices Table -->
+                <div class="col-lg-8">
+                    <div class="card-enterprise p-0" style="overflow: hidden;">
+                        <div class="p-3 border-bottom border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
+                            <h6 class="text-white fw-bold mb-0"><i class="fas fa-receipt me-2 text-info"></i>Invoices &
+                                Billing</h6>
+                            <input type="text" id="invoice-search" class="form-control form-control-sm bg-dark text-white border-secondary"
+                                placeholder="Search invoices..." style="max-width: 200px; font-size: 0.8rem;"
+                                oninput="filterInvoices(this.value)">
+                        </div>
+                        <div class="table-responsive">
+                            <table class="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th>Invoice #</th>
+                                        <th>Date</th>
+                                        <th>Shipment</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoices-body">
+                                    <tr>
+                                        <td colspan="6">
+                                            <div class="text-center py-5">
+                                                <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                                                <span class="text-white-50">Loading billing data...</span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Shipment Cost Breakdown (from real shipments) -->
+                    <div class="card-enterprise p-4 mt-4">
+                        <h6 class="text-white fw-bold mb-3"><i class="fas fa-chart-pie me-2 text-warning"></i>Shipment
+                            Costs</h6>
+                        <div id="shipment-costs-list" class="d-flex flex-column gap-2">
+                            <div class="text-center py-3 text-white-50 small">Loading costs...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- History Timeline -->
+                <div class="col-lg-4">
+                    <div class="card-enterprise p-4 mb-4">
+                        <h6 class="text-white fw-bold mb-3"><i class="fas fa-history me-2 text-primary"></i>Activity
+                            Timeline</h6>
+                        <div id="history-timeline" class="d-flex flex-column gap-1"
+                            style="max-height: 380px; overflow-y: auto;">
+                            <div class="text-center py-4 text-white-50 small">Loading history...</div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Help -->
+                    <div class="card-enterprise p-4">
+                        <h6 class="text-white fw-bold mb-3"><i class="fas fa-question-circle me-2 text-info"></i>Billing Help</h6>
+                        <div class="d-flex flex-column gap-2">
+                            <a href="support.html" class="d-flex align-items-center gap-2 text-decoration-none text-white-50 small p-2 rounded hover-glow"
+                                style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px;">
+                                <i class="fas fa-headset text-info"></i>
+                                <span>Raise a billing dispute</span>
+                            </a>
+                            <a href="documents.html" class="d-flex align-items-center gap-2 text-decoration-none text-white-50 small p-2 rounded hover-glow"
+                                style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px;">
+                                <i class="fas fa-folder-open text-warning"></i>
+                                <span>View uploaded documents</span>
+                            </a>
+                            <a href="settings.html" class="d-flex align-items-center gap-2 text-decoration-none text-white-50 small p-2 rounded hover-glow"
+                                style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px;">
+                                <i class="fas fa-cog text-success"></i>
+                                <span>Payment preferences</span>
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const API_URL = `http://${window.location.hostname}:3000`;
+        const API = `http://${window.location.hostname}:3000`;
+        let allInvoices = [];
 
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const res = await fetch(`${API_URL}/api/auth/me`, { credentials: 'include' });
+                const res = await fetch(`${API}/api/auth/me`, { credentials: 'include' });
                 const data = await res.json();
                 if (!data.success) { window.location.href = 'auth.html'; return; }
-
                 const name = data.user.name || 'User';
-                const displayEl = document.getElementById('user-name-display');
-                const avatarEl = document.getElementById('user-avatar');
-                if (displayEl) displayEl.innerText = name;
-                if (avatarEl) avatarEl.innerText = name.charAt(0).toUpperCase();
+                document.getElementById('user-name-display').innerText = name;
+                document.getElementById('user-avatar').innerText = name[0].toUpperCase();
+            } catch (e) { window.location.href = 'auth.html'; return; }
 
-                const urlParams = new URLSearchParams(window.location.search);
-                const filterId = urlParams.get('shipmentId');
-                loadFinanceOverview(filterId);
-            } catch (err) {
-                window.location.href = 'auth.html';
-            }
+            loadFinanceData();
         });
 
-        async function loadFinanceOverview(filterId = null) {
+        async function loadFinanceData() {
             const tbody = document.getElementById('invoices-body');
-            const historyList = document.getElementById('history-timeline');
-            
+            const historyEl = document.getElementById('history-timeline');
+            const costsEl = document.getElementById('shipment-costs-list');
+
+            // Try the comprehensive overview endpoint first
             try {
-                const res = await fetch(`${API_URL}/api/finance/overview`, { credentials: 'include' });
+                const res = await fetch(`${API}/api/finance/overview`, { credentials: 'include' });
                 const data = await res.json();
-                if (!data.success) return;
-                
-                window.FINANCE_INVOICES = data.invoices;
 
-                // 1. Update Summary
-                document.getElementById('summary-total-paid').innerText = `₹${data.summary.totalPaid.toLocaleString('en-IN')}`;
-                document.getElementById('summary-total-due').innerText = `₹${data.summary.totalDue.toLocaleString('en-IN')}`;
-                document.getElementById('summary-invoice-count').innerText = data.summary.invoiceCount;
-                document.getElementById('summary-dispute-count').innerText = data.summary.disputeCount;
-                
-                if (data.summary.disputeCount > 0) {
-                    const el = document.getElementById('dispute-status');
-                    el.className = "text-warning small mt-2 mb-0";
-                    el.innerHTML = `<i class="fas fa-exclamation-circle me-1"></i> Active inquiries`;
+                if (data.success) {
+                    // KPI Cards
+                    document.getElementById('kpi-total-paid').innerText = formatCurrency(data.summary?.totalPaid || 0);
+                    document.getElementById('kpi-pending-due').innerText = formatCurrency(data.summary?.totalDue || 0);
+                    document.getElementById('kpi-invoice-count').innerText = data.summary?.invoiceCount || 0;
+                    document.getElementById('kpi-dispute-count').innerText = data.summary?.disputeCount || 0;
+
+                    if ((data.summary?.disputeCount || 0) > 0) {
+                        const dl = document.getElementById('dispute-label');
+                        dl.style.color = '#fbbf24';
+                        dl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Active inquiries';
+                    }
+
+                    allInvoices = data.invoices || [];
+                    renderInvoices(allInvoices);
+                    renderHistory(data.history || []);
+                    loadShipmentCosts();
+                    return;
                 }
+            } catch (e) {
+                console.warn('Overview endpoint failed, falling back to shipments:', e);
+            }
 
-                // 2. Render Invoices
-                if (data.invoices.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-white-50">No invoices found.</td></tr>';
+            // FALLBACK: Generate invoices from shipments if finance tables don't exist
+            try {
+                const shipRes = await fetch(`${API}/api/shipment/list`, { credentials: 'include' });
+                const shipData = await shipRes.json();
+
+                if (shipData.success && shipData.shipments?.length) {
+                    const shipments = shipData.shipments;
+                    let totalPaid = 0, totalDue = 0;
+
+                    allInvoices = shipments.map((s, idx) => {
+                        const amt = parseFloat(s.estimated_cost || 0);
+                        const isPaid = s.status === 'Delivered' || s.payment_status === 'paid';
+                        if (isPaid) totalPaid += amt; else totalDue += amt;
+
+                        return {
+                            id: s.id,
+                            invoice_number: `INV-${String(s.id).padStart(4, '0')}`,
+                            shipment_id: s.id,
+                            amount: amt,
+                            status: isPaid ? 'Paid' : 'Pending',
+                            created_at: s.created_at,
+                            due_date: s.preferred_shipping_date || s.created_at,
+                            origin_address: s.origin_address,
+                            destination_address: s.destination_address
+                        };
+                    });
+
+                    document.getElementById('kpi-total-paid').innerText = formatCurrency(totalPaid);
+                    document.getElementById('kpi-pending-due').innerText = formatCurrency(totalDue);
+                    document.getElementById('kpi-invoice-count').innerText = allInvoices.length;
+
+                    renderInvoices(allInvoices);
+
+                    // Build history from shipments
+                    const history = shipments.map(s => ({
+                        type: s.status === 'Delivered' ? 'Payment' : 'Invoice',
+                        date: s.created_at,
+                        amount: s.estimated_cost || 0,
+                        status: s.status,
+                        ref: `#${s.user_prefix || 'SS'}-${s.id}`,
+                        origin: s.origin_address || '—',
+                        dest: s.destination_address || '—'
+                    })).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    renderHistory(history);
+                    renderShipmentCosts(shipments);
                 } else {
-                    let displayInvoices = data.invoices;
-                    if (filterId) displayInvoices = data.invoices.filter(i => String(i.shipment_id) === String(filterId));
-
-                    tbody.innerHTML = displayInvoices.map(inv => {
-                        const statusColors = { Completed: 'success', Paid: 'success', Pending: 'warning', Overdue: 'danger' };
-                        const color = statusColors[inv.status] || 'secondary';
-                        return `
-                            <tr>
-                                <td class="fw-bold text-white">${inv.invoice_number}</td>
-                                <td class="text-white-50">${new Date(inv.created_at).toLocaleDateString()}</td>
-                                <td class="text-white">₹${parseFloat(inv.amount).toLocaleString('en-IN')}</td>
-                                <td><span class="badge bg-${color} bg-opacity-10 text-${color} border border-${color} border-opacity-25 px-2 rounded-pill">${inv.status}</span></td>
-                                <td class="text-end">
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="viewReceipt(${inv.shipment_id})">View</button>
-                                </td>
-                            </tr>
-                        `;
-                    }).join('');
+                    renderEmpty(tbody, 6, 'No billing data found. Complete a booking to see invoices.');
+                    historyEl.innerHTML = '<div class="empty-state"><i class="fas fa-file-invoice d-block"></i><p class="small">No activity yet</p></div>';
                 }
-
-                // 3. Render History Timeline
-                if (data.history.length === 0) {
-                    historyList.innerHTML = '<div class="text-center py-5 text-white-50 opacity-50">No activity yet</div>';
-                } else {
-                    historyList.innerHTML = data.history.map(h => `
-                        <div class="d-flex gap-3 align-items-start p-2 rounded-3 hover-glow">
-                            <div class="bg-${h.type === 'Payment' ? 'success' : 'primary'} bg-opacity-10 text-${h.type === 'Payment' ? 'success' : 'primary'} rounded-circle d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; min-width: 32px;">
-                                <i class="fas ${h.type === 'Payment' ? 'fa-check' : 'fa-file-invoice'} small"></i>
-                            </div>
-                            <div class="d-grid overflow-hidden">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <span class="text-white small fw-bold">${h.type}: ${h.ref}</span>
-                                    <span class="text-white-50 x-small">${new Date(h.date).toLocaleDateString()}</span>
-                                </div>
-                                <div class="text-white-50 x-small text-truncate">${h.origin} ➔ ${h.dest}</div>
-                                <div class="fw-bold x-small ${h.type === 'Payment' ? 'text-success' : 'text-white'}">₹${parseFloat(h.amount).toLocaleString('en-IN')}</div>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-
             } catch (err) {
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load overview.</td></tr>';
+                renderEmpty(tbody, 6, 'Error loading billing data. Check server connection.');
             }
         }
 
-        function viewReceipt(shipmentId) {
+        function renderInvoices(invoices) {
+            const tbody = document.getElementById('invoices-body');
+            if (!invoices.length) {
+                renderEmpty(tbody, 6, 'No invoices found. Complete a shipment booking to generate invoices.');
+                return;
+            }
+
+            tbody.innerHTML = invoices.map(inv => {
+                const colors = { Paid: 'success', Completed: 'success', Pending: 'warning', Overdue: 'danger' };
+                const c = colors[inv.status] || 'secondary';
+                const dateStr = new Date(inv.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                return `<tr>
+                    <td class="fw-bold text-white font-monospace">${inv.invoice_number || 'INV-' + inv.id}</td>
+                    <td>${dateStr}</td>
+                    <td><span class="text-info fw-bold">Shipment #${inv.shipment_id || '—'}</span></td>
+                    <td class="fw-bold text-white">${formatCurrency(inv.amount)}</td>
+                    <td><span class="status-badge" style="background: var(--bs-${c}); background: rgba(var(--bs-${c}-rgb), 0.12); color: var(--bs-${c}); border: 1px solid rgba(var(--bs-${c}-rgb), 0.3);">${inv.status}</span></td>
+                    <td class="text-end">
+                        ${inv.status !== 'Paid' && inv.status !== 'Completed'
+                        ? `<button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="payInvoice(${inv.id})"><i class="fas fa-credit-card me-1"></i>Pay</button>`
+                        : `<button class="btn btn-sm btn-link text-white-50 text-decoration-none" onclick="viewInvoice(${inv.shipment_id})"><i class="fas fa-eye me-1"></i>View</button>`}
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderHistory(history) {
+            const el = document.getElementById('history-timeline');
+            if (!history.length) {
+                el.innerHTML = '<div class="empty-state"><i class="fas fa-clock d-block"></i><p class="small">No activity yet</p></div>';
+                return;
+            }
+
+            el.innerHTML = history.slice(0, 20).map(h => {
+                const isPay = h.type === 'Payment';
+                const color = isPay ? 'success' : 'primary';
+                const icon = isPay ? 'fa-check' : 'fa-file-invoice';
+                const dateStr = new Date(h.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+
+                return `<div class="history-item">
+                    <div class="history-dot" style="background: rgba(var(--bs-${color}-rgb), 0.15);">
+                        <i class="fas ${icon} text-${color}"></i>
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-white small fw-bold">${h.ref}</span>
+                            <span class="text-white-50" style="font-size: 0.68rem;">${dateStr}</span>
+                        </div>
+                        <div class="text-white-50" style="font-size: 0.72rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${h.origin} → ${h.dest}</div>
+                        <span class="fw-bold ${isPay ? 'text-success' : 'text-white'}" style="font-size: 0.78rem;">${formatCurrency(h.amount)}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        async function loadShipmentCosts() {
+            try {
+                const res = await fetch(`${API}/api/shipment/list`, { credentials: 'include' });
+                const data = await res.json();
+                if (data.success) renderShipmentCosts(data.shipments || []);
+            } catch (e) {
+                document.getElementById('shipment-costs-list').innerHTML = '<div class="text-center text-white-50 small py-2">Could not load costs</div>';
+            }
+        }
+
+        function renderShipmentCosts(shipments) {
+            const el = document.getElementById('shipment-costs-list');
+            if (!shipments.length) {
+                el.innerHTML = '<div class="text-center text-white-50 small py-2">No shipments found</div>';
+                return;
+            }
+
+            el.innerHTML = shipments.slice(0, 10).map(s => {
+                const cost = parseFloat(s.estimated_cost || 0);
+                const isPaid = s.status === 'Delivered' || s.payment_status === 'paid';
+                const color = isPaid ? 'success' : 'warning';
+
+                return `<div class="d-flex justify-content-between align-items-center p-2 rounded" style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 10px;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-ship text-${color}" style="font-size: 0.85rem;"></i>
+                        <div>
+                            <span class="text-white small fw-bold">#${s.user_prefix || 'SS'}-${s.id}</span>
+                            <div class="text-white-50" style="font-size: 0.68rem;">${(s.origin_address || '—').substring(0, 15)} → ${(s.destination_address || '—').substring(0, 15)}</div>
+                        </div>
+                    </div>
+                    <div class="text-end">
+                        <div class="text-white fw-bold small">${formatCurrency(cost)}</div>
+                        <span class="text-${color}" style="font-size: 0.65rem; font-weight: 700;">${isPaid ? '✓ PAID' : '⏳ PENDING'}</span>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterInvoices(query) {
+            const q = query.toLowerCase();
+            const filtered = allInvoices.filter(i =>
+                (i.invoice_number || '').toLowerCase().includes(q) ||
+                String(i.shipment_id || '').includes(q) ||
+                (i.status || '').toLowerCase().includes(q)
+            );
+            renderInvoices(filtered);
+        }
+
+        function renderEmpty(tbody, cols, msg) {
+            tbody.innerHTML = `<tr><td colspan="${cols}"><div class="empty-state"><i class="fas fa-file-invoice d-block"></i><p class="small">${msg}</p></div></td></tr>`;
+        }
+
+        function formatCurrency(amount) {
+            return '₹' + parseFloat(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        }
+
+        async function payInvoice(id) {
+            if (!confirm('Simulate payment for this invoice?')) return;
+            try {
+                const res = await fetch(`${API}/api/finance/pay`, {
+                    method: 'POST', credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ invoiceId: id })
+                });
+                const d = await res.json();
+                if (d.success) { alert('Payment processed!'); loadFinanceData(); }
+                else alert('Payment failed: ' + (d.message || 'Unknown'));
+            } catch (e) { alert('Network error'); }
+        }
+
+        function viewInvoice(shipmentId) {
             window.location.href = `documents.html?shipmentId=${shipmentId}`;
         }
 
-        function exportFinanceData(type) {
-            if (!window.FINANCE_INVOICES || !window.FINANCE_INVOICES.length) return alert('No data to export.');
-            
-            // Format data for export
-            const exportData = window.FINANCE_INVOICES.map(i => ({
-                'Invoice Ref': i.invoice_number,
-                'Shipment ID': i.shipment_id,
-                'Amount (INR)': parseFloat(i.amount).toFixed(2),
-                'Status': i.status,
-                'Date Issued': new Date(i.created_at).toLocaleDateString(),
-                'Due Date': i.due_date ? new Date(i.due_date).toLocaleDateString() : 'N/A'
-            }));
-
-            if (type === 'csv') ExportTools.downloadCSV(exportData, 'Finance_Statement');
-            else if (type === 'pdf') ExportTools.downloadPDF(exportData, 'Finance_Statement', 'Statement of Account');
-            else if (type === 'docx') ExportTools.downloadDOCX(exportData, 'Finance_Statement', 'Statement of Account');
+        function exportStatement() {
+            if (!allInvoices.length) return alert('No data to export.');
+            let csv = 'Invoice #,Shipment ID,Amount (INR),Status,Date\n';
+            allInvoices.forEach(i => {
+                csv += `${i.invoice_number || 'INV-' + i.id},${i.shipment_id || ''},${i.amount || 0},${i.status || ''},${new Date(i.created_at).toLocaleDateString()}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SmartShip_Statement_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
+
 </html>

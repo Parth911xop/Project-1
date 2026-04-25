@@ -645,201 +645,6 @@
             background: #0f172a;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        }
-
-        .admin-modal h5 {
-            font-weight: 800;
-            font-size: 1rem;
-            color: #fff;
-            margin-bottom: 20px;
-        }
-
-        .admin-modal label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: rgba(255, 255, 255, 0.5);
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 5px;
-            margin-top: 14px;
-        }
-
-        .admin-modal input,
-        .admin-modal select,
-        .admin-modal textarea {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-radius: 8px;
-            padding: 9px 12px;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-        }
-
-        .admin-modal input:focus,
-        .admin-modal select:focus,
-        .admin-modal textarea:focus {
-            outline: none;
-            border-color: rgba(239, 68, 68, 0.5);
-        }
-
-        .admin-modal select option {
-            background: #1a2035;
-        }
-
-        /* Toast */
-        .admin-toast {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .toast-item {
-            background: #131d2e;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 12px 16px;
-            min-width: 260px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            animation: toastIn 0.3s ease;
-        }
-
-        @keyframes toastIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .toast-item.success {
-            border-color: rgba(34, 197, 94, 0.3);
-        }
-
-        .toast-item.error {
-            border-color: rgba(239, 68, 68, 0.3);
-        }
-
-        .toast-item.info {
-            border-color: rgba(59, 130, 246, 0.3);
-        }
-
-        /* Tracking form */
-        .tracking-timeline {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-        }
-
-        .tl-entry {
-            display: flex;
-            gap: 14px;
-            padding-bottom: 18px;
-            position: relative;
-        }
-
-        .tl-entry::before {
-            content: '';
-            position: absolute;
-            left: 13px;
-            top: 24px;
-            width: 2px;
-            height: calc(100% - 8px);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .tl-entry:last-child::before {
-            display: none;
-        }
-
-        .tl-dot {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: rgba(239, 68, 68, 0.2);
-            border: 2px solid var(--admin-accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            font-size: 11px;
-            color: var(--admin-accent);
-        }
-
-        /* Settings form */
-        .settings-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 20px;
-        }
-
-        .setting-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 12px;
-            padding: 20px;
-        }
-
-        .setting-card h6 {
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: rgba(255, 255, 255, 0.4);
-            text-transform: uppercase;
-            margin-bottom: 16px;
-        }
-
-        .setting-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .setting-row:last-child {
-            border-bottom: none;
-        }
-
-        .setting-row label {
-            font-size: 0.83rem;
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .setting-row input,
-        .setting-row select {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-radius: 6px;
-            padding: 5px 10px;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.83rem;
-            width: 120px;
-        }
-
-        .setting-row input:focus,
-        .setting-row select:focus {
-            outline: none;
-            border-color: rgba(239, 68, 68, 0.4);
-        }
-
-        #route-map {
-            height: 500px;
-            border-radius: 12px;
-            background: #0f172a;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
     </style>
 </head>
 
@@ -1233,40 +1038,12 @@
         </section>
 
         <!-- ════════ 7. DOCUMENTS ════════════════════════════════════ -->
-        
-        <!-- ════════ KYC APPROVALS ════════════════════════════════════ -->
-        <section class="admin-section" id="section-kyc" style="display: none;">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h3 class="fw-bold mb-1">KYC Verification</h3>
-                    <p class="text-white-50 small">Review and verify user identity documents for regulatory compliance.</p>
-                </div>
-                <div class="d-flex gap-2">
-                    <select id="kyc-filter" class="form-select admin-input w-auto" onchange="loadPendingKYC()">
-                        <option value="Pending">Pending Review</option>
-                        <option value="Approved">All Approved</option>
-                        <option value="Rejected">All Rejected</option>
-                    </select>
-                    <button class="btn btn-primary rounded-pill px-4" onclick="loadPendingKYC()"><i class="fas fa-sync-alt me-1"></i> Refresh</button>
-                </div>
+        <section class="admin-section" id="section-documents">
+            <div class="section-header">
+                <h2><i class="fas fa-folder-open me-2 text-info"></i> Document Verification</h2>
             </div>
-            
-            <div class="admin-table-container">
-                <table class="table table-dark table-hover mb-0">
-                    <thead>
-                        <tr>
-                            <th>User</th>
-                            <th>Document Type</th>
-                            <th>Link</th>
-                            <th>Submitted At</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="kyc-body"></tbody>
-                </table>
-            </div>
-        </section>
-
+            <div class="admin-table-wrap">
+                <div class="admin-table-header">
                     <input class="admin-search" id="doc-search" placeholder="Search document or uploader..."
                         oninput="filterTable('documents-body','doc-search',[0,1,2])">
                     <select class="admin-select" id="doc-status-filter" onchange="loadDocuments()">
@@ -1292,6 +1069,90 @@
                         <tbody id="documents-body">
                             <tr>
                                 <td colspan="7" class="text-center text-white-50 py-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════ KYC APPROVALS ════════════════════════════════════ -->
+        <section class="admin-section" id="section-kyc">
+            <div class="section-header">
+                <h2><i class="fas fa-id-card me-2 text-warning"></i> KYC Verification</h2>
+                <div class="d-flex gap-2">
+                    <select id="kyc-filter" class="admin-select" onchange="loadPendingKYC()">
+                        <option value="Pending">Pending Review</option>
+                        <option value="Approved">All Approved</option>
+                        <option value="Rejected">All Rejected</option>
+                    </select>
+                    <button class="btn btn-sm btn-outline-warning rounded-pill px-3" onclick="loadPendingKYC()"><i class="fas fa-sync-alt me-1"></i>Refresh</button>
+                </div>
+            </div>
+            <div class="admin-table-wrap">
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Document Type</th>
+                                <th>Link</th>
+                                <th>Submitted At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kyc-body">
+                            <tr>
+                                <td colspan="5" class="text-center text-white-50 py-4">Loading...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ════════ COLLECTIONS / FINANCE ════════════════════════════ -->
+        <section class="admin-section" id="section-finance">
+            <div class="section-header">
+                <h2><i class="fas fa-file-invoice-dollar me-2 text-success"></i> Collections & Payments</h2>
+            </div>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-label">Total Revenue</div>
+                    <div class="kpi-value text-success" id="fin-revenue">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Paid Shipments</div>
+                    <div class="kpi-value text-info" id="fin-paid">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Pending Payments</div>
+                    <div class="kpi-value text-warning" id="fin-pending">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Avg. Collection</div>
+                    <div class="kpi-value" style="color:#a78bfa;" id="fin-avg">--</div>
+                </div>
+            </div>
+            <div class="admin-table-wrap">
+                <div class="admin-table-header">
+                    <span class="text-white fw-bold small">Transaction History</span>
+                    <input class="admin-search" id="finance-search" placeholder="Search transactions..." oninput="filterTable('finance-body','finance-search',[0,1,2])">
+                </div>
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Shipment</th>
+                                <th>Customer</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="finance-body">
+                            <tr>
+                                <td colspan="5" class="text-center text-white-50 py-4">Loading transactions...</td>
                             </tr>
                         </tbody>
                     </table>
