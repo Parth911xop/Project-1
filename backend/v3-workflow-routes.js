@@ -85,7 +85,13 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
                 let isMatch = true;
                 let matchScore = 0;
 
-                if (fromPort && toPort) {
+                // Priority 1: Global "Always Ready" Vessels
+                if (ship.is_global) {
+                    isMatch = true;
+                    matchScore = 200; // Higher than standard matches
+                } 
+                // Priority 2: Specific Route Matching
+                else if (fromPort && toPort) {
                     const fromIdx = stops.findIndex(s => s.port_name.toLowerCase().includes(fromPort.toLowerCase()));
                     const toIdx = stops.findIndex(s => s.port_name.toLowerCase().includes(toPort.toLowerCase()));
 
@@ -467,12 +473,32 @@ module.exports = function registerV3WorkflowRoutes(app, pool, authenticateToken,
      * Returns the multi-stop route for a ship
      */
     app.get('/api/v3/manager/ship/:shipId/route', ...companyAuth, async (req, res) => {
+        const { shipId } = req.params;
+        const { destHint } = req.query;
         try {
             const r = await pool.query(
                 `SELECT * FROM ship_route_stops WHERE ship_id = $1 ORDER BY stop_order ASC`,
-                [req.params.shipId]
+                [shipId]
             );
-            res.json({ success: true, stops: r.rows });
+            
+            let stops = r.rows;
+
+            // If no stops found, check if it's a global ship and provide a virtual stop
+            if (stops.length === 0) {
+                const shipRes = await pool.query(`SELECT is_global FROM vehicles WHERE id = $1`, [shipId]);
+                if (shipRes.rows.length > 0 && shipRes.rows[0].is_global) {
+                    stops = [{
+                        id: 0,
+                        ship_id: shipId,
+                        port_name: destHint || 'Global Destination',
+                        stop_order: 1,
+                        estimated_arrival: new Date(Date.now() + 86400000 * 7), // 7 days later
+                        estimated_departure: new Date(Date.now() + 86400000 * 8)
+                    }];
+                }
+            }
+
+            res.json({ success: true, stops });
         } catch (e) {
             res.status(500).json({ success: false, message: 'Failed to fetch route' });
         }

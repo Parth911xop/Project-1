@@ -343,7 +343,12 @@ async function openAcceptModal(id) {
                 const routeStr = s.route_stops && s.route_stops.length > 0 ? s.route_stops.map(st => st.port_name).join(' → ') : 'No Route Defined';
                 const openSlots = s.available_slots != null ? s.available_slots : (s.container_slots - s.used_slots);
 
-                if (s.isMatch) {
+                if (s.is_global) {
+                    opt.textContent = `✅ [GLOBAL READY] ${s.name} - Universal Route | All Ports Matched`;
+                    opt.style.color = '#34d399';
+                    opt.style.fontWeight = 'bold';
+                    opt.className = "text-success fw-bold bg-dark";
+                } else if (s.isMatch) {
                     opt.textContent = `✅ [SUGGESTED] ${s.name} (${openSlots} slots open) | MATCHES ROUTE: ${routeStr}`;
                     opt.style.color = '#34d399';
                     opt.style.fontWeight = 'bold';
@@ -380,7 +385,8 @@ async function onAcceptShipSelected() {
     if (!shipId) return;
 
     try {
-        const res = await fetch(`${API}/api/v3/manager/ship/${shipId}/route`, { credentials: 'include' });
+        const destPort = (typeof GLOBAL_CURRENT_REQ !== 'undefined' && GLOBAL_CURRENT_REQ) ? (GLOBAL_CURRENT_REQ.destination_port || GLOBAL_CURRENT_REQ.to_country || "") : "";
+        const res = await fetch(`${API}/api/v3/manager/ship/${shipId}/route?destHint=${encodeURIComponent(destPort)}`, { credentials: 'include' });
         const d = await res.json();
         if (d.success && d.stops.length > 0) {
             let autoMatch = null;
@@ -775,7 +781,8 @@ async function openRouteModal(shipId, shipName) {
     CURRENT_ROUTE_STOPS = [];
 
     try {
-        const res = await fetch(`${API}/api/v3/manager/ship/${shipId}/route`, { credentials: 'include' });
+        const destPort = (typeof GLOBAL_CURRENT_REQ !== 'undefined' && GLOBAL_CURRENT_REQ) ? (GLOBAL_CURRENT_REQ.destination_port || GLOBAL_CURRENT_REQ.to_country || "") : "";
+        const res = await fetch(`${API}/api/v3/manager/ship/${shipId}/route?destHint=${encodeURIComponent(destPort)}`, { credentials: 'include' });
         const d = await res.json();
         if (d.success) {
             CURRENT_ROUTE_STOPS = d.stops.sort((a, b) => a.stop_order - b.stop_order);

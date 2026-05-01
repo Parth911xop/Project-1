@@ -53,16 +53,34 @@ module.exports = (pool) => {
         const userId = req.user?.userId;
         if (!userId) return res.status(401).json({ success: false, message: 'Unauthorized' });
 
+        // Exchange rate: same as used in the dashboard (shipments.js)
+        const USD_TO_INR = 84;
+
         try {
-            // 1. Fetch Invoices
+            // 1. Fetch Invoices with shipment estimated_cost for accurate INR values
             let invoices = [];
             try {
                 const invRes = await pool.query(`
-                    SELECT i.*, COALESCE(i.issued_at, NOW()) as created_at, 'Paid' as status, s.origin_address, s.destination_address 
+                    SELECT i.*, COALESCE(i.issued_at, NOW()) as created_at, 'Paid' as status, 
+                           s.origin_address, s.destination_address, s.estimated_cost,
+                           COALESCE(t.currency, 'USD') as currency
                     FROM invoices i 
                     JOIN shipments s ON i.shipment_id = s.id 
+                    LEFT JOIN transactions t ON i.transaction_id = t.id
                     WHERE s.customer_id = $1 ORDER BY i.issued_at DESC`, [userId]);
-                invoices = invRes.rows;
+                
+                // Compute INR amount from the shipment's estimated_cost (same as dashboard)
+                invoices = invRes.rows.map(inv => {
+                    const baseCostUSD = parseFloat(inv.estimated_cost || inv.amount || 0);
+                    const costINR = Math.round(baseCostUSD * USD_TO_INR);
+                    const surcharge = Math.round(costINR * 0.08);
+                    return {
+                        ...inv,
+                        amount_usd: parseFloat(inv.amount || 0),
+                        amount: costINR + surcharge,  // Total INR (base + 8% surcharge, matching dashboard)
+                        currency: 'INR'
+                    };
+                });
             } catch (e) {
                 console.warn('Invoices query failed (table may not exist):', e.message);
             }
@@ -71,11 +89,23 @@ module.exports = (pool) => {
             let transactions = [];
             try {
                 const transRes = await pool.query(`
-                    SELECT t.*, s.origin_address, s.destination_address 
+                    SELECT t.*, s.origin_address, s.destination_address, s.estimated_cost
                     FROM transactions t 
                     LEFT JOIN shipments s ON t.shipment_id = s.id 
                     WHERE t.customer_id = $1 ORDER BY t.created_at DESC`, [userId]);
-                transactions = transRes.rows;
+                
+                // Convert transaction amounts to INR using shipment's estimated_cost
+                transactions = transRes.rows.map(t => {
+                    const baseCostUSD = parseFloat(t.estimated_cost || t.amount || 0);
+                    const costINR = Math.round(baseCostUSD * USD_TO_INR);
+                    const surcharge = Math.round(costINR * 0.08);
+                    return {
+                        ...t,
+                        amount_usd: parseFloat(t.amount || 0),
+                        amount: costINR + surcharge,
+                        currency: 'INR'
+                    };
+                });
             } catch (e) {
                 console.warn('Transactions query failed (table may not exist):', e.message);
             }
@@ -91,7 +121,7 @@ module.exports = (pool) => {
                 console.warn('Support tickets query failed (table may not exist):', e.message);
             }
 
-            // Aggregate Summary
+            // Aggregate Summary (now in INR)
             let totalPaid = 0;
             let totalDue = 0;
             transactions.forEach(t => { if (t.status === 'Completed') totalPaid += parseFloat(t.amount || 0); });
@@ -99,12 +129,13 @@ module.exports = (pool) => {
 
             // Generate Combined History Items
             const history = [
-                ...invoices.map(i => ({ type: 'Invoice', date: i.created_at || i.issued_at, amount: i.amount, status: i.status || 'Paid', ref: `INV-${i.id}`, shipment_id: i.shipment_id, origin: i.origin_address, dest: i.destination_address })),
-                ...transactions.map(t => ({ type: 'Payment', date: t.created_at, amount: t.amount, status: t.status, ref: `TXN-${t.id}`, shipment_id: t.shipment_id, origin: t.origin_address, dest: t.destination_address }))
+                ...invoices.map(i => ({ type: 'Invoice', date: i.created_at || i.issued_at, amount: i.amount, currency: 'INR', status: i.status || 'Paid', ref: `INV-${i.id}`, shipment_id: i.shipment_id, origin: i.origin_address, dest: i.destination_address })),
+                ...transactions.map(t => ({ type: 'Payment', date: t.created_at, amount: t.amount, currency: 'INR', status: t.status, ref: `TXN-${t.id}`, shipment_id: t.shipment_id, origin: t.origin_address, dest: t.destination_address }))
             ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
             res.json({
                 success: true,
+                currency: 'INR',
                 summary: {
                     totalPaid,
                     totalDue,

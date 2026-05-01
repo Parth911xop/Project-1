@@ -397,17 +397,22 @@
                 if (shipData.success && shipData.shipments?.length) {
                     const shipments = shipData.shipments;
                     let totalPaid = 0, totalDue = 0;
+                    const USD_TO_INR = 84;
 
                     allInvoices = shipments.map((s, idx) => {
-                        const amt = parseFloat(s.estimated_cost || 0);
+                        const baseCostUSD = parseFloat(s.estimated_cost || 0);
+                        const costINR = Math.round(baseCostUSD * USD_TO_INR);
+                        const surcharge = Math.round(costINR * 0.08);
+                        const totalINR = costINR + surcharge;
                         const isPaid = s.status === 'Delivered' || s.payment_status === 'paid';
-                        if (isPaid) totalPaid += amt; else totalDue += amt;
+                        if (isPaid) totalPaid += totalINR; else totalDue += totalINR;
 
                         return {
                             id: s.id,
                             invoice_number: `INV-${String(s.id).padStart(4, '0')}`,
                             shipment_id: s.id,
-                            amount: amt,
+                            amount: totalINR,
+                            currency: 'INR',
                             status: isPaid ? 'Paid' : 'Pending',
                             created_at: s.created_at,
                             due_date: s.preferred_shipping_date || s.created_at,
@@ -423,15 +428,20 @@
                     renderInvoices(allInvoices);
 
                     // Build history from shipments
-                    const history = shipments.map(s => ({
-                        type: s.status === 'Delivered' ? 'Payment' : 'Invoice',
-                        date: s.created_at,
-                        amount: s.estimated_cost || 0,
-                        status: s.status,
-                        ref: `#${s.user_prefix || 'SS'}-${s.id}`,
-                        origin: s.origin_address || '—',
-                        dest: s.destination_address || '—'
-                    })).sort((a, b) => new Date(b.date) - new Date(a.date));
+                    const history = shipments.map(s => {
+                        const baseCostUSD = parseFloat(s.estimated_cost || 0);
+                        const costINR = Math.round(baseCostUSD * USD_TO_INR);
+                        const surcharge = Math.round(costINR * 0.08);
+                        return {
+                            type: s.status === 'Delivered' ? 'Payment' : 'Invoice',
+                            date: s.created_at,
+                            amount: costINR + surcharge,
+                            status: s.status,
+                            ref: `#${s.user_prefix || 'SS'}-${s.id}`,
+                            origin: s.origin_address || '—',
+                            dest: s.destination_address || '—'
+                        };
+                    }).sort((a, b) => new Date(b.date) - new Date(a.date));
 
                     renderHistory(history);
                     renderShipmentCosts(shipments);
@@ -518,7 +528,10 @@
             }
 
             el.innerHTML = shipments.slice(0, 10).map(s => {
-                const cost = parseFloat(s.estimated_cost || 0);
+                const baseCostUSD = parseFloat(s.estimated_cost || 0);
+                const costINR = Math.round(baseCostUSD * 84);
+                const surcharge = Math.round(costINR * 0.08);
+                const totalINR = costINR + surcharge;
                 const isPaid = s.status === 'Delivered' || s.payment_status === 'paid';
                 const color = isPaid ? 'success' : 'warning';
 
@@ -531,7 +544,7 @@
                         </div>
                     </div>
                     <div class="text-end">
-                        <div class="text-white fw-bold small">${formatCurrency(cost)}</div>
+                        <div class="text-white fw-bold small">${formatCurrency(totalINR)}</div>
                         <span class="text-${color}" style="font-size: 0.65rem; font-weight: 700;">${isPaid ? '✓ PAID' : '⏳ PENDING'}</span>
                     </div>
                 </div>`;
@@ -552,8 +565,20 @@
             tbody.innerHTML = `<tr><td colspan="${cols}"><div class="empty-state"><i class="fas fa-file-invoice d-block"></i><p class="small">${msg}</p></div></td></tr>`;
         }
 
-        function formatCurrency(amount) {
-            return '₹' + parseFloat(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        // Currency symbols for display
+        const CURRENCY_SYMBOLS = { USD: '$', INR: '₹', EUR: '€', GBP: '£' };
+
+        // The backend now returns amounts already converted to INR (matching dashboard values).
+        // This function simply formats the number with the correct symbol.
+        function formatCurrency(amount, currency) {
+            const curr = currency || 'INR';
+            const symbol = CURRENCY_SYMBOLS[curr] || curr;
+            const value = parseFloat(amount || 0);
+            
+            if (curr === 'INR') {
+                return symbol + value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            }
+            return symbol + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
 
         async function payInvoice(id) {

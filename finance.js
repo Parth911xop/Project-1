@@ -122,6 +122,18 @@ async function payInvoice(id) {
     }
 }
 
-function formatCurrency(amount) {
-    return '$' + parseFloat(amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Currency symbols for display
+const CURRENCY_SYMBOLS = { USD: '$', INR: '₹', EUR: '€', GBP: '£' };
+
+// The backend now returns amounts already converted to INR (matching dashboard values).
+// This function simply formats the number with the correct symbol.
+function formatCurrency(amount, currency) {
+    const curr = currency || 'INR';
+    const symbol = CURRENCY_SYMBOLS[curr] || curr;
+    const value = parseFloat(amount || 0);
+    
+    if (curr === 'INR') {
+        return symbol + value.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+    return symbol + value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

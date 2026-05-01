@@ -414,6 +414,14 @@ const runMigrations = async () => {
             console.log("🛠️ Logistics V4.1 Schema Fix Applied Successfully");
         }
 
+        // 6. V4.2 Global Vessels Migration
+        const v42Path = path.join(__dirname, 'migrations', 'v4_2_global_vessels.sql');
+        if (require('fs').existsSync(v42Path)) {
+            const v42Sql = require('fs').readFileSync(v42Path, 'utf8');
+            await pool.query(v42Sql);
+            console.log("🌍 Logistics V4.2 Global Vessels Applied Successfully");
+        }
+
         console.log("🚀 All Data Schemas are Synced and Healthy");
     } catch (err) {
         console.error("❌ Migration Failed:", err.message);
