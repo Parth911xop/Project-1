@@ -57,9 +57,8 @@ async function requestOTP() {
                 return;
             }
 
-            // DEMO: Show OTP in toast for convenience, but usually sent via email
-            showToast(`OTP Sent! Code: ${data.otp}`, 'success');
-            console.log("OTP:", data.otp);
+            // Show confirmation toast (OTP is sent to email only)
+            showToast('OTP Sent! Check your email inbox.', 'success');
             otpRequested = true;
             document.getElementById('submitBtn').innerText = "Verify & Login";
 

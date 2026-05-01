@@ -816,7 +816,7 @@ app.post('/request-otp', async (req, res) => {
             }
         }
 
-        res.json({ success: true, message: 'OTP Sent', otp: otp }); // kept otp in response for ease of dev testing without real email
+        res.json({ success: true, message: 'OTP Sent' });
 
     } catch (err) {
         console.error("Auth Error:", err);
