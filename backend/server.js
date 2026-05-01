@@ -33,14 +33,63 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage: storage });
 
-// Setup Nodemailer transporter
-const transporter = nodemailer.createTransport({
-    service: 'gmail', // Use your provider
-    auth: {
-        user: process.env.EMAIL_USER || 'test@example.com',
-        pass: process.env.EMAIL_PASS || 'password'
+// Setup Nodemailer transporter with explicit Gmail settings
+// Using port 465 (SSL) as primary, with longer timeout for cloud environments
+const createEmailTransporter = () => {
+    const user = process.env.EMAIL_USER || 'test@example.com';
+    const pass = process.env.EMAIL_PASS || 'password';
+
+    // Try Resend API first if key is available (works on Render where SMTP is blocked)
+    if (process.env.RESEND_API_KEY) {
+        console.log('📧 Using Resend API for email delivery');
+        return null; // Will use Resend REST API directly
     }
-});
+
+    // Fallback to Gmail SMTP (works locally, may timeout on some cloud hosts)
+    return nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user, pass },
+        connectionTimeout: 10000,
+        greetingTimeout: 10000,
+        socketTimeout: 15000,
+    });
+};
+
+const transporter = createEmailTransporter();
+
+// Helper: send email via Resend REST API (no SMTP, bypasses port blocks)
+const sendEmailViaResend = async (to, subject, html, text) => {
+    const apiKey = process.env.RESEND_API_KEY;
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
+    const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: `Smart Shipping <${fromEmail}>`, to: [to], subject, html, text })
+    });
+    if (!resp.ok) {
+        const errBody = await resp.text();
+        throw new Error(`Resend API error ${resp.status}: ${errBody}`);
+    }
+    return await resp.json();
+};
+
+// Unified email sender — tries Resend API first, then SMTP fallback
+const sendEmail = async ({ to, subject, text, html }) => {
+    // If Resend API key is configured, use REST API (reliable on cloud hosts)
+    if (process.env.RESEND_API_KEY) {
+        return sendEmailViaResend(to, subject, html, text);
+    }
+    // Otherwise use SMTP transporter
+    if (transporter) {
+        return transporter.sendMail({
+            from: `"Smart Shipping" <${process.env.EMAIL_USER}>`,
+            to, subject, text, html
+        });
+    }
+    throw new Error('No email transport configured');
+};
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -55,16 +104,16 @@ const corsOrigins = [
     'http://127.0.0.1:5500',
     'http://localhost:5173',
     'http://127.0.0.1:5173',
-    // Production frontend (Vercel) — add your actual Vercel URL(s) here
+    // Production frontend URLs
     process.env.FRONTEND_URL,
 ].filter(Boolean); // Remove undefined entries
 
-// Also allow any *.vercel.app subdomain dynamically
+// Allow any *.vercel.app and *.onrender.com subdomains dynamically
 const corsOptions = {
     origin: function (origin, callback) {
         // Allow requests with no origin (mobile apps, curl, server-to-server)
         if (!origin) return callback(null, true);
-        if (corsOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+        if (corsOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.onrender.com')) {
             return callback(null, true);
         }
         console.warn(`⚠️ CORS blocked origin: ${origin}`);
@@ -750,20 +799,18 @@ app.post('/request-otp', async (req, res) => {
         // Send Real Email OTP if identifier involves email
         if (authMethod !== 'phone' && identifier.includes('@')) {
             try {
-                if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-                    await transporter.sendMail({
-                        from: `"Smart Shipping" <${process.env.EMAIL_USER}>`,
-                        to: identifier,
-                        subject: 'Your Smart Shipping Login Code',
-                        text: `Your OTP code is ${otp}. It is valid for 10 minutes.`,
-                        html: `<div style="font-family: Arial, sans-serif; padding: 20px;">
+                const otpHtml = `<div style="font-family: Arial, sans-serif; padding: 20px;">
                                 <h2>Smart Shipping Login</h2>
                                 <p>Your verification code is: <strong style="font-size: 24px;">${otp}</strong></p>
                                 <p>Do not share this code with anyone.</p>
-                               </div>`
-                    });
-                    console.log(`📧 OTP Email sent successfully to ${identifier}`);
-                }
+                               </div>`;
+                await sendEmail({
+                    to: identifier,
+                    subject: 'Your Smart Shipping Login Code',
+                    text: `Your OTP code is ${otp}. It is valid for 10 minutes.`,
+                    html: otpHtml
+                });
+                console.log(`📧 OTP Email sent successfully to ${identifier}`);
             } catch (emailErr) {
                 console.error("Failed to send OTP email:", emailErr);
             }
